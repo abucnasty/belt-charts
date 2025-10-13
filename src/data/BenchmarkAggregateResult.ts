@@ -33,7 +33,7 @@ export type RunValue = {
     run: number
 }
 
-export const parseBenchmarkAggregatesPerRunResultFromCsv = async (filePath: string, removeFirstTicks: number = 0, metrics: MetricEnum[]): Promise<BenchmarkAggregateRunResult> => {
+export const parseBenchmarkAggregatesPerRunResultFromCsv = async (filePath: string, removeFirstTicks: number = 0, maxTick: number, metrics: MetricEnum[]): Promise<BenchmarkAggregateRunResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     const runValuesPerMetric: Map<number, Partial<Record<MetricName, RunValue[]>>> = new Map()
 
@@ -48,6 +48,10 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (filePath: stri
                         .map(metricName => MetricRegistryInstance.getOrThrow(metricName));
                 }
                 if (Number(row.tick) <= removeFirstTicks) {
+                    return
+                }
+
+                if (maxTick > 0 && Number(row.tick) > maxTick) {
                     return
                 }
 
@@ -100,7 +104,9 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (filePath: stri
     metrics.forEach(metric => {
         const metricRawValues = []
         runValuesPerMetric.forEach((metricToRunValues) => {
-            metricRawValues.push(...metricToRunValues[metric.name].map(it => it.value))
+            metricToRunValues[metric.name].forEach(it => {
+                metricRawValues.push(it.value)
+            })
         })
         all.set(metric.name, {
             average: average(metricRawValues),

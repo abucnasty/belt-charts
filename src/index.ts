@@ -54,6 +54,7 @@ program
     const height: number = options.height;
     const outputFile: string = path.resolve(process.cwd(), options.output);
     const removeFirstTicks: number = options.removeFirstTicks;
+    const maxTicks: number = options.maxTicks;
     const type: string = options.type;
     const trimPrefix = options.trimPrefix;
     const tickWindowAggregation: number = options.tickWindowAggregation
@@ -74,7 +75,7 @@ program
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, metrics);
+        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
@@ -162,7 +163,7 @@ program
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, metrics);
+        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
@@ -189,7 +190,7 @@ program
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, metrics);
+        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks,maxTicks, metrics);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
