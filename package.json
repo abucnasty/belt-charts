@@ -20,7 +20,9 @@
   "author": "abucnasty",
   "license": "MIT",
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "@sgratzl/chartjs-chart-boxplot": "^4.4.4",
+    "chalk": "^5.6.2",
     "chart.js": "^4.5.0",
     "chartjs-plugin-annotation": "^3.1.0",
     "commander": "^14.0.0",
@@ -30,7 +32,6 @@
     "skia-canvas": "^3.0.6"
   },
   "devDependencies": {
-    "@types/commander": "^2.12.2",
     "@types/glob": "^8.1.0",
     "@types/node": "^22.18.8",
     "@vercel/ncc": "^0.38.4",
