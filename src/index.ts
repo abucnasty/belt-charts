@@ -12,11 +12,14 @@ import { nanoToMicro } from "./utils";
 import { MetricRegistryInstance } from "./data/MetricRegistry";
 import { createBoxPlotChartConfiguration } from "./charts/BoxPlot";
 import { Canvas } from "skia-canvas"
-import { Chart, ChartConfiguration } from "chart.js";
+import { Chart, ChartConfiguration, LinearScale, CategoryScale } from "chart.js";
 import fsp from 'node:fs/promises';
 import { BenchmarkAggregateRunResult, parseBenchmarkAggregatesPerRunResultFromCsv, saveBenchmarkAggregateRunResultsToCsv } from "./data/BenchmarkAggregateResult";
 import chalk from "chalk";
-import { intro, text, select, outro } from "@clack/prompts";
+import { intro, text, select, outro, multiselect } from "@clack/prompts";
+import { BoxPlotController, BoxAndWiskers } from "@sgratzl/chartjs-chart-boxplot";
+
+Chart.register(BoxPlotController, BoxAndWiskers, CategoryScale, LinearScale);
 
 async function summaryChartProcess(
   files: string[],
@@ -226,13 +229,64 @@ async function generateAggregateResultsFromCSV(
   return result;
 }
 
+async function generateChartByType(
+  type: string,
+  files: string[],
+  trimPrefix: string,
+  removeFirstTicks: number,
+  maxTicks: number,
+  metrics: MetricEnum[],
+  summaryTable: boolean,
+  aggregationStrategy: AggregationStrategy,
+  width: number,
+  height: number,
+  outputFile: string,
+  maxUpdate: number,
+  tickWindowAggregation: number,
+) {
+  switch (type) {
+    case "summary":
+      summaryChartProcess(
+        files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, width, height, 
+        outputFile
+      );
+      break;
+    case "bar": // Fallthrough case
+    case "line":
+      barOrLineChartProcess(
+        files, removeFirstTicks, trimPrefix, maxUpdate, maxTicks, type, aggregationStrategy, tickWindowAggregation, 
+        outputFile, width, height
+      );
+      break;
+    case "boxplot":
+      boxplotChartProcess(
+        files, removeFirstTicks, maxTicks, metrics, trimPrefix, aggregationStrategy, width, height, outputFile
+      );
+      break;
+    case "table":
+      tableChartProcess(files, removeFirstTicks, maxTicks, metrics, trimPrefix, outputFile, aggregationStrategy);
+      break;
+    default:
+      console.error(`Unknown chart type: ${type}`);
+      process.exit(1);
+  };
+}
+
 const program = new Command();
+
+const chartOptions = ["summary", "line", "bar", "boxplot", "table"]
 
 program
   .name("chart-gen")
   .description("Extension of Belt's verbose_metrics to generate charts")
   .argument("<glob-pattern>", "Glob pattern for CSV files (e.g. './data/*.csv')")
-  .option("-t, --type <summary | line | bar | boxplot | table>", "Type of chart to generate (summary)", "summary")
+  .option("-t, --type <summary | line | bar | boxplot | table>", "Comma seperated list of chart(s) to generate (default: summary)", (it: string) => {
+    if (it == "*") {
+      return chartOptions;
+    } else {
+      return it.split(",").filter((chartType) => chartOptions.includes(chartType));
+    };
+  }, [])
   .option("-o, --output <file>", "Output PNG file", "verbose_metrics.png")
   .option("-w, --width <px>", "Chart width in pixels", (it: string) => parseInt(it), 1400)
   .option("-h, --height <px>", "Chart height in pixels", (it: string) => parseInt(it), 800)
@@ -249,10 +303,11 @@ program
       return it.split(",").map(metricName => MetricRegistryInstance.getOrThrow(metricName))
     }
   }, MetricRegistryInstance.all())
-  .option("-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation", "aggregate the runs by either minimum per tick or average per tick", "average")
-  .action(async (pattern, options) => {
+  .option("-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>", "aggregate the runs by either minimum per tick or average per tick", "average")
+  .action(async (globPattern, options) => {
     intro(chalk.cyan('Welcome to chart-gen!'));
 
+    console.log(`summary-table: ${options.summaryTable}`)
     const aggregationStrategy: AggregationStrategy = aggregationStrategyFromString(options.aggregateStrategy);
     const height: number = options.height;
     const maxTicks: number = options.maxTicks;
@@ -262,14 +317,15 @@ program
     const summaryTable: boolean = options.summaryTable;
     const tickWindowAggregation: number = options.tickWindowAggregation;
     const trimPrefix = options.trimPrefix;
-    const type: string = options.type;
+    const type: string[] = options.type;
+    let selectedTypes: symbol | string[] = type;
     const width: number = options.width;
 
     const metrics: MetricEnum[] = options.metrics
     console.debug(options)
 
-    if (!pattern) {
-      pattern = (await text({
+    if (!globPattern || globPattern.length == 0) {
+      globPattern = (await text({
         message: 'What glob pattern would you like to use for CSV files?',
         initialValue: './data/*.csv',
         validate(value) {
@@ -280,38 +336,35 @@ program
       })) as string;
     }
 
-    const files = globSync(pattern);
+    if (type.length === 0) {
+      selectedTypes = (await multiselect({
+        message: "Which chart(s) would you like to generate?",
+        options: [
+          { value: 'summary', label: 'Summary' },
+          { value: 'bar', label: 'Bar' },
+          { value: 'line', label: 'Line' },
+          { value: 'boxplot', label: 'Boxplot' },
+          { value: 'table', label: 'Table' }
+        ],
+        required: true
+      }))
+    }
+
+    selectedTypes = selectedTypes.toString().split(',')
+
+    const files = globSync(globPattern);
     if (files.length === 0) {
-      console.error(`No files matched the given pattern ${pattern}`);
+      console.error(`No files matched the given pattern ${globPattern}`);
       process.exit(1);
     }
 
-    switch (type) {
-      case "summary":
-        summaryChartProcess(
-          files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, width, height, 
-          outputFile
-        );
-        break;
-      case "bar": // Fallthrough case
-      case "line":
-        barOrLineChartProcess(
-          files, removeFirstTicks, trimPrefix, maxUpdate, maxTicks, type, aggregationStrategy, tickWindowAggregation, 
-          outputFile, width, height
-        );
-        break;
-      case "boxplot":
-        boxplotChartProcess(
-          files, removeFirstTicks, maxTicks, metrics, trimPrefix, aggregationStrategy, width, height, outputFile
-        );
-        break;
-      case "table":
-        tableChartProcess(files, removeFirstTicks, maxTicks, metrics, trimPrefix, outputFile, aggregationStrategy);
-        break;
-      default:
-        console.error(`Unknown chart type: ${type}`);
-        process.exit(1);
-    };
+    for (const selectedType of selectedTypes) {
+      await generateChartByType(
+        selectedType, files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, 
+        width, height, outputFile, maxUpdate, tickWindowAggregation
+      )
+    }
+
     process.exit(0);
   })
 
