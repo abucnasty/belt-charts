@@ -10,10 +10,9 @@ import { ignoreFirstTicksFromResult } from "./data/BenchmarkAggregates";
 import { MetricEnum } from "./data/MetricEnum";
 import { nanoToMicro } from "./utils";
 import { MetricRegistryInstance } from "./data/MetricRegistry";
-import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 import { createBoxPlotChartConfiguration } from "./charts/BoxPlot";
 import { Canvas } from "skia-canvas"
-import { Chart, LinearScale, CategoryScale, registerables } from "chart.js";
+import { Chart, ChartConfiguration } from "chart.js";
 import fsp from 'node:fs/promises';
 import { BenchmarkAggregateRunResult, parseBenchmarkAggregatesPerRunResultFromCsv, saveBenchmarkAggregateRunResultsToCsv } from "./data/BenchmarkAggregateResult";
 import chalk from "chalk";
@@ -31,33 +30,22 @@ async function summaryChartProcess(
   height: number,
   outputFile: string
 ) {
-  
-  const aggregateResults: BenchmarkAggregateRunResult[] = []
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
-
-    if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-      result.fileName = result.fileName.slice(trimPrefix.length);
-    }
-    aggregateResults.push(result);
-  }
+  const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
+    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+  )
   const config = createSummaryChartConfiguration(aggregateResults, {
     metrics: metrics,
     includeTable: summaryTable,
     aggregationStrategy: aggregationStrategy
   });
   console.log("Chart configuration created.");
-  const canvas = new Canvas(width, height)
-  const chart = new Chart(
-    canvas as any,
-    config
+  await generateAndSaveChart(
+    outputFile,
+    config,
+    height,
+    width,
   )
-  const imageBuffer = await canvas.toBuffer("png");
-
-  await fsp.writeFile(outputFile, imageBuffer);
   console.log(`Summary chart with table saved to ${outputFile}`);
-  chart.destroy()
   return;
 };
 
@@ -113,23 +101,130 @@ async function barOrLineChartProcess(
   const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "")
 
   configurations.forEach(async ({ result, config }) => {
-    const canvas = new Canvas(width, height)
-    const chart = new Chart(
-      canvas as any,
-      config
-    )
-    const imageBuffer = await canvas.toBuffer("png");
-
     const fileName = `${fileNameWithoutExt}_${result.fileName}.png`
-
-    await fsp.writeFile(fileName, imageBuffer);
-    chart.destroy()
+    await generateAndSaveChart(
+      fileName,
+      config,
+      height,
+      width,
+    )
     console.log(`Metric Line Chart Generated for ${fileName}`);
   });
-
-
   return;
 };
+
+async function boxplotChartProcess(
+  files: string[],
+  removeFirstTicks: number,
+  maxTicks: number,
+  metrics: MetricEnum[],
+  trimPrefix: string,
+  aggregationStrategy: AggregationStrategy,
+  width: number,
+  height: number,
+  outputFile: string,
+) {
+  const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
+    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+  )
+  const config = createBoxPlotChartConfiguration(aggregateResults, aggregationStrategy);
+  console.log("Chart configuration created.");
+  await generateAndSaveChart(
+    outputFile,
+    config,
+    height,
+    width,
+  );
+  console.log(`Summary chart with table saved to ${outputFile}`);
+  return;
+};
+
+async function tableChartProcess(
+  files: string[],
+  removeFirstTicks: number,
+  maxTicks: number,
+  metrics: MetricEnum[],
+  trimPrefix: string,
+  outputFile: string,
+  aggregationStrategy: AggregationStrategy,
+) {
+  const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
+    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+  )
+
+  const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "")
+
+  await saveBenchmarkAggregateRunResultsToCsv(aggregateResults, aggregationStrategy, `${fileNameWithoutExt}.csv`)
+
+  console.log(`Verbose Run Statistics Saved to ${fileNameWithoutExt}`)
+}
+
+async function generateAndSaveChart(
+  outputFile: string,
+  configuration: ChartConfiguration,
+  height: number,
+  width: number,
+) {
+  const canvas = new Canvas(width, height)
+  const chart = new Chart(
+    canvas as any,
+    configuration
+  )
+  const imageBuffer = await canvas.toBuffer("png");
+
+  const fileNameExtension = outputFile.split('.')[-1]
+
+  let fileName = ''
+
+  if (fileNameExtension !== 'png') {
+    console.warn(
+      `Output file name ${outputFile} does not end in .png. The file extension will be adjusted `
+      + 'to avoid file corruption'
+    );
+
+    const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "");
+
+    fileName = fileNameWithoutExt + '.png';
+  } else {
+    fileName = outputFile;
+  };
+
+  await fsp.writeFile(outputFile, imageBuffer);
+  chart.destroy();
+}
+
+async function generateAggregateRunResults(
+  files: string[],
+  removeFirstTicks: number,
+  maxTicks: number,
+  metrics: MetricEnum[],
+  trimPrefix: string,
+) {
+  const aggregateResults: BenchmarkAggregateRunResult[] = []
+  for (const file of files) {
+    let result: BenchmarkAggregateRunResult = await generateAggregateResultsFromCSV(
+      file, removeFirstTicks, maxTicks, metrics, trimPrefix
+    )
+    aggregateResults.push(result);
+  }
+  return aggregateResults;
+};
+
+async function generateAggregateResultsFromCSV(
+  file: string,
+  removeFirstTicks: number,
+  maxTicks: number,
+  metrics: MetricEnum[],
+  trimPrefix: string,
+) {
+  console.log(`Processing file: ${file}`);
+  let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
+
+  if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
+    result.fileName = result.fileName.slice(trimPrefix.length);
+  }
+  return result;
+}
 
 const program = new Command();
 
@@ -191,86 +286,33 @@ program
       process.exit(1);
     }
 
-    if (type == "summary") {
-      summaryChartProcess(
-        files,
-        trimPrefix,
-        removeFirstTicks,
-        maxTicks,
-        metrics,
-        summaryTable,
-        aggregationStrategy,
-        width,
-        height,
-        outputFile,
-      )
-    }
-
-    if (type == "line" || type == "bar") {
-      barOrLineChartProcess(
-        files,
-        removeFirstTicks,
-        trimPrefix,
-        maxUpdate,
-        maxTicks,
-        type,
-        aggregationStrategy,
-        tickWindowAggregation,
-        outputFile,
-        width,
-        height
-      )
-    }
-
-    if (type == "boxplot") {
-      const aggregateResults: BenchmarkAggregateRunResult[] = []
-      for (const file of files) {
-        console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
-
-        if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-          result.fileName = result.fileName.slice(trimPrefix.length);
-        }
-        aggregateResults.push(result);
-      }
-      const config = createBoxPlotChartConfiguration(aggregateResults, aggregationStrategy);
-      console.log("Chart configuration created.");
-      const canvas = new Canvas(width, height)
-      const chart = new Chart(
-        canvas as any,
-        config
-      )
-      const imageBuffer = await await canvas.toBuffer("png");
-
-      await fsp.writeFile(outputFile, imageBuffer);
-      console.log(`Summary chart with table saved to ${outputFile}`);
-      chart.destroy()
-      return;
-    }
-
-
-    if (type == "table") {
-      const aggregateResults: BenchmarkAggregateRunResult[] = []
-      for (const file of files) {
-        console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks,maxTicks, metrics);
-
-        if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-          result.fileName = result.fileName.slice(trimPrefix.length);
-        }
-        aggregateResults.push(result);
-      }
-
-      const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "")
-
-      await saveBenchmarkAggregateRunResultsToCsv(aggregateResults, aggregationStrategy, `${fileNameWithoutExt}.csv`)
-
-      console.log(`Verbose Run Statistics Saved to ${fileNameWithoutExt}`)
-      return;
-    }
-
-    console.error(`Unknown chart type: ${type}`);
-    process.exit(1);
+    switch (type) {
+      case "summary":
+        summaryChartProcess(
+          files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, width, height, 
+          outputFile
+        );
+        break;
+      case "bar": // Fallthrough case
+      case "line":
+        barOrLineChartProcess(
+          files, removeFirstTicks, trimPrefix, maxUpdate, maxTicks, type, aggregationStrategy, tickWindowAggregation, 
+          outputFile, width, height
+        );
+        break;
+      case "boxplot":
+        boxplotChartProcess(
+          files, removeFirstTicks, maxTicks, metrics, trimPrefix, aggregationStrategy, width, height, outputFile
+        );
+        break;
+      case "table":
+        tableChartProcess(files, removeFirstTicks, maxTicks, metrics, trimPrefix, outputFile, aggregationStrategy);
+        break;
+      default:
+        console.error(`Unknown chart type: ${type}`);
+        process.exit(1);
+    };
+    process.exit(0);
   })
 
 program.parse();
