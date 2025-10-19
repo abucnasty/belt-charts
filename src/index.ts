@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-import path from "path";
 import { globSync } from "glob";
 import { Command } from "commander";
 import { BenchmarkTickResult, parseBenchmarkAveragePerTickResultFromCsv } from "./data/BenchmarkTickResult";
-import { AggregationStrategy, aggregationStrategyFromString } from "./data/AggregationStrategy";
 import { createSummaryChartConfiguration } from "./charts/SummaryChart";
 import { createLineChartForMetrics } from "./charts/LineChart";
 import { ignoreFirstTicksFromResult } from "./data/BenchmarkAggregates";
@@ -18,70 +16,65 @@ import { BenchmarkAggregateRunResult, parseBenchmarkAggregatesPerRunResultFromCs
 import chalk from "chalk";
 import { intro, text, select, outro, multiselect } from "@clack/prompts";
 import { BoxPlotController, BoxAndWiskers } from "@sgratzl/chartjs-chart-boxplot";
+import { BeltChartContext } from "./charts/BeltChartContext";
 
 Chart.register(BoxPlotController, BoxAndWiskers, CategoryScale, LinearScale);
 
+/**
+ * Generate a summary chart and save the chart as a PNG
+ * 
+ * @param chartArguments 
+ * @param files 
+ */
 async function summaryChartProcess(
+  chartArguments: BeltChartContext,
   files: string[],
-  trimPrefix: string,
-  removeFirstTicks: number,
-  maxTicks: number,
-  metrics: MetricEnum[],
-  summaryTable: boolean,
-  aggregationStrategy: AggregationStrategy,
-  width: number,
-  height: number,
-  outputFile: string
 ) {
   const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
-    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+    files, chartArguments.removeFirstTicks, chartArguments.maxTicks, chartArguments.metrics, chartArguments.trimPrefix
   )
   const config = createSummaryChartConfiguration(aggregateResults, {
-    metrics: metrics,
-    includeTable: summaryTable,
-    aggregationStrategy: aggregationStrategy
+    metrics: chartArguments.metrics,
+    includeTable: chartArguments.summaryTable,
+    aggregationStrategy: chartArguments.aggregationStrategy,
   });
   console.log("Chart configuration created.");
   await generateAndSaveChart(
-    outputFile,
+    chartArguments.outputFile,
     config,
-    height,
-    width,
+    chartArguments.height,
+    chartArguments.width,
   )
-  console.log(`Summary chart with table saved to ${outputFile}`);
-  return;
+  console.log(`Summary chart with table saved to ${chartArguments.outputFile}`);
 };
 
+/**
+ * Generate a bar or line chart and save the chart as a PNG
+ * 
+ * @param chartArguments 
+ * @param files 
+ */
 async function barOrLineChartProcess(
+  chartArguments: BeltChartContext,
   files: string[],
-  removeFirstTicks: number,
-  trimPrefix: string,
-  maxUpdate: number,
-  maxTicks: number,
-  type: "bar" | "line",
-  aggregationStrategy: AggregationStrategy,
-  tickWindowAggregation: number,
-  outputFile: string,
-  width: number,
-  height: number,
 ) {
   const benchmarkResults: BenchmarkTickResult[] = [];
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     let result: BenchmarkTickResult = await parseBenchmarkAveragePerTickResultFromCsv(file);
 
-    if (removeFirstTicks > 0) {
-      result = ignoreFirstTicksFromResult(result, removeFirstTicks);
+    if (chartArguments.removeFirstTicks > 0) {
+      result = ignoreFirstTicksFromResult(result, chartArguments.removeFirstTicks);
     }
 
-    if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-      result.fileName = result.fileName.slice(trimPrefix.length);
+    if (chartArguments.trimPrefix && result.fileName.startsWith(chartArguments.trimPrefix)) {
+      result.fileName = result.fileName.slice(chartArguments.trimPrefix.length);
     }
     benchmarkResults.push(result);
   }
   let maxWholeUpdate = 0;
-  if (maxUpdate) {
-    maxWholeUpdate = maxUpdate * 1000
+  if (chartArguments.maxUpdate) {
+    maxWholeUpdate = chartArguments.maxUpdate * 1000
   } else {
     benchmarkResults.forEach(result => result.metricTickStats.get(MetricEnum.WHOLE_UPDATE.name).forEach(metricValue => {
       maxWholeUpdate = Math.max(maxWholeUpdate, nanoToMicro(metricValue.maximum))
@@ -91,73 +84,75 @@ async function barOrLineChartProcess(
     return {
       result: result,
       config: createLineChartForMetrics(result, {
-        maxTicks: maxTicks,
+        maxTicks: chartArguments.maxTicks,
         maxUpdateValue: maxWholeUpdate,
-        type: type,
-        aggregationStrategy,
-        tickWindow: tickWindowAggregation
+        type: chartArguments.type as "bar" | "line",
+        aggregationStrategy: chartArguments.aggregationStrategy,
+        tickWindow: chartArguments.tickWindowAggregation,
       })
     }
   })
   console.log("Chart configurations created.");
 
-  const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "")
+  const fileNameWithoutExt = chartArguments.outputFile.replace(/\.[^/.]+$/, "")
 
   configurations.forEach(async ({ result, config }) => {
     const fileName = `${fileNameWithoutExt}_${result.fileName}.png`
     await generateAndSaveChart(
       fileName,
       config,
-      height,
-      width,
+      chartArguments.height,
+      chartArguments.width,
     )
     console.log(`Metric Line Chart Generated for ${fileName}`);
   });
-  return;
 };
 
+/**
+ * Generate a boxplot chart and save the chart as a PNG
+ * 
+ * @param chartArguments Arguments for generating chart
+ * @param files List of data files to process
+ */
 async function boxplotChartProcess(
+  chartArguments: BeltChartContext,
   files: string[],
-  removeFirstTicks: number,
-  maxTicks: number,
-  metrics: MetricEnum[],
-  trimPrefix: string,
-  aggregationStrategy: AggregationStrategy,
-  width: number,
-  height: number,
-  outputFile: string,
 ) {
   const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
-    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+    files, chartArguments.removeFirstTicks, chartArguments.maxTicks, chartArguments.metrics, chartArguments.trimPrefix
   )
-  const config = createBoxPlotChartConfiguration(aggregateResults, aggregationStrategy);
+  const config = createBoxPlotChartConfiguration(aggregateResults, chartArguments.aggregationStrategy);
   console.log("Chart configuration created.");
   await generateAndSaveChart(
-    outputFile,
+    chartArguments.outputFile,
     config,
-    height,
-    width,
+    chartArguments.height,
+    chartArguments.width,
   );
-  console.log(`Summary chart with table saved to ${outputFile}`);
-  return;
+  console.log(`Summary chart with table saved to ${chartArguments.outputFile}`);
 };
 
+/**
+ * Generate a CSV file of aggregated chart data
+ * 
+ * @param chartArguments Arguments for generating data
+ * @param files List of data files to process
+ */
 async function tableChartProcess(
+  chartArguments: BeltChartContext,
   files: string[],
-  removeFirstTicks: number,
-  maxTicks: number,
-  metrics: MetricEnum[],
-  trimPrefix: string,
-  outputFile: string,
-  aggregationStrategy: AggregationStrategy,
 ) {
   const aggregateResults: BenchmarkAggregateRunResult[] = await generateAggregateRunResults(
-    files, removeFirstTicks, maxTicks, metrics, trimPrefix
+    files,
+    chartArguments.removeFirstTicks,
+    chartArguments.maxTicks,
+    chartArguments.metrics,
+    chartArguments.trimPrefix,
   )
 
-  const fileNameWithoutExt = outputFile.replace(/\.[^/.]+$/, "")
+  const fileNameWithoutExt = chartArguments.outputFile.replace(/\.[^/.]+$/, "")
 
-  await saveBenchmarkAggregateRunResultsToCsv(aggregateResults, aggregationStrategy, `${fileNameWithoutExt}.csv`)
+  await saveBenchmarkAggregateRunResultsToCsv(aggregateResults, chartArguments.aggregationStrategy, `${fileNameWithoutExt}.csv`)
 
   console.log(`Verbose Run Statistics Saved to ${fileNameWithoutExt}`)
 }
@@ -230,44 +225,33 @@ async function generateAggregateResultsFromCSV(
 }
 
 async function generateChartByType(
-  type: string,
+  chartArguments: BeltChartContext,
   files: string[],
-  trimPrefix: string,
-  removeFirstTicks: number,
-  maxTicks: number,
-  metrics: MetricEnum[],
-  summaryTable: boolean,
-  aggregationStrategy: AggregationStrategy,
-  width: number,
-  height: number,
-  outputFile: string,
-  maxUpdate: number,
-  tickWindowAggregation: number,
 ) {
-  switch (type) {
+  switch (chartArguments.type) {
     case "summary":
       summaryChartProcess(
-        files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, width, height, 
-        outputFile
+        chartArguments, files,
       );
       break;
-    case "bar": // Fallthrough case
+    case "bar":
     case "line":
       barOrLineChartProcess(
-        files, removeFirstTicks, trimPrefix, maxUpdate, maxTicks, type, aggregationStrategy, tickWindowAggregation, 
-        outputFile, width, height
+        chartArguments, files,
       );
       break;
     case "boxplot":
       boxplotChartProcess(
-        files, removeFirstTicks, maxTicks, metrics, trimPrefix, aggregationStrategy, width, height, outputFile
+        chartArguments, files, 
       );
       break;
     case "table":
-      tableChartProcess(files, removeFirstTicks, maxTicks, metrics, trimPrefix, outputFile, aggregationStrategy);
+      tableChartProcess(
+        chartArguments, files,
+      );
       break;
     default:
-      console.error(`Unknown chart type: ${type}`);
+      console.error(`Unknown chart type: ${chartArguments.type}`);
       process.exit(1);
   };
 }
@@ -308,21 +292,6 @@ program
     intro(chalk.cyan('Welcome to chart-gen!'));
 
     console.log(`summary-table: ${options.summaryTable}`)
-    const aggregationStrategy: AggregationStrategy = aggregationStrategyFromString(options.aggregateStrategy);
-    const height: number = options.height;
-    const maxTicks: number = options.maxTicks;
-    const maxUpdate: number = options.maxUpdate;
-    const outputFile: string = path.resolve(process.cwd(), options.output);
-    const removeFirstTicks: number = options.removeFirstTicks;
-    const summaryTable: boolean = options.summaryTable;
-    const tickWindowAggregation: number = options.tickWindowAggregation;
-    const trimPrefix = options.trimPrefix;
-    const type: string[] = options.type;
-    let selectedTypes: symbol | string[] = type;
-    const width: number = options.width;
-
-    const metrics: MetricEnum[] = options.metrics
-    console.debug(options)
 
     if (!globPattern || globPattern.length == 0) {
       globPattern = (await text({
@@ -335,6 +304,9 @@ program
         }
       })) as string;
     }
+    const type: string[] = options.type;
+    let selectedTypes: symbol | string[] = type;
+    console.debug(options)
 
     if (type.length === 0) {
       selectedTypes = (await multiselect({
@@ -356,14 +328,18 @@ program
     if (files.length === 0) {
       console.error(`No files matched the given pattern ${globPattern}`);
       process.exit(1);
-    }
+    };
 
     for (const selectedType of selectedTypes) {
+      // TODO: Find a better way to support multiple output files
+      let outputFile: string = options.outputFile
+      outputFile.replace('.csv', `_${selectedType}.csv`)
+      options.type = selectedType;
+      let chartArguments = BeltChartContext.fromOptions(options)
       await generateChartByType(
-        selectedType, files, trimPrefix, removeFirstTicks, maxTicks, metrics, summaryTable, aggregationStrategy, 
-        width, height, outputFile, maxUpdate, tickWindowAggregation
+        chartArguments, files,
       )
-    }
+    };
 
     process.exit(0);
   })

@@ -1,7 +1,7 @@
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricEnum } from "../data/MetricEnum"
 
-type BeltChartContextInterface = {
+export interface BeltChartContextInterface {
     aggregationStrategy: AggregationStrategy;
     maxTicks: number;
     metrics: MetricEnum[];
@@ -16,8 +16,15 @@ type BeltChartContextInterface = {
     tickWindowAggregation?: number;
     width?: number;
 }
-
-class BeltChartContext implements BeltChartContextInterface {
+/* 
+interface BeltChartContextConstructor {
+    /**
+     * Creates a BeltChartContext from an input of options
+     * @param options A set of options to apply to the BeltChartContext.
+    fromOptions(options: Record<string, any>): BeltChartContext;
+}
+ */
+export class BeltChartContext implements BeltChartContextInterface {
     aggregationStrategy: AggregationStrategy;
     maxTicks: number;
     metrics: MetricEnum[];
@@ -50,7 +57,7 @@ class BeltChartContext implements BeltChartContextInterface {
         this.width = options.width;
     }
 
-    fromOptions(options: Record<string, any>): BeltChartContext {
-        return new BeltChartContext(options as BeltChartContextInterface)
+    static fromOptions<T extends BeltChartContext>(options: Record<string, any>): T {
+        return new BeltChartContext(options as BeltChartContextInterface) as T
     }
 }
