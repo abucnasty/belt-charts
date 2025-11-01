@@ -11,22 +11,23 @@ import type { ChartConfiguration } from "chart.js";
 const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
     [
         MetricEnum.ENTITY_UPDATE,
+        MetricEnum.TRAINS,
         MetricEnum.CONTROL_BEHAVIOR_UPDATE,
         MetricEnum.TRANSPORT_LINES_UPDATE,
         MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
         MetricEnum.SPACE_PLATFORMS,
-        MetricEnum.TRAINS,
+        
         // MetricEnum.CONSISTENCY_SCRAPER,
     ].map(it => [it.name, it])
 )
 
 const metricNameToColor: Partial<Record<MetricName | string, string>> = {
     [MetricEnum.ENTITY_UPDATE.name]: colors.blue,
+    [MetricEnum.TRAINS.name]: colors.yellow,
     [MetricEnum.CONTROL_BEHAVIOR_UPDATE.name]: colors.reddish_purple,
     [MetricEnum.TRANSPORT_LINES_UPDATE.name]: colors.green,
     [MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE.name]: colors.orange,
     [MetricEnum.SPACE_PLATFORMS.name]: colors.vermillion,
-    [MetricEnum.TRAINS.name]: colors.yellow,
     ["other"]: colors.dark_grey,
 }
 

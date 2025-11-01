@@ -168,8 +168,8 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
                 {
                     label: 'Dataset 1',
                     borderWidth: 1,
-                    itemRadius: 2,
-                    itemBackgroundColor: colors.white,
+                    itemRadius: 1,
+                    itemBackgroundColor: colors.sky_blue,
                     backgroundColor: colors.white,
                     borderColor: colors.sky_blue,
                     data: dataSets.map(it => it.stats)
