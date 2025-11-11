@@ -16,7 +16,7 @@ const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEnt
         MetricEnum.TRANSPORT_LINES_UPDATE,
         MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
         MetricEnum.SPACE_PLATFORMS,
-        
+        MetricEnum.PARTICLE_UPDATE,
         // MetricEnum.CONSISTENCY_SCRAPER,
     ].map(it => [it.name, it])
 )
@@ -28,6 +28,7 @@ const metricNameToColor: Partial<Record<MetricName | string, string>> = {
     [MetricEnum.TRANSPORT_LINES_UPDATE.name]: colors.green,
     [MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE.name]: colors.orange,
     [MetricEnum.SPACE_PLATFORMS.name]: colors.vermillion,
+    [MetricEnum.PARTICLE_UPDATE.name]: colors.sky_blue,
     ["other"]: colors.dark_grey,
 }
 

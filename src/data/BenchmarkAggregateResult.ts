@@ -45,6 +45,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (filePath: stri
                 if (metrics.length === 0) {
                     metrics = Object.keys(row)
                         .filter(it => it !== "tick" && it !== "run")
+                        .filter(it => `${it}`.length > 0)
                         .map(metricName => MetricRegistryInstance.getOrThrow(metricName));
                 }
                 if (Number(row.tick) <= removeFirstTicks) {

@@ -8,6 +8,7 @@ import { max, min, nanoToMicro, percentDecrease, percentDifference } from "../ut
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
+import fs from "fs";
 
 const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
   [
@@ -17,6 +18,7 @@ const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEnt
     MetricEnum.TRANSPORT_LINES_UPDATE,
     MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
     MetricEnum.SPACE_PLATFORMS,
+    MetricEnum.PARTICLE_UPDATE,
     MetricEnum.OTHER
   ].map(it => [it.name, it])
 )
@@ -28,7 +30,7 @@ const metricNameToPattern: Partial<Record<MetricName | string, string>> = {
   [MetricEnum.TRANSPORT_LINES_UPDATE.name]: colors.green,
   [MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE.name]: colors.orange,
   [MetricEnum.SPACE_PLATFORMS.name]: colors.vermillion,
-  
+  [MetricEnum.PARTICLE_UPDATE.name]: colors.sky_blue,
   ["other"]: colors.dark_grey,
 }
 
@@ -97,6 +99,7 @@ interface SummaryChartOptions {
    */
   metrics?: MetricEnum[];
   includeTable?: boolean;
+  csvTableExportName?: string;
 }
 
 export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): ChartConfiguration<"bar"> => {
@@ -139,7 +142,80 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     },
   };
 
-  // Plugin: white text table at bottom
+  // Compute shared statistics for both plugins
+  const computeTableStats = () => {
+    const header = [
+      "Save File",
+      ...metrics.map(it => it.description),
+      '% Decrease from Previous',
+      '% Decrease from Best'
+    ];
+
+    // Pre-compute whole update values and stats
+    const wholeUpdateStats = chartData.map((data, idx) => {
+      const wholeUpdateMetric = data.metricValues.find(it => it.metricName === MetricEnum.WHOLE_UPDATE.name);
+      if (!wholeUpdateMetric) throw new Error(`Missing WHOLE_UPDATE metric for ${data.mapName}`);
+      
+      const currentValue = wholeUpdateMetric.average;
+      const previousValue = idx > 0 ? chartData[idx - 1].metricValues.find(
+        it => it.metricName === MetricEnum.WHOLE_UPDATE.name
+      )?.average : null;
+      
+      const bestValue = chartData[0].metricValues.find(
+        it => it.metricName === MetricEnum.WHOLE_UPDATE.name
+      )?.average;
+
+      return {
+        currentValue,
+        decreaseFromPrevious: previousValue ? Math.round(percentDecrease(previousValue, currentValue) * 100) / 100 : null,
+        decreaseFromBest: bestValue ? Math.round(percentDecrease(bestValue, currentValue) * 100) / 100 : null
+      };
+    });
+
+    // Build rows with consistent metric ordering
+    const rows = chartData.map((data, idx) => {
+      const metricValues = metrics.map(metric => {
+        const value = data.metricValues.find(mv => mv.metricName === metric.name);
+        return Math.round(value?.average ?? NaN);
+      });
+
+      const stats = wholeUpdateStats[idx];
+      return {
+        mapName: data.mapName,
+        values: [
+          data.mapName,
+          ...metricValues,
+          stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
+          stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`
+        ]
+      };
+    });
+
+    return { header, rows, wholeUpdateStats };
+  };
+
+  const tableStats = computeTableStats();
+
+  const csvExportPlugin = {
+    afterDraw: () => {
+      if (!options.csvTableExportName) return;
+
+      const csvContent = [
+        tableStats.header.flat().join(","),
+        ...tableStats.rows.map(row => row.values.join(","))
+      ].join("\n");
+
+      const markdownTable = [
+        `|${tableStats.header.join("|")}|`,
+        `|${tableStats.header.map(() => "---").join("|")}|`,
+        ...tableStats.rows.map(row => `|${row.values.join("|")}|`)
+      ].join("\n");
+
+      fs.writeFileSync(`${options.csvTableExportName}.csv`, csvContent);
+      fs.writeFileSync(`${options.csvTableExportName}.md`, markdownTable);
+    }
+  };
+
   const tablePlugin = {
     id: "valueTable",
     afterDraw: (chart: any) => {
@@ -156,14 +232,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       ctx.fillStyle = "white";
 
       // Header
-      const header = [
-        "Category",
-        ...chartData.flatMap(it => it.mapName),
-      ]
-
+      const header = ["Category", ...chartData.map(it => it.mapName)];
       header.forEach((category, i) => {
         ctx.fillText(category, left + colWidth * i + colWidth / 2, tableTop);
-      })
+      });
 
       // Data rows
       ctx.font = "12px Arial";
@@ -171,48 +243,38 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         const y = tableTop + (rowIdx + 1) * rowHeight;
         ctx.fillText(metric.description, left + colWidth / 2, y);
         chartData.forEach((res, colIdx) => {
-          const metricValue = res.metricValues.find(it => it.metricName == metric.name)
-          const average = Math.round(metricValue?.average ?? NaN)
-          const text = `${average}`
-          ctx.fillText(text, left + colWidth * (colIdx + 1) + colWidth / 2, y);
+          const metricValue = res.metricValues.find(it => it.metricName === metric.name);
+          const average = Math.round(metricValue?.average ?? NaN);
+          ctx.fillText(`${average}`, left + colWidth * (colIdx + 1) + colWidth / 2, y);
         });
       });
 
+      let lastRowPos = tableTop + (metrics.length + 1) * rowHeight;
 
-
-      let lastRowPos = tableTop + metrics.length * rowHeight
-      lastRowPos = lastRowPos + rowHeight
-
-
+      // Decrease from previous
       ctx.fillText("% Decrease from Previous", left + colWidth / 2, lastRowPos);
-
-      let previousMapWholeUpdate = null
-
-      chartData.forEach((data, colIdx) => {
-        let currentMapWholeUpdate = data.metricValues.find(it => it.metricName == MetricEnum.WHOLE_UPDATE.name).average
-
-        if (previousMapWholeUpdate) {
-          const difference = Math.round(percentDecrease(previousMapWholeUpdate, currentMapWholeUpdate) * 100) / 100
-          ctx.fillText(`${difference}%`, left + colWidth * (colIdx + 1) + colWidth / 2, lastRowPos);
+      tableStats.wholeUpdateStats.forEach((stats, colIdx) => {
+        if (stats.decreaseFromPrevious !== null) {
+          ctx.fillText(
+            `${stats.decreaseFromPrevious}%`,
+            left + colWidth * (colIdx + 1) + colWidth / 2,
+            lastRowPos
+          );
         }
-        previousMapWholeUpdate = currentMapWholeUpdate
-      })
+      });
 
-      lastRowPos = lastRowPos + rowHeight
-
+      // Decrease from best
+      lastRowPos += rowHeight;
       ctx.fillText("% Decrease from Best", left + colWidth / 2, lastRowPos);
-
-      let worstWholeUpdate = chartData[0].wholeUpdateAverage
-
-      chartData.forEach((data, colIdx) => {
-        const currentMapWholeUpdate = data.wholeUpdateAverage
-
-        const difference = Math.round(percentDecrease(worstWholeUpdate, currentMapWholeUpdate) * 100) / 100
-        ctx.fillText(`${difference}%`, left + colWidth * (colIdx + 1) + colWidth / 2, lastRowPos);
-      })
-
-
-
+      tableStats.wholeUpdateStats.forEach((stats, colIdx) => {
+        if (stats.decreaseFromBest !== null) {
+          ctx.fillText(
+            `${stats.decreaseFromBest}%`,
+            left + colWidth * (colIdx + 1) + colWidth / 2,
+            lastRowPos
+          );
+        }
+      });
 
       ctx.restore();
     },
@@ -289,12 +351,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           stacked: true,
           ticks: { color: colors.white, },
           grid: {
-                        color: colors.dark_grey
-                    },
+            color: colors.dark_grey
+          },
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin] as any[],
   };
 
   return configuration;

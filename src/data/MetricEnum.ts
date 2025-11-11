@@ -151,6 +151,10 @@ export const MetricEnum = {
         name: "luaGarbageIncremental",
         description: "Lua Garbage Incremental"
     },
+    TURRET_TARGET_ACQUISITION: {
+        name: "turretTargetAcquisition",
+        description: "Turret Target Acquisition"
+    },
     CHART_UPDATE: {
         name: "chartUpdate",
         description: "Chart Update"

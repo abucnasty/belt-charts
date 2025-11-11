@@ -87,6 +87,7 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                 if (metrics.length === 0) {
                     metrics = Object.keys(row)
                         .filter(it => it !== "tick" && it !== "run")
+                        .filter(it => `${it}`.length > 0)
                         .map(metricName => MetricRegistryInstance.getOrThrow(metricName));
                     metrics.forEach(metric => {
                         rawResultsPerTick[metric.name] = new Map();

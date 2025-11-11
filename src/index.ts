@@ -40,6 +40,7 @@ program
   .option("--max-update <number>", "Max ms value to plot", (it: string) => Number(it), null)
   .option("--trim-prefix <string>", "Trim the prefix of the map name", (it: string) => it, "")
   .option("--summary-table <boolean>", "Create a verbose summary stats table in summary chart (default true)", (it) => it.toLowerCase() == "true", true)
+  .option("--summary-table-file <boolean>", "Export as csv and markdown (default true)", (it) => it.toLowerCase() == "true", true)
   .option("--tick-window-aggregation <number> (default 0)", "Take the time weighted average for the tick window specified", (it: string) => Number(it), 0)
   .option("--metrics <string>", "Comma seperated list of specific metrics to use (default: *)", (it: string) => {
     if (it == "*") {
@@ -85,7 +86,8 @@ program
       const config = createSummaryChartConfiguration(aggregateResults, {
         metrics: metrics,
         includeTable: options.summaryTable,
-        aggregationStrategy: aggregationStrategy
+        aggregationStrategy: aggregationStrategy,
+        csvTableExportName: options.summaryTableFile ? outputFile.replace(/\.[^/.]+$/, "") : undefined
       });
       console.log("Chart configuration created.");
       const canvas = new Canvas(width, height)
