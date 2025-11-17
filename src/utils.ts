@@ -12,6 +12,10 @@ export function microToNano(micro: number): number {
   return micro * 1000;
 }
 
+export function milliToMicro(milli: number): number {
+  return milli * 1000;
+}
+
 export function standardDeviation(array: number[]): number {
   const n = array.length
   const mean = array.reduce((a, b) => a + b) / n
@@ -26,6 +30,11 @@ export function max(array: number[]): number {
 export function min(array: number[]): number {
   const sorted = [...array].sort((a, b) => a - b)
   return sorted[0]
+}
+
+export function roundTo(number: number, places: number): number {
+  const factor = Math.pow(10, places);
+  return Math.round(number * factor) / factor;
 }
 
 export function median(array: number[]): number {

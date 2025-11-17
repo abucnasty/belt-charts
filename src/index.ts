@@ -38,6 +38,7 @@ program
   .option("-h, --height <px>", "Chart height in pixels", (it: string) => parseInt(it), 800)
   .option("--remove-first-ticks <number>", "Remove the first N ticks from the data (to ignore initialization spikes)", (it: string) => parseInt(it), 3600)
   .option("--max-ticks <number>", "Max tick to include in charts", (it: string) => parseInt(it), 0)
+  .option("--min-update <number>", "Min ms value to plot", (it: string) => Number(it), null)
   .option("--max-update <number>", "Max ms value to plot", (it: string) => Number(it), null)
   .option("--trim-prefix <string>", "Trim the prefix of the map name", (it: string) => it, "")
   .option("--summary-table <boolean>", "Create a verbose summary stats table in summary chart (default true)", (it) => it.toLowerCase() == "true", true)
@@ -209,7 +210,10 @@ program
         }
         aggregateResults.push(result);
       }
-      const config = createBoxPlotChartConfiguration(aggregateResults, aggregationStrategy);
+      const config = createBoxPlotChartConfiguration(aggregateResults, {
+        minUpdateTime: options.minUpdate,
+        maxUpdateTime: options.maxUpdate
+      });
       console.log("Chart configuration created.");
       const canvas = new Canvas(width, height)
       const chart = new Chart(

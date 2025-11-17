@@ -1,7 +1,7 @@
 import { ChartConfiguration } from "chart.js";
 import { colors } from "./constants";
 import { MetricEnum } from "../data/MetricEnum";
-import { average, max, median, min, nanoToMicro } from "../utils";
+import { average, max, median, milliToMicro, min, nanoToMicro, roundTo } from "../utils";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
@@ -18,7 +18,18 @@ const backgroundPlugin = {
     },
 };
 
-export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], aggregationStrategy: AggregationStrategy = AggregationStrategy.AVERAGE): ChartConfiguration<"boxplot"> => {
+export interface BoxChartOptions {
+    /**
+     * time in milliseconds
+     */
+    maxUpdateTime: number | null;
+    /**
+     * time in milliseconds
+     */
+    minUpdateTime: number | null;
+}
+
+export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], options: BoxChartOptions): ChartConfiguration<"boxplot"> => {
 
     const dataSets: { fileName: string, stats: IBoxPlot }[] = []
 
@@ -61,8 +72,8 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
-    const minimum = min(dataSets.map(it => it.stats.min))
-    const maximum = max(dataSets.map(it => it.stats.max))
+    const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * 0.9
+    const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * 1.1
 
     return {
         type: "boxplot",
@@ -104,8 +115,8 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
                             size: 14
                         }
                     },
-                    min: Math.floor(minimum * 0.9),
-                    max: Math.floor(maximum * 1.1),
+                    min: roundTo(minimum, 1),
+                    max: roundTo(maximum, 1),
                     grid: {
                         color: colors.dark_grey,
                         tickBorderDash: [8, 4]
