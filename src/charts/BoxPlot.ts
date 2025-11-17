@@ -1,10 +1,9 @@
 import { ChartConfiguration } from "chart.js";
-import { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { colors } from "./constants";
 import { MetricEnum } from "../data/MetricEnum";
-import { average, max, median, min, nanoToMicro, standardDeviation } from "../utils";
+import { average, max, median, min, nanoToMicro } from "../utils";
 import { AggregationStrategy } from "../data/AggregationStrategy";
-import { IBaseStats, BoxPlotDataPoint } from "@sgratzl/chartjs-chart-boxplot";
+import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 
 // Plugin: black background
@@ -21,92 +20,44 @@ const backgroundPlugin = {
 
 export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], aggregationStrategy: AggregationStrategy = AggregationStrategy.AVERAGE): ChartConfiguration<"boxplot"> => {
 
-    const dataSets: { fileName: string, stats: IBaseStats }[] = []
+    const dataSets: { fileName: string, stats: IBoxPlot }[] = []
 
     results.forEach(result => {
         const fileName = result.fileName
 
-        const valuesPerRun: number[][] = []
+        const valuesPerRun: number[] = []
 
         const wholeUpdateRunAggregates = result.runs.get(MetricEnum.WHOLE_UPDATE.name)
 
         wholeUpdateRunAggregates.forEach(aggregate => {
-            const run = aggregate.run
-            if (!valuesPerRun[run]) {
-                valuesPerRun[run] = []
-            }
-
-            valuesPerRun[run].push(nanoToMicro(aggregate.average))
+            valuesPerRun.push(nanoToMicro(aggregate.average))
         })
 
-        const aggregatePerRun = valuesPerRun.map(values => {
-            switch (aggregationStrategy) {
-                case AggregationStrategy.AVERAGE:
-                    return average(values)
-                case AggregationStrategy.MINIMUM:
-                    return min(values)
-                case AggregationStrategy.MAXIMUM:
-                    return max(values)
-                case AggregationStrategy.MEDIAN:
-                    return median(values)
-                case AggregationStrategy.STANDARD_DEVIATION:
-                    console.warn("you probably don't want to use standard deviation for this type of graph... :)")
-                    return standardDeviation(values)
-            }
-        })
+        valuesPerRun.sort((a, b) => a - b)
 
-        aggregatePerRun.sort((a, b) => a - b)
-
-        const medianValue = median(aggregatePerRun)
-        const mid = Math.floor(aggregatePerRun.length / 2)
-
-        const stats = {
-            min: min(aggregatePerRun),
-            q1: median(aggregatePerRun.slice(0, mid)),
+        const medianValue = median(valuesPerRun)
+        const stats: IBoxPlot = {
+            min: min(valuesPerRun),
+            q1: median(valuesPerRun.filter(it => it <= medianValue)),
             median: medianValue,
-            q3: median(aggregatePerRun.slice(aggregatePerRun.length % 2 === 0 ? mid : mid + 1)),
-            max: max(aggregatePerRun),
-            mean: average(aggregatePerRun),
-            items: aggregatePerRun,
+            q3: median(valuesPerRun.filter(it => it >= medianValue)),
+            max: max(valuesPerRun),
+            whiskerMax: max(valuesPerRun),
+            whiskerMin: min(valuesPerRun),
+            mean: average(valuesPerRun),
+            items: valuesPerRun,
             outliers: []
         }
 
         dataSets.push({
             fileName: fileName,
-            stats: {
-                min: min(aggregatePerRun),
-                q1: median(aggregatePerRun.slice(0, mid)),
-                median: medianValue,
-                q3: median(aggregatePerRun.slice(aggregatePerRun.length % 2 === 0 ? mid : mid + 1)),
-                max: max(aggregatePerRun),
-                mean: average(aggregatePerRun),
-                items: aggregatePerRun,
-                outliers: []
-            }
+            stats
         })
     })
 
-    let aggregationStrategyLabel = ""
-    switch (aggregationStrategy) {
-        case AggregationStrategy.AVERAGE:
-            aggregationStrategyLabel = "Average"
-            break;
-        case AggregationStrategy.MINIMUM:
-            aggregationStrategyLabel = "Minimum"
-            break;
-        case AggregationStrategy.MAXIMUM:
-            aggregationStrategyLabel = "Maximum"
-            break;
-        case AggregationStrategy.MEDIAN:
-            aggregationStrategyLabel = "Median"
-            break;
-        case AggregationStrategy.STANDARD_DEVIATION:
-            aggregationStrategyLabel = "σ"
-    }
-
     const axisLabel = `Whole Update Time [microseconds] (lower is better)`
 
-    const title = `${aggregationStrategyLabel} Whole Update Time Distribution`
+    const title = `Whole Update Time Distribution`
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
