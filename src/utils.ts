@@ -5,7 +5,11 @@ export function average(array: number[]): number {
 }
 
 export function nanoToMicro(nano: number): number {
-  return nano / 1000; // convert nanoseconds to microseconds
+  return nano / 1000;
+}
+
+export function microToNano(micro: number): number {
+  return micro * 1000;
 }
 
 export function standardDeviation(array: number[]): number {

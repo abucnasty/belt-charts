@@ -73,7 +73,7 @@ export const transformMetricTickStatToMetricValue = (metricTickStat: MetricTickS
     }
 }
 
-export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string): Promise<BenchmarkTickResult> => {
+export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string, runResultsToRemove: Set<number>): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
     const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
@@ -82,6 +82,10 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
         fs.createReadStream(filePath)
             .pipe(csv())
             .on("data", (row: BenchmarkResultRaw) => {
+                const run = Number(row.run);
+                if (runResultsToRemove.has(run)) {
+                    return
+                }
                 const tick = Number(row.tick);
 
                 if (metrics.length === 0) {

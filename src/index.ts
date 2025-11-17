@@ -8,7 +8,7 @@ import { createSummaryChartConfiguration } from "./charts/SummaryChart";
 import { createLineChartForMetrics } from "./charts/LineChart";
 import { ignoreFirstTicksFromResult } from "./data/BenchmarkAggregates";
 import { MetricEnum } from "./data/MetricEnum";
-import { nanoToMicro } from "./utils";
+import { nanoToMicro, standardDeviation, microToNano } from "./utils";
 import { MetricRegistryInstance } from "./data/MetricRegistry";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 import { createBoxPlotChartConfiguration } from "./charts/BoxPlot";
@@ -16,6 +16,7 @@ import { Canvas } from "skia-canvas"
 import { Chart, LinearScale, CategoryScale, registerables } from "chart.js";
 import fsp from 'node:fs/promises';
 import { BenchmarkAggregateRunResult, parseBenchmarkAggregatesPerRunResultFromCsv, saveBenchmarkAggregateRunResultsToCsv } from "./data/BenchmarkAggregateResult";
+import { filterResultsOutsideStdDeviations, parseRunResultsFile, RunResultFilter } from "./data/ResultsFile";
 
 Chart.register(
   BoxPlotController,
@@ -42,6 +43,8 @@ program
   .option("--summary-table <boolean>", "Create a verbose summary stats table in summary chart (default true)", (it) => it.toLowerCase() == "true", true)
   .option("--summary-table-file <boolean>", "Export as csv and markdown (default true)", (it) => it.toLowerCase() == "true", true)
   .option("--tick-window-aggregation <number> (default 0)", "Take the time weighted average for the tick window specified", (it: string) => Number(it), 0)
+  .option("--aggregate-file <string>", "Path to aggregate run results file", (it: string) => it, "")
+  .option("--stddev-filter <number>", "Number of standard deviations to use for filtering run results", (it: string) => Number(it), 3)
   .option("--metrics <string>", "Comma seperated list of specific metrics to use (default: *)", (it: string) => {
     if (it == "*") {
       return MetricRegistryInstance.all()
@@ -60,6 +63,8 @@ program
     const trimPrefix = options.trimPrefix;
     const tickWindowAggregation: number = options.tickWindowAggregation
     const aggregationStrategy: AggregationStrategy = aggregationStrategyFromString(options.aggregateStrategy)
+    const aggregateFile: string = options.aggregateFile
+    const standardDeviations: number = options.stddevFilter
 
     const metrics: MetricEnum[] = options.metrics
     console.debug(options)
@@ -70,13 +75,41 @@ program
       process.exit(1);
     }
 
+    const filteredResults: RunResultFilter[] = []
+
+    if (aggregateFile && aggregateFile.length > 0) {
+      console.log(`Parsing run results file: ${aggregateFile}`);
+      const results = await parseRunResultsFile(aggregateFile);
+      filteredResults.push(...filterResultsOutsideStdDeviations(results, standardDeviations))
+
+      if (filteredResults.some(filter => filter.remove.length > 0)) {
+        console.log(`Removing runs that are greater than ${standardDeviations} standard deviations from the mean`)
+        filteredResults.forEach(filter => {
+          if (filter.remove.length > 0) {
+            console.log(`Removing ${filter.remove.length} out of ${filter.keep.length + filter.remove.length} run(s) from ${filter.saveName}`);
+            filter.remove.forEach(row => {
+              console.log(`- Removing ${row.save_name} run index ${row.run_index} with avg_ms ${row.avg_ms}`)
+            })
+          }
+        })
+      }
+    }
+
+    const runsToRemoveBySaveName: Map<string, Set<number>> = new Map()
+    filteredResults.forEach(filter => {
+      const runsToRemove: Set<number> = new Set()
+      filter.remove.forEach(row => runsToRemove.add(row.run_index))
+      runsToRemoveBySaveName.set(filter.saveName, runsToRemove)
+    })
 
 
     if (type == "summary") {
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
+        const baseName = path.basename(file, ".csv").replace("_verbose_metrics", "");
+        const runResultsToRemove = runsToRemoveBySaveName.get(baseName) || new Set<number>()
+        const result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics, runResultsToRemove);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
@@ -107,7 +140,9 @@ program
       const benchmarkResults: BenchmarkTickResult[] = [];
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkTickResult = await parseBenchmarkAveragePerTickResultFromCsv(file);
+        const baseName = path.basename(file, ".csv").replace("_verbose_metrics", "");
+        const runResultsToRemove = runsToRemoveBySaveName.get(baseName) || new Set<number>()
+        let result: BenchmarkTickResult = await parseBenchmarkAveragePerTickResultFromCsv(file, runResultsToRemove);
 
         if (removeFirstTicks > 0) {
           result = ignoreFirstTicksFromResult(result, removeFirstTicks);
@@ -165,7 +200,9 @@ program
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics);
+        const baseName = path.basename(file, ".csv").replace("_verbose_metrics", "");
+        const runResultsToRemove = runsToRemoveBySaveName.get(baseName) || new Set<number>()
+        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics, runResultsToRemove);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
@@ -192,7 +229,9 @@ program
       const aggregateResults: BenchmarkAggregateRunResult[] = []
       for (const file of files) {
         console.log(`Processing file: ${file}`);
-        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks,maxTicks, metrics);
+        const baseName = path.basename(file, ".csv").replace("_verbose_metrics", "");
+        const runResultsToRemove = runsToRemoveBySaveName.get(baseName) || new Set<number>()
+        let result: BenchmarkAggregateRunResult = await parseBenchmarkAggregatesPerRunResultFromCsv(file, removeFirstTicks, maxTicks, metrics, runResultsToRemove);
 
         if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
           result.fileName = result.fileName.slice(trimPrefix.length);
