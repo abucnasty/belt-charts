@@ -66,9 +66,11 @@ export const filterRunResultsOutsideStdDeviations = (saveName: string, runResult
 
     const avg = average(runResults.map(r => r.avg_ms));
     const max = avg + std * standardDeviations;
+
+    const min = avg - std * standardDeviations;
     
     runResults.forEach(row => {
-        if(row.avg_ms > max) {
+        if(row.avg_ms > max || row.avg_ms < min) {
             filters.remove.push(row);
         } else {
             filters.keep.push(row);
