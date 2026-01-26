@@ -1,3 +1,4 @@
+import assert from "assert";
 import { metricValueAverage } from "../data/BenchmarkAggregates"
 import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from "../data/BenchmarkTickResult"
 import { AggregationStrategy } from "../data/AggregationStrategy"
@@ -53,8 +54,6 @@ export interface LineChartOptions {
 
 const autoTickWindow = (maxTick: number): number => {
 
-    // const maxTick = max(metricValues.map(it => it.tick))
-
     const second = 60;
     const minute = second * 60
 
@@ -80,18 +79,27 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
     const resultMetricValues = transformResultToMetricValues(result, options.aggregationStrategy)
 
     const filteredMetricValueMap: Map<MetricName, MetricValue[]> = new Map();
+    
+    let maxTicks = options.maxTicks
+
+    if (maxTicks === 0) {
+        const wholeUpdateValues = resultMetricValues.get(MetricEnum.WHOLE_UPDATE.name)
+        assert(wholeUpdateValues !== undefined, "No WHOLE_UPDATE metric values found")
+        // assume sorted
+        maxTicks = wholeUpdateValues[wholeUpdateValues.length - 1].tick
+    }
 
     result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
         const metricValues = resultMetricValues.get(metric.name)
-            .filter(it => it.tick <= options.maxTicks)
+            .filter(it => it.tick <= maxTicks)
         filteredMetricValueMap.set(metric.name, metricValues)
     })
 
-    const tickWindow = options.tickWindow || autoTickWindow(options.maxTicks)
+    const tickAggregationWindow = options.tickWindow || autoTickWindow(maxTicks)
 
-    if (tickWindow > 0) {
+    if (tickAggregationWindow > 0) {
         filteredMetricValueMap.forEach((metricValues, metricName) => {
-            const timeWeightedAverages: MetricValue[] = timeWeightedAverageByChunks(metricValues, tickWindow)
+            const timeWeightedAverages: MetricValue[] = timeWeightedAverageByChunks(metricValues, tickAggregationWindow)
             filteredMetricValueMap.set(metricName, timeWeightedAverages)
         })
     }
@@ -99,7 +107,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
 
     result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
 
-        const data = filteredMetricValueMap.get(metric.name).filter(it => it.tick <= options.maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
+        const data = filteredMetricValueMap.get(metric.name).filter(it => it.tick <= maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
         // sort by tick ascending
         data.sort((a, b) => a.x - b.x);
         datasets.push({
