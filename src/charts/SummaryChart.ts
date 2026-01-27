@@ -7,7 +7,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry"
 import { max, min, nanoToMicro, percentDecrease, percentDifference } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
-import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
+import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
 import fs from "fs";
 
 const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
@@ -34,61 +34,83 @@ const metricNameToPattern: Partial<Record<MetricName | string, string>> = {
   ["other"]: colors.dark_grey,
 }
 
+interface SummaryChartMetricValue {
+  metricName: string;
+  metricDescription: string;
+  average: number;
+  min?: number;
+  max?: number;
+}
+
 interface SummaryChartData {
   mapName: string;
-  wholeUpdateAverage: number;
+  totalAverage: number;
   metrics: Array<MetricEnum>;
-  metricValues: { metricName: string; metricDescription: string; average: number, min?: number, max?: number }[];
+  metricValues: SummaryChartMetricValue[];
 }
 
 const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetrics: Partial<Record<MetricName, MetricEnum>>, aggregationStrategy: AggregationStrategy): SummaryChartData => {
   const fileName = result.fileName;
   const metrics = result.metrics;
 
-  const wholeUpdateAgg = result.all.get(MetricEnum.WHOLE_UPDATE.name);
-  if (!wholeUpdateAgg) {
-    throw new Error(`No ${MetricEnum.WHOLE_UPDATE.name} metric values found in ${fileName}`);
-  }
-  const wholeUpdateAverage = nanoToMicro(wholeUpdateAgg.average);
+
+
 
   const otherMetricAverages = metrics
-    .filter(it => it.name !== "wholeUpdate")
+    .filter(it => it.name !== MetricEnum.WHOLE_UPDATE.name)
     .filter(it => configuredMetrics[it.name] != undefined)
-    .map(metric => {
-      return {
+    .flatMap(metric => {
+      const metricAggregate = result.all.get(metric.name)
+      if (!metricAggregate) {
+        return []
+      }
+      return [{
         metricName: metric.name,
         metricDescription: metric.description,
-        average: nanoToMicro(result.all.get(metric.name).average),
-        min: nanoToMicro(result.all.get(metric.name).minimum),
-        max: nanoToMicro(result.all.get(metric.name).maximum)
-      }
+        average: nanoToMicro(metricAggregate.average),
+        min: nanoToMicro(metricAggregate.minimum),
+        max: nanoToMicro(metricAggregate.maximum)
+      }]
     })
     .sort((a, b) => b.average - a.average); // Descending order
 
   const sumOfParts = otherMetricAverages.reduce((sum, metricAverage) => sum + metricAverage.average, 0);
-  const otherAvg = wholeUpdateAverage - sumOfParts;
 
-  const metricValues = [
+  const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name)
+
+  const metricValues: SummaryChartMetricValue[] = [
     ...otherMetricAverages,
-    {
-      metricName: MetricEnum.OTHER.name,
-      metricDescription: MetricEnum.OTHER.description,
-      average: otherAvg,
-    },
-    {
-      metricName: MetricEnum.WHOLE_UPDATE.name,
-      metricDescription: MetricEnum.WHOLE_UPDATE.description,
-      average: wholeUpdateAverage,
-      min: nanoToMicro(wholeUpdateAgg.minimum),
-      max: nanoToMicro(wholeUpdateAgg.maximum)
-    },
   ]
+
+  if (!wholeUpdateAgg) {
+    return {
+      mapName: result.fileName,
+      metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
+      metricValues: metricValues,
+      totalAverage: sumOfParts,
+    }
+  }
+
+  const wholeUpdateAverage = nanoToMicro(wholeUpdateAgg.average);
+  const otherAvg = wholeUpdateAverage - sumOfParts;
+  metricValues.push({
+    metricName: MetricEnum.OTHER.name,
+    metricDescription: MetricEnum.OTHER.description,
+    average: otherAvg,
+  })
+  metricValues.push({
+    metricName: MetricEnum.WHOLE_UPDATE.name,
+    metricDescription: MetricEnum.WHOLE_UPDATE.description,
+    average: wholeUpdateAverage,
+    min: nanoToMicro(wholeUpdateAgg.minimum),
+    max: nanoToMicro(wholeUpdateAgg.maximum)
+  })
 
   return {
     mapName: result.fileName,
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues: metricValues,
-    wholeUpdateAverage,
+    totalAverage: wholeUpdateAverage,
   }
 }
 
@@ -100,6 +122,7 @@ interface SummaryChartOptions {
   metrics?: MetricEnum[];
   includeTable?: boolean;
   csvTableExportName?: string;
+  titleOverride?: string;
 }
 
 export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): ChartConfiguration<"bar"> => {
@@ -116,7 +139,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const chartData = results.map(result => mapSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
   // Sort data by "Whole Update" total time ascending
-  chartData.sort((a, b) => a.wholeUpdateAverage - b.wholeUpdateAverage);
+  chartData.sort((a, b) => a.totalAverage - b.totalAverage);
 
   const metrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
@@ -153,17 +176,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
     // Pre-compute whole update values and stats
     const wholeUpdateStats = chartData.map((data, idx) => {
-      const wholeUpdateMetric = data.metricValues.find(it => it.metricName === MetricEnum.WHOLE_UPDATE.name);
-      if (!wholeUpdateMetric) throw new Error(`Missing WHOLE_UPDATE metric for ${data.mapName}`);
-      
-      const currentValue = wholeUpdateMetric.average;
-      const previousValue = idx > 0 ? chartData[idx - 1].metricValues.find(
-        it => it.metricName === MetricEnum.WHOLE_UPDATE.name
-      )?.average : null;
-      
-      const bestValue = chartData[0].metricValues.find(
-        it => it.metricName === MetricEnum.WHOLE_UPDATE.name
-      )?.average;
+
+      const currentValue = data.totalAverage;
+      const previousValue = idx > 0 ? chartData[idx - 1].totalAverage : null;
+      const bestValue = chartData[0].totalAverage;
 
       return {
         currentValue,
@@ -306,8 +322,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const xAxisLabel = `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
 
-  const title = `${aggregationStrategyLabel} Per Tick Metrics`
-
+  const title = options.titleOverride ?? `${aggregationStrategyLabel} Per Tick Metrics`
 
 
   const configuration: ChartConfiguration<"bar"> = {

@@ -46,6 +46,7 @@ program
   .option("--tick-window-aggregation <number> (default 0)", "Take the time weighted average for the tick window specified", (it: string) => Number(it), 0)
   .option("--aggregate-file <string>", "Path to aggregate run results file", (it: string) => it, "")
   .option("--stddev-filter <number>", "Number of standard deviations to use for filtering run results", (it: string) => Number(it), 3)
+  .option("--title-override <string>", "Override the title of the chart", (it: string) => it, null)
   .option("--metrics <string>", "Comma seperated list of specific metrics to use (default: *)", (it: string) => {
     if (it == "*") {
       return MetricRegistryInstance.all()
@@ -121,7 +122,8 @@ program
         metrics: metrics,
         includeTable: options.summaryTable,
         aggregationStrategy: aggregationStrategy,
-        csvTableExportName: options.summaryTableFile ? outputFile.replace(/\.[^/.]+$/, "") : undefined
+        csvTableExportName: options.summaryTableFile ? outputFile.replace(/\.[^/.]+$/, "") : undefined,
+        titleOverride: options.titleOverride
       });
       console.log("Chart configuration created.");
       const canvas = new Canvas(width, height)

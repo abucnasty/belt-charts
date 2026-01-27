@@ -68,7 +68,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     const axisLabel = `Whole Update Time [microseconds] (lower is better)`
 
-    const title = `Whole Update Time Distribution`
+    const title = `Whole Update Time Run Variance`
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
