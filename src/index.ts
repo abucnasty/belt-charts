@@ -69,7 +69,7 @@ program
     const standardDeviations: number = options.stddevFilter
 
     const metrics: MetricEnum[] = options.metrics
-    console.debug(options)
+    // console.debug(options)
 
     const files = globSync(pattern);
     if (files.length === 0) {
