@@ -241,39 +241,86 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       // Start table lower down so it never overlaps
       const tableTop = height - (metrics.length + 3) * 20;
       const rowHeight = 20;
-      const colWidth = (right - left) / (chartData.length + 1);
+
+      // Measure text widths for each column to prevent overlap
+      ctx.font = "bold 12px Arial";
+      const header = ["Category", ...chartData.map(it => it.mapName)];
+      
+      // Calculate minimum width needed for each column based on content
+      const columnMinWidths = header.map((text, colIdx) => {
+        // Measure header text
+        let maxWidth = ctx.measureText(text).width;
+        
+        // For data columns, also check metric values and percentage widths
+        if (colIdx > 0) {
+          const dataIdx = colIdx - 1;
+          metrics.forEach(metric => {
+            const metricValue = chartData[dataIdx]?.metricValues.find(it => it.metricName === metric.name);
+            const valueText = `${Math.round(metricValue?.average ?? NaN)}`;
+            maxWidth = Math.max(maxWidth, ctx.measureText(valueText).width);
+          });
+          // Check percentage text widths
+          const stats = tableStats.wholeUpdateStats[dataIdx];
+          if (stats?.decreaseFromPrevious !== null) {
+            maxWidth = Math.max(maxWidth, ctx.measureText(`${stats.decreaseFromPrevious}%`).width);
+          }
+          if (stats?.decreaseFromBest !== null) {
+            maxWidth = Math.max(maxWidth, ctx.measureText(`${stats.decreaseFromBest}%`).width);
+          }
+        } else {
+          // For category column, check all metric descriptions
+          metrics.forEach(metric => {
+            maxWidth = Math.max(maxWidth, ctx.measureText(metric.description).width);
+          });
+          maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Previous").width);
+          maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Best").width);
+        }
+        
+        return maxWidth + 16; // Add padding
+      });
+      
+      // Calculate total minimum width and scale proportionally to fit available space
+      const totalMinWidth = columnMinWidths.reduce((sum, w) => sum + w, 0);
+      const availableWidth = right - left;
+      const scale = availableWidth / totalMinWidth;
+      const columnWidths = columnMinWidths.map(w => w * scale);
+      
+      // Calculate column positions (left edge of each column)
+      const columnPositions = [left];
+      for (let i = 0; i < columnWidths.length - 1; i++) {
+        columnPositions.push(columnPositions[i] + columnWidths[i]);
+      }
 
       ctx.font = "bold 12px Arial";
       ctx.textAlign = "center";
       ctx.fillStyle = "white";
 
       // Header
-      const header = ["Category", ...chartData.map(it => it.mapName)];
       header.forEach((category, i) => {
-        ctx.fillText(category, left + colWidth * i + colWidth / 2, tableTop);
+        ctx.fillText(category, columnPositions[i] + columnWidths[i] / 2, tableTop);
       });
 
       // Data rows
       ctx.font = "12px Arial";
       metrics.forEach((metric, rowIdx) => {
         const y = tableTop + (rowIdx + 1) * rowHeight;
-        ctx.fillText(metric.description, left + colWidth / 2, y);
+        ctx.fillText(metric.description, columnPositions[0] + columnWidths[0] / 2, y);
         chartData.forEach((res, colIdx) => {
           const metricValue = res.metricValues.find(it => it.metricName === metric.name);
           const average = Math.round(metricValue?.average ?? NaN);
-          ctx.fillText(`${average}`, left + colWidth * (colIdx + 1) + colWidth / 2, y);
+          ctx.fillText(`${average}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, y);
         });
       });
 
       let lastRowPos = tableTop + (metrics.length + 1) * rowHeight;
 
       // Decrease from previous
-      ctx.fillText("% Decrease from Previous", left + colWidth / 2, lastRowPos);
+      ctx.fillText("% Decrease from Previous", columnPositions[0] + columnWidths[0] / 2, lastRowPos);
       tableStats.wholeUpdateStats.forEach((stats, colIdx) => {
         if (stats.decreaseFromPrevious !== null) {
           ctx.fillText(
             `${stats.decreaseFromPrevious}%`,
-            left + colWidth * (colIdx + 1) + colWidth / 2,
+            columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2,
             lastRowPos
           );
         }
@@ -281,12 +328,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
       // Decrease from best
       lastRowPos += rowHeight;
-      ctx.fillText("% Decrease from Best", left + colWidth / 2, lastRowPos);
+      ctx.fillText("% Decrease from Best", columnPositions[0] + columnWidths[0] / 2, lastRowPos);
       tableStats.wholeUpdateStats.forEach((stats, colIdx) => {
         if (stats.decreaseFromBest !== null) {
           ctx.fillText(
             `${stats.decreaseFromBest}%`,
-            left + colWidth * (colIdx + 1) + colWidth / 2,
+            columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2,
             lastRowPos
           );
         }
