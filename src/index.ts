@@ -8,7 +8,7 @@ import { createSummaryChartConfiguration } from "./charts/SummaryChart";
 import { createLineChartForMetrics } from "./charts/LineChart";
 import { ignoreFirstTicksFromResult } from "./data/BenchmarkAggregates";
 import { MetricEnum } from "./data/MetricEnum";
-import { nanoToMicro, standardDeviation, microToNano } from "./utils";
+import { nanoToMicro, standardDeviation, microToNano, ensureOutputDir } from "./utils";
 import { MetricRegistryInstance } from "./data/MetricRegistry";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 import { createBoxPlotChartConfiguration } from "./charts/BoxPlot";
@@ -17,6 +17,7 @@ import { Chart, LinearScale, CategoryScale, registerables } from "chart.js";
 import fsp from 'node:fs/promises';
 import { BenchmarkAggregateRunResult, parseBenchmarkAggregatesPerRunResultFromCsv, saveBenchmarkAggregateRunResultsToCsv } from "./data/BenchmarkAggregateResult";
 import { filterResultsOutsideStdDeviations, parseRunResultsFile, RunResultFilter } from "./data/ResultsFile";
+import { dirname } from "node:path";
 
 Chart.register(
   BoxPlotController,
@@ -104,6 +105,8 @@ program
       runsToRemoveBySaveName.set(filter.saveName, runsToRemove)
     })
 
+    // Ensure the output directory exists
+    ensureOutputDir(path.resolve(process.cwd(), options.output));
 
     if (type == "summary") {
       const aggregateResults: BenchmarkAggregateRunResult[] = []
@@ -222,7 +225,7 @@ program
         canvas as any,
         config
       )
-      const imageBuffer = await await canvas.toBuffer("png");
+      const imageBuffer = await canvas.toBuffer("png");
 
       await fsp.writeFile(outputFile, imageBuffer);
       console.log(`Summary chart with table saved to ${outputFile}`);
