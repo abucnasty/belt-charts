@@ -1,4 +1,6 @@
+import { dirname } from "node:path";
 import { MetricValue } from "./data/BenchmarkTickResult";
+import { mkdirSync } from "node:fs";
 
 export function average(array: number[]): number {
   return array.reduce((sum, val) => sum + val, 0) / array.length;
@@ -156,3 +158,14 @@ export function timeWeightedAverageByChunks(
 
   return results;
 }
+
+/**
+ * Ensures the specified directory exists, if it doesn't, it creates it
+ * 
+ * @param path
+ * @returns void
+ */
+export function ensureOutputDir(path: string): void {
+  const dir = dirname(path);
+  mkdirSync(dir, { recursive: true})
+ }
