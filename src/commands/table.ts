@@ -1,0 +1,145 @@
+import path from "path";
+import { globSync } from "glob";
+import { Command } from "commander";
+import { aggregationStrategyFromString } from "../data/AggregationStrategy";
+import {
+  parseBenchmarkAggregatesPerRunResultFromCsv,
+  saveBenchmarkAggregateRunResultsToCsv,
+} from "../data/BenchmarkAggregateResult";
+import { MetricRegistryInstance } from "../data/MetricRegistry";
+import { ensureOutputDir } from "../utils";
+import { TableChartOptions } from "./types";
+import { getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+
+async function generateTable(
+  files: string[],
+  runsToRemove: Map<string, Set<number>>,
+  options: TableChartOptions,
+): Promise<void> {
+  const aggregateResults = [];
+
+  for (const file of files) {
+    console.log(`Processing file: ${file}`);
+    const baseName = getBaseName(file);
+    const result = await parseBenchmarkAggregatesPerRunResultFromCsv(
+      file,
+      options.removeFirstTicks,
+      options.maxTicks,
+      options.metrics,
+      runsToRemove.get(baseName) ?? new Set(),
+    );
+    applyTrimPrefix(result, options.trimPrefix);
+    aggregateResults.push(result);
+  }
+
+  const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
+  await saveBenchmarkAggregateRunResultsToCsv(
+    aggregateResults,
+    options.aggregateStrategy,
+    `${fileNameWithoutExt}.csv`,
+  );
+  console.log(`Verbose Run Statistics Saved to ${fileNameWithoutExt}`);
+}
+
+export function createTableCommand(): Command {
+  return new Command("table")
+    .description("Export aggregate statistics to CSV table")
+    .argument(
+      "<glob-pattern>",
+      "Glob pattern for CSV files (e.g. './data/*.csv')",
+    )
+    .option(
+      "-o, --output <file>",
+      "Output file path (without extension)",
+      "verbose_metrics",
+    )
+    .option(
+      "-w, --width <px>",
+      "Chart width in pixels",
+      (it: string) => parseInt(it),
+      1400,
+    )
+    .option(
+      "-h, --height <px>",
+      "Chart height in pixels",
+      (it: string) => parseInt(it),
+      800,
+    )
+    .option(
+      "--remove-first-ticks <number>",
+      "Remove the first N ticks from the data (to ignore initialization spikes)",
+      (it: string) => parseInt(it),
+      3600,
+    )
+    .option(
+      "--max-ticks <number>",
+      "Max tick to include in charts",
+      (it: string) => parseInt(it),
+      0,
+    )
+    .option(
+      "--trim-prefix <string>",
+      "Trim the prefix of the map name",
+      (it: string) => it,
+      "",
+    )
+    .option(
+      "--aggregate-file <string>",
+      "Path to aggregate run results file",
+      (it: string) => it,
+      "",
+    )
+    .option(
+      "--stddev-filter <number>",
+      "Number of standard deviations to use for filtering run results",
+      (it: string) => Number(it),
+      3,
+    )
+    .option(
+      "--metrics <string>",
+      "Comma separated list of specific metrics to use (default: *)",
+      (it: string) => {
+        if (it == "*") {
+          return MetricRegistryInstance.all();
+        } else {
+          return it
+            .split(",")
+            .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
+        }
+      },
+      MetricRegistryInstance.all(),
+    )
+    .option(
+      "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
+      "Aggregate the runs by either minimum per tick or average per tick",
+      "average",
+    )
+    .action(async (pattern, opts) => {
+      const options: TableChartOptions = {
+        width: opts.width,
+        height: opts.height,
+        output: opts.output,
+        removeFirstTicks: opts.removeFirstTicks,
+        maxTicks: opts.maxTicks,
+        trimPrefix: opts.trimPrefix,
+        aggregateFile: opts.aggregateFile,
+        stddevFilter: opts.stddevFilter,
+        metrics: opts.metrics,
+        aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
+      };
+
+      const files = globSync(pattern);
+      if (files.length === 0) {
+        console.error(`No files matched the given pattern ${pattern}`);
+        process.exit(1);
+      }
+
+      const runsToRemove = await loadRunFilters(
+        options.aggregateFile,
+        options.stddevFilter,
+      );
+      ensureOutputDir(path.resolve(process.cwd(), options.output));
+
+      await generateTable(files, runsToRemove, options);
+    });
+}
