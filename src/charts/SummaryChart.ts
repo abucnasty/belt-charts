@@ -59,6 +59,7 @@ const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetr
   const otherMetricAverages = metrics
     .filter(it => it.name !== MetricEnum.WHOLE_UPDATE.name)
     .filter(it => configuredMetrics[it.name] != undefined)
+    .filter(it => supportedMetrics[it.name] != MetricEnum.OTHER)
     .flatMap(metric => {
       const metricAggregate = result.all.get(metric.name)
       if (!metricAggregate) {
