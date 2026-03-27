@@ -16,48 +16,47 @@ belt-charts --help
 
 
 ## Bare Bones Documentation
-Example usages...
+Example usages. Let's assume you have the following metric files in a nested folder called "results"
 
-Run Distribution
+1. my_amazing_map_fast
+2. my_amazing_map_slow
+
+Run Distribution (boxplot)
 ```
-belt-charts "results/bm_*.csv"
-    -w 1200
-    -h 800
-    --type "boxplot"
-    --remove-first-ticks 60
-    --aggregate-strategy "average"
-    --metrics "wholeUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate,electricNetworkUpdate,fluidFlowUpdate,entityUpdate,trains"
-    -o "charts/summary_run_distribution_all.png"
-    --trim-prefix "bm_prod_mod_"
+belt-charts boxplot "results/my_amazing_map*.csv"
+  -w 1000
+  -h 800
+  --remove-first-ticks 30
+  -o "charts/run_distribution.png"
+  --trim-prefix "my_amazing_map_"
 ```
 
 Summary Chart:
 ```
-belt-charts "results/bm_*.csv"
-    -w 1800
-    -h 800
-    --type "summary"
-    --remove-first-ticks 60
-    -o "charts/summary_verbose_metrics_all.png"
-    --aggregate-strategy "average"
-    --trim-prefix "bm_prod_mod_"
-    --metrics "wholeUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate,electricNetworkUpdate,fluidFlowUpdate,entityUpdate,trains"
-    --summary-table false
-    --summary-table-file true
+belt-charts summary "results/my_amazing_map*.csv"
+  --title-override "All Metrics"
+  -w 1500
+  -h 800
+  --remove-first-ticks 30
+  -o "charts/all_metrics.png"
+  --aggregate-strategy average
+  --metrics "wholeUpdate,entityUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate"
+  --summary-table true
+  --trim-prefix "my_amazing_map_"
+  --summary-table-file true
 ```
 
 Timeseries graphs:
 ```
-belt-charts "results/bm_*.csv"
-    -w 1400
-    -h 800
-    --type "bar"
-    --remove-first-ticks 60
-    -o "charts/timeseries.png"
-    --trim-prefix "bm_prod_mod_"
-    --aggregate-strategy "average"
-    --metrics "wholeUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate,electricNetworkUpdate,fluidFlowUpdate,entityUpdate,trains"
-    --max-ticks 480
-    --max-update 3
-    --tick-window-aggregation 1
+belt-charts bar "results/my_amazing_map*.csv"
+  -w 1200
+  -h 800
+  --remove-first-ticks 30
+  -o "charts/timeseries.png"
+  -a "average"
+  --max-ticks 18000
+  --max-update 3000
+  --trim-prefix "my_amazing_map_"
+  --metrics "wholeUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate,electricNetworkUpdate,entityUpdate"
+  --tick-window-aggregation 60
 ```
