@@ -1,11 +1,11 @@
 import path from "path";
 import { Command } from "commander";
-import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import {
   filterResultsOutsideStdDeviations,
   parseRunResultsFile,
 } from "../data/ResultsFile";
+import { MetricEnum } from "../data/MetricEnum";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
@@ -104,17 +104,17 @@ export function addBaseOptions(command: Command): Command {
       (it: string) => Number(it),
       3,
     )
-    .option(
+    .option<MetricEnum[]>(
       "--metrics <string>",
       "Comma separated list of specific metrics to use (default: *)",
       (it: string) => {
         if (it == "*") {
           return MetricRegistryInstance.all();
-        } else {
-          return it
-            .split(",")
-            .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
         }
+
+        return it
+          .split(",")
+          .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
       MetricRegistryInstance.all(),
     );

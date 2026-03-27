@@ -4,9 +4,10 @@ import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from 
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { average, max, nanoToMicro, timeWeightedAverageByChunks } from "../utils"
+import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
+import { getMetricColor } from "./styles";
 
 
 const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
@@ -18,20 +19,8 @@ const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEnt
         MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
         MetricEnum.SPACE_PLATFORMS,
         MetricEnum.PARTICLE_UPDATE,
-        // MetricEnum.CONSISTENCY_SCRAPER,
     ].map(it => [it.name, it])
 )
-
-const metricNameToColor: Partial<Record<MetricName | string, string>> = {
-    [MetricEnum.ENTITY_UPDATE.name]: colors.blue,
-    [MetricEnum.TRAINS.name]: colors.yellow,
-    [MetricEnum.CONTROL_BEHAVIOR_UPDATE.name]: colors.reddish_purple,
-    [MetricEnum.TRANSPORT_LINES_UPDATE.name]: colors.green,
-    [MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE.name]: colors.orange,
-    [MetricEnum.SPACE_PLATFORMS.name]: colors.vermillion,
-    [MetricEnum.PARTICLE_UPDATE.name]: colors.sky_blue,
-    ["other"]: colors.dark_grey,
-}
 
 const backgroundPlugin = {
     id: "customBackground",
@@ -79,7 +68,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
     const resultMetricValues = transformResultToMetricValues(result, options.aggregationStrategy)
 
     const filteredMetricValueMap: Map<MetricName, MetricValue[]> = new Map();
-    
+
     let maxTicks = options.maxTicks
 
     if (maxTicks === 0) {
@@ -113,8 +102,8 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
         datasets.push({
             label: metric.name,
             data: data,
-            backgroundColor: metricNameToColor[metric.name],
-            borderColor: metricNameToColor[metric.name],
+            backgroundColor: getMetricColor(metric.name),
+            borderColor: getMetricColor(metric.name),
             fill: true,
             cubicInterpolationMode: "monotone",
         })

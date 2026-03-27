@@ -9,6 +9,7 @@ import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
 import fs from "fs";
+import { getMetricPattern } from "./styles"
 
 const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
   [
@@ -19,20 +20,11 @@ const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEnt
     MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
     MetricEnum.SPACE_PLATFORMS,
     MetricEnum.PARTICLE_UPDATE,
+    MetricEnum.ELECTRIC_NETWORK_UPDATE,
+    MetricEnum.FLUID_FLOW_UPDATE,
     MetricEnum.OTHER
   ].map(it => [it.name, it])
 )
-
-const metricNameToPattern: Partial<Record<MetricName | string, string>> = {
-  [MetricEnum.ENTITY_UPDATE.name]: colors.blue,
-  [MetricEnum.TRAINS.name]: colors.yellow,
-  [MetricEnum.CONTROL_BEHAVIOR_UPDATE.name]: colors.reddish_purple,
-  [MetricEnum.TRANSPORT_LINES_UPDATE.name]: colors.green,
-  [MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE.name]: colors.orange,
-  [MetricEnum.SPACE_PLATFORMS.name]: colors.vermillion,
-  [MetricEnum.PARTICLE_UPDATE.name]: colors.sky_blue,
-  ["other"]: colors.dark_grey,
-}
 
 interface SummaryChartMetricValue {
   metricName: string;
@@ -149,7 +141,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       return {
         label: metric.description,
         data: chartData.map(data => data.metricValues.find(it => it.metricName === metric.name)?.average || 0),
-        backgroundColor: metricNameToPattern[metric.name],
+        backgroundColor: getMetricPattern(metric.name),
       }
     })
 
