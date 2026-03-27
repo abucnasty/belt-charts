@@ -37,13 +37,13 @@ async function generateLineOrBarCharts(
 
   const maxWholeUpdate =
     options.maxUpdate ??
-    Math.max(
-      ...benchmarkResults.flatMap((r) =>
+    benchmarkResults
+      .flatMap((r) =>
         r.metricTickStats
           .get(MetricEnum.WHOLE_UPDATE.name)!
           .map((v) => nanoToMicro(v.maximum)),
-      ),
-    );
+      )
+      .reduce((max, v) => (v > max ? v : max), -Infinity);
 
   const configurations = benchmarkResults.map((result) => ({
     result,
