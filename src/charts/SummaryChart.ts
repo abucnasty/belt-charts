@@ -44,7 +44,12 @@ const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetr
   const fileName = result.fileName;
   const metrics = result.metrics;
 
+  let include_other = true;
 
+  if (configuredMetrics[MetricEnum.HEAT_NETWORK_UPDATE.name] || configuredMetrics[MetricEnum.FLUID_FLOW_UPDATE.name]) {
+    // other is not computable if these metrics are included since they are part of the electricHeatFluidCircuitUpdate metric
+    include_other = false;
+  }
 
 
   const otherMetricAverages = metrics
@@ -83,13 +88,19 @@ const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetr
     }
   }
 
+
+
   const wholeUpdateAverage = nanoToMicro(wholeUpdateAgg.average);
   const otherAvg = wholeUpdateAverage - sumOfParts;
-  metricValues.push({
-    metricName: MetricEnum.OTHER.name,
-    metricDescription: MetricEnum.OTHER.description,
-    average: otherAvg,
-  })
+
+  if (include_other) {
+    metricValues.push({
+      metricName: MetricEnum.OTHER.name,
+      metricDescription: MetricEnum.OTHER.description,
+      average: otherAvg,
+    })
+  }
+
   metricValues.push({
     metricName: MetricEnum.WHOLE_UPDATE.name,
     metricDescription: MetricEnum.WHOLE_UPDATE.description,
@@ -237,12 +248,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       // Measure text widths for each column to prevent overlap
       ctx.font = "bold 12px Arial";
       const header = ["Category", ...chartData.map(it => it.mapName)];
-      
+
       // Calculate minimum width needed for each column based on content
       const columnMinWidths = header.map((text, colIdx) => {
         // Measure header text
         let maxWidth = ctx.measureText(text).width;
-        
+
         // For data columns, also check metric values and percentage widths
         if (colIdx > 0) {
           const dataIdx = colIdx - 1;
@@ -267,16 +278,16 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Previous").width);
           maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Best").width);
         }
-        
+
         return maxWidth + 16; // Add padding
       });
-      
+
       // Calculate total minimum width and scale proportionally to fit available space
       const totalMinWidth = columnMinWidths.reduce((sum, w) => sum + w, 0);
       const availableWidth = right - left;
       const scale = availableWidth / totalMinWidth;
       const columnWidths = columnMinWidths.map(w => w * scale);
-      
+
       // Calculate column positions (left edge of each column)
       const columnPositions = [left];
       for (let i = 0; i < columnWidths.length - 1; i++) {
