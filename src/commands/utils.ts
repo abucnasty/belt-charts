@@ -56,6 +56,16 @@ export async function loadRunFilters(
 
 // Common options for all chart types
 export function addBaseOptions(command: Command): Command {
+  const DEFAULT_METRICS = [
+    MetricEnum.WHOLE_UPDATE,
+    MetricEnum.ENTITY_UPDATE,
+    MetricEnum.CONTROL_BEHAVIOR_UPDATE,
+    MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
+    MetricEnum.TRAINS,
+    MetricEnum.TRANSPORT_LINES_UPDATE,
+    MetricEnum.SPACE_PLATFORMS,
+    MetricEnum.PARTICLE_UPDATE,
+  ]
   return command
     .argument(
       "<glob-pattern>",
@@ -104,28 +114,18 @@ export function addBaseOptions(command: Command): Command {
       (it: string) => Number(it),
       3,
     )
-    .option<MetricEnum[]>(
+    .option(
       "--metrics <string>",
-      "Comma separated list of specific metrics to use (default: *)",
+      `Comma separated list of specific metrics to use (default: "${DEFAULT_METRICS.map(it => it.name).join(",")}")`,
       (it: string) => {
         if (it == "*") {
-          return [
-            MetricEnum.WHOLE_UPDATE,
-            MetricEnum.ENTITY_UPDATE,
-            MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-            MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-            MetricEnum.TRAINS,
-            MetricEnum.TRANSPORT_LINES_UPDATE,
-            MetricEnum.SPACE_PLATFORMS,
-            MetricEnum.PARTICLE_UPDATE,
-          ]
+          return DEFAULT_METRICS;
         }
 
         return it
           .split(",")
           .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
-      MetricRegistryInstance.all(),
     );
 }
 
