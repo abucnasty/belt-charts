@@ -1,10 +1,8 @@
-import { metricValueAverage } from "../data/BenchmarkAggregates"
-import { BenchmarkTickResult, transformResultToMetricValues } from "../data/BenchmarkTickResult"
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
 import { MetricRegistryInstance } from "../data/MetricRegistry"
-import { max, min, nanoToMicro, percentDecrease, percentDifference } from "../utils"
+import { nanoToMicro, percentDecrease } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
@@ -22,6 +20,7 @@ const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEnt
     MetricEnum.PARTICLE_UPDATE,
     MetricEnum.ELECTRIC_NETWORK_UPDATE,
     MetricEnum.FLUID_FLOW_UPDATE,
+    MetricEnum.HEAT_NETWORK_UPDATE,
     MetricEnum.OTHER
   ].map(it => [it.name, it])
 )

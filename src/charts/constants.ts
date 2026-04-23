@@ -124,6 +124,10 @@ export const metricStyles: Record<string, MetricStyle> = {
     color: unfriendly_colors.orange_dark,
     pattern: "diagonal",
   },
+  [MetricEnum.HEAT_NETWORK_UPDATE.name]: {
+    color: unfriendly_colors.red,
+    pattern: "ring",
+  },
   // Catch-all for metrics not explicitly styled
   other: { color: colors.dark_grey },
 };
