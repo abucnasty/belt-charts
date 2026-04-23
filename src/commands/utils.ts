@@ -109,7 +109,16 @@ export function addBaseOptions(command: Command): Command {
       "Comma separated list of specific metrics to use (default: *)",
       (it: string) => {
         if (it == "*") {
-          return MetricRegistryInstance.all();
+          return [
+            MetricEnum.WHOLE_UPDATE,
+            MetricEnum.ENTITY_UPDATE,
+            MetricEnum.CONTROL_BEHAVIOR_UPDATE,
+            MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
+            MetricEnum.TRAINS,
+            MetricEnum.TRANSPORT_LINES_UPDATE,
+            MetricEnum.SPACE_PLATFORMS,
+            MetricEnum.PARTICLE_UPDATE,
+          ]
         }
 
         return it
