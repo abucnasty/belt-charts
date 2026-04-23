@@ -126,6 +126,7 @@ export function addBaseOptions(command: Command): Command {
           .split(",")
           .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
+      DEFAULT_METRICS
     );
 }
 
