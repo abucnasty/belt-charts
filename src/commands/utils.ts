@@ -78,7 +78,7 @@ export function addBaseOptions(command: Command): Command {
       "--remove-first-ticks <number>",
       "Remove the first N ticks from the data (to ignore initialization spikes)",
       (it: string) => parseInt(it),
-      3600,
+      1,
     )
     .option(
       "--max-ticks <number>",
