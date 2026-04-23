@@ -34,14 +34,16 @@ export type RunValue = {
 }
 
 export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
-    filePath: string, 
-    removeFirstTicks: number = 0, 
+    filePath: string,
+    removeFirstTicks: number = 0,
     maxTick: number,
     metrics: MetricEnum[],
     runsToRemove: Set<number>
 ): Promise<BenchmarkAggregateRunResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     const runValuesPerMetric: Map<number, Partial<Record<MetricName, RunValue[]>>> = new Map()
+
+    console.log(`Parsing benchmark aggregate run results from CSV file: ${filePath} removing the first ${removeFirstTicks} ticks`)
 
     await new Promise<void>((resolve, reject) => {
         fs.createReadStream(filePath)
@@ -94,6 +96,10 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     metrics.forEach(metric => {
         runAggregates.set(metric.name, [])
     })
+
+    if (runValuesPerMetric.size === 0) {
+        throw new Error("No data found in the CSV file after applying filters. Please check the file and the provided parameters.");
+    }
 
     for (const [run, metricToRunValues] of runValuesPerMetric) {
         metrics.forEach(metric => {
