@@ -1,11 +1,11 @@
 import path from "path";
 import { Command } from "commander";
-import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import {
   filterResultsOutsideStdDeviations,
   parseRunResultsFile,
 } from "../data/ResultsFile";
+import { MetricEnum } from "../data/MetricEnum";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
@@ -56,6 +56,16 @@ export async function loadRunFilters(
 
 // Common options for all chart types
 export function addBaseOptions(command: Command): Command {
+  const DEFAULT_METRICS = [
+    MetricEnum.WHOLE_UPDATE,
+    MetricEnum.ENTITY_UPDATE,
+    MetricEnum.CONTROL_BEHAVIOR_UPDATE,
+    MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
+    MetricEnum.TRAINS,
+    MetricEnum.TRANSPORT_LINES_UPDATE,
+    MetricEnum.SPACE_PLATFORMS,
+    MetricEnum.PARTICLE_UPDATE,
+  ]
   return command
     .argument(
       "<glob-pattern>",
@@ -106,17 +116,17 @@ export function addBaseOptions(command: Command): Command {
     )
     .option(
       "--metrics <string>",
-      "Comma separated list of specific metrics to use (default: *)",
+      `Comma separated list of specific metrics to use (default: "${DEFAULT_METRICS.map(it => it.name).join(",")}")`,
       (it: string) => {
         if (it == "*") {
-          return MetricRegistryInstance.all();
-        } else {
-          return it
-            .split(",")
-            .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
+          return DEFAULT_METRICS;
         }
+
+        return it
+          .split(",")
+          .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
-      MetricRegistryInstance.all(),
+      DEFAULT_METRICS
     );
 }
 

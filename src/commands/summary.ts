@@ -4,7 +4,7 @@ import { Command } from "commander";
 import { Canvas } from "skia-canvas";
 import { Chart } from "chart.js";
 import fsp from "node:fs/promises";
-import { aggregationStrategyFromString } from "../data/AggregationStrategy";
+import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { ensureOutputDir } from "../utils";
@@ -58,24 +58,25 @@ export function createSummaryCommand(): Command {
     new Command("summary")
       .description("Generate a summary chart with aggregate statistics table"),
   )
-    .option(
+    .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",
       (it) => it.toLowerCase() == "true",
       true,
     )
-    .option(
+    .option<boolean>(
       "--summary-table-file <boolean>",
       "Export as csv and markdown (default true)",
       (it) => it.toLowerCase() == "true",
       true,
     )
-    .option(
+    .option<AggregationStrategy>(
       "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
       "Aggregate the runs by either minimum per tick or average per tick",
-      "average",
+      (it: string) => aggregationStrategyFromString(it),
+      AggregationStrategy.AVERAGE,
     )
-    .option(
+    .option<string | null>(
       "--title-override <string>",
       "Override the title of the chart",
       (it: string) => it,
@@ -92,7 +93,7 @@ export function createSummaryCommand(): Command {
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: opts.metrics,
-        aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
+        aggregateStrategy: opts.aggregateStrategy,
         summaryTable: opts.summaryTable,
         summaryTableFile: opts.summaryTableFile,
         titleOverride: opts.titleOverride,
