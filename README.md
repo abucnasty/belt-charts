@@ -46,6 +46,21 @@ belt-charts summary "results/my_amazing_map*.csv"
   --summary-table-file true
 ```
 
+Summary Per-Run Chart (shows individual runs instead of averaging):
+```
+belt-charts summary-per-run "results/my_amazing_map*.csv"
+  -w 2000
+  -h 1000
+  --remove-first-ticks 30
+  -o "charts/per_run_metrics.png"
+  --aggregate-strategy average
+  --metrics "wholeUpdate,entityUpdate,controlBehaviorUpdate,transportLinesUpdate,electricHeatFluidCircuitUpdate"
+  --summary-table true
+  --summary-table-file true
+  --trim-prefix "my_amazing_map_"
+  --sort-by total
+```
+
 Timeseries graphs:
 ```
 belt-charts bar "results/my_amazing_map*.csv"
