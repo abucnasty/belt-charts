@@ -27,7 +27,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
         const valuesPerRun: number[] = []
 
-        const wholeUpdateRunAggregates = result.runs.get(MetricEnum.WHOLE_UPDATE.name)
+        const wholeUpdateRunAggregates = result.runs.get(MetricEnum.WHOLE_UPDATE.name)!
 
         wholeUpdateRunAggregates.forEach(aggregate => {
             valuesPerRun.push(nanoToMicro(aggregate.average))

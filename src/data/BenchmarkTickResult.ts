@@ -89,9 +89,6 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                         .filter(it => it !== "tick" && it !== "run")
                         .filter(it => `${it}`.length > 0)
                         .map(metricName => MetricRegistryInstance.getOrThrow(metricName));
-                    metrics.forEach(metric => {
-                        rawResultsPerTick[metric.name] = new Map();
-                    });
                 }
                 const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
                 if (wholeUpdate == undefined) {

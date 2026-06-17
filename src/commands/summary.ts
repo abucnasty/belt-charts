@@ -41,7 +41,7 @@ async function generateSummary(
     csvTableExportName: options.summaryTableFile
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
-    titleOverride: options.titleOverride,
+    titleOverride: options.titleOverride ?? undefined,
   });
 
   console.log("Chart configuration created.");

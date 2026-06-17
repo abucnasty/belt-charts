@@ -318,7 +318,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     },
   };
 
-  const padding = options.includeTable && { bottom: (metrics.length + 3) * 20 + 10 }
+  const padding = options.includeTable ? { bottom: (metrics.length + 3) * 20 + 10 } : undefined
 
   datasets.sort((a, b) => {
     return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)

@@ -41,7 +41,7 @@ export function roundTo(number: number, places: number): number {
 
 export function median(array: number[]): number {
   if (array.length === 0) {
-    return null; // Or throw an error, depending on desired behavior
+    throw new Error("median: cannot compute median of an empty array");
   }
 
   const sortedArr = [...array].sort((a, b) => a - b);

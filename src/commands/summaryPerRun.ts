@@ -8,7 +8,8 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { 
   parseBenchmarkAggregatesPerRunResultFromCsv,
-  explodeIntoPerRunResults
+  explodeIntoPerRunResults,
+  SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { ensureOutputDir } from "../utils";
 import { SummaryPerRunChartOptions } from "./types";
@@ -19,7 +20,7 @@ async function generateSummaryPerRun(
   runsToRemove: Map<string, Set<number>>,
   options: SummaryPerRunChartOptions,
 ): Promise<void> {
-  const allPerRunResults = [];
+  const allPerRunResults: SingleRunAggregateResult[] = [];
 
   for (const file of files) {
     console.log(`Processing file: ${file}`);
@@ -72,7 +73,7 @@ async function generateSummaryPerRun(
     csvTableExportName: options.summaryTableFile
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
-    titleOverride: options.titleOverride,
+    titleOverride: options.titleOverride ?? undefined,
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
   });
