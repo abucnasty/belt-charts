@@ -1,22 +1,11 @@
 import { ChartConfiguration } from "chart.js";
 import { colors } from "./constants";
+import { backgroundPlugin } from "./plugins";
 import { MetricEnum } from "../data/MetricEnum";
 import { average, max, median, milliToMicro, min, nanoToMicro, roundTo } from "../utils";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
-
-// Plugin: black background
-const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-        const { ctx, width, height } = chart;
-        ctx.save();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-    },
-};
 
 export interface BoxChartOptions {
     /**

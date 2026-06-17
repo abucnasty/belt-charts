@@ -21,14 +21,16 @@ async function generateTable(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
+    const result = applyTrimPrefix(
+      await parseBenchmarkAggregatesPerRunResultFromCsv(
+        file,
+        options.removeFirstTicks,
+        options.maxTicks,
+        options.metrics,
+        runsToRemove.get(baseName) ?? new Set(),
+      ),
+      options.trimPrefix,
     );
-    applyTrimPrefix(result, options.trimPrefix);
     aggregateResults.push(result);
   }
 

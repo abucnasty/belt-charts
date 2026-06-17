@@ -6,8 +6,9 @@ import { nanoToMicro, percentDecrease } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
-import fs from "fs";
+import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
+import { backgroundPlugin } from "./plugins"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 
@@ -124,7 +125,12 @@ interface SummaryChartOptions {
   isPerRun?: boolean;
 }
 
-export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): ChartConfiguration<"bar"> => {
+export interface SummaryChartResult {
+  config: ChartConfiguration<"bar">;
+  exportTable: (() => Promise<void>) | null;
+}
+
+export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): SummaryChartResult => {
 
 
   let configuredDisplayMetrics: Partial<Record<MetricName, MetricEnum>> = {}
@@ -153,18 +159,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         backgroundColor: getMetricPattern(metric.name),
       }
     })
-
-  // Plugin: black background
-  const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-      const { ctx, width, height } = chart;
-      ctx.save();
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
-    },
-  };
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
@@ -212,26 +206,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   };
 
   const tableStats = computeTableStats();
-
-  const csvExportPlugin = {
-    afterDraw: () => {
-      if (!options.csvTableExportName) return;
-
-      const csvContent = [
-        tableStats.header.flat().join(","),
-        ...tableStats.rows.map(row => row.values.join(","))
-      ].join("\n");
-
-      const markdownTable = [
-        `|${tableStats.header.join("|")}|`,
-        `|${tableStats.header.map(() => "---").join("|")}|`,
-        ...tableStats.rows.map(row => `|${row.values.join("|")}|`)
-      ].join("\n");
-
-      fs.writeFileSync(`${options.csvTableExportName}.csv`, csvContent);
-      fs.writeFileSync(`${options.csvTableExportName}.md`, markdownTable);
-    }
-  };
 
   const tablePlugin = {
     id: "valueTable",
@@ -421,9 +395,26 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin].filter(Boolean) as any[],
   };
 
-  return configuration;
+  const exportTable = options.csvTableExportName
+    ? async () => {
+        const exportName = options.csvTableExportName!;
+        const csvContent = [
+          tableStats.header.flat().join(","),
+          ...tableStats.rows.map(row => row.values.join(","))
+        ].join("\n");
+        const markdownTable = [
+          `|${tableStats.header.join("|")  }|`,
+          `|${tableStats.header.map(() => "---").join("|")  }|`,
+          ...tableStats.rows.map(row => `|${row.values.join("|")  }|`)
+        ].join("\n");
+        await fsp.writeFile(`${exportName}.csv`, csvContent);
+        await fsp.writeFile(`${exportName}.md`, markdownTable);
+      }
+    : null;
+
+  return { config: configuration, exportTable };
 
 }

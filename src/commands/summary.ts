@@ -5,7 +5,7 @@ import { Canvas } from "skia-canvas";
 import { Chart } from "chart.js";
 import fsp from "node:fs/promises";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
-import { createSummaryChartConfiguration } from "../charts/SummaryChart";
+import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { ensureOutputDir } from "../utils";
 import { SummaryChartOptions } from "./types";
@@ -21,18 +21,20 @@ async function generateSummary(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
+    const result = applyTrimPrefix(
+      await parseBenchmarkAggregatesPerRunResultFromCsv(
+        file,
+        options.removeFirstTicks,
+        options.maxTicks,
+        options.metrics,
+        runsToRemove.get(baseName) ?? new Set(),
+      ),
+      options.trimPrefix,
     );
-    applyTrimPrefix(result, options.trimPrefix);
     aggregateResults.push(result);
   }
 
-  const config = createSummaryChartConfiguration(aggregateResults, {
+  const { config, exportTable } = createSummaryChartConfiguration(aggregateResults, {
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
@@ -49,6 +51,7 @@ async function generateSummary(
 
   const outputFile = path.resolve(process.cwd(), options.output);
   await fsp.writeFile(outputFile, imageBuffer);
+  await exportTable?.();
   console.log(`Summary chart with table saved to ${outputFile}`);
   chart.destroy();
 }

@@ -1,5 +1,3 @@
-import fs from "fs";
-import csv from "csv-parser";
 import path from "path";
 import { MetricName } from "./Metric";
 import { MetricRegistryInstance } from "./MetricRegistry";
@@ -8,6 +6,7 @@ import { MetricEnum } from "./MetricEnum";
 import { BenchmarkResultRaw } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
+import { readCsvRows } from "./csvReader";
 
 export type MetricAggregate = {
     average: number; // in nanoseconds
@@ -45,10 +44,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
     console.log(`Parsing benchmark aggregate run results from CSV file: ${filePath} removing the first ${removeFirstTicks} ticks`)
 
-    await new Promise<void>((resolve, reject) => {
-        fs.createReadStream(filePath)
-            .pipe(csv())
-            .on("data", (row: BenchmarkResultRaw) => {
+    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
                 const run = Number(row.run)
                 if (runsToRemove.has(run)) {
                     return
@@ -86,10 +82,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
                         run: Number(row.run)
                     })
                 })
-            })
-            .on("end", () => resolve())
-            .on("error", reject);
-    })
+    });
 
 
     const runAggregates: Map<MetricName, MetricRunAggregate[]> = new Map()

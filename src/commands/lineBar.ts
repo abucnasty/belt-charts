@@ -31,7 +31,7 @@ async function generateLineOrBarCharts(
     if (options.removeFirstTicks > 0) {
       result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
     }
-    applyTrimPrefix(result, options.trimPrefix);
+    result = applyTrimPrefix(result, options.trimPrefix);
     benchmarkResults.push(result);
   }
 

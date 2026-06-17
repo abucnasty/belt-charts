@@ -7,22 +7,12 @@ import { MetricEnum } from "../data/MetricEnum"
 import { MetricProfiles, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
 import { colors } from "./constants"
+import { backgroundPlugin } from "./plugins";
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
 
 
 const supportedMetrics = toMetricRecord(MetricProfiles.LINE_CHART);
-
-const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-        const { ctx, width, height } = chart;
-        ctx.save();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-    },
-};
 
 export interface LineChartOptions {
     maxTicks: number,

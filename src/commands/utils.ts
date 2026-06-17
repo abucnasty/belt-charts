@@ -11,13 +11,11 @@ export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
 }
 
-export function applyTrimPrefix(
-  result: { fileName: string },
-  trimPrefix: string,
-): void {
+export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimPrefix: string): T {
   if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-    result.fileName = result.fileName.slice(trimPrefix.length);
+    return { ...result, fileName: result.fileName.slice(trimPrefix.length) };
   }
+  return result;
 }
 
 export async function loadRunFilters(
