@@ -7,6 +7,7 @@ import {
 import { Chart, LinearScale, CategoryScale, registerables } from "chart.js";
 import {
   createSummaryCommand,
+  createSummaryPerRunCommand,
   createLineCommand,
   createBarCommand,
   createBoxPlotCommand,
@@ -28,6 +29,7 @@ program
   .description("Extension of Belt's verbose_metrics to generate charts");
 
 program.addCommand(createSummaryCommand());
+program.addCommand(createSummaryPerRunCommand());
 program.addCommand(createLineCommand());
 program.addCommand(createBarCommand());
 program.addCommand(createBoxPlotCommand());
