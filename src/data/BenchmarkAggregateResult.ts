@@ -223,3 +223,68 @@ export const saveBenchmarkAggregateRunResultsToCsv = async (results: BenchmarkAg
 
     await csvWriter.writeRecords(records);
 }
+
+/**
+ * Explode a BenchmarkAggregateRunResult into an array of per-run results,
+ * where each result represents a single run with its aggregate metrics.
+ * The aggregation strategy determines which per-run statistic (average/median/min/max/stddev)
+ * is used as the "average" field that the chart will render.
+ */
+export const explodeIntoPerRunResults = (
+    result: BenchmarkAggregateRunResult,
+    aggregationStrategy: AggregationStrategy
+): BenchmarkAggregateRunResult[] => {
+    // Collect all unique run numbers
+    const runsSet = new Set<number>();
+    result.runs.forEach(runAggregates => {
+        runAggregates.forEach(agg => runsSet.add(agg.run));
+    });
+    const runs = Array.from(runsSet).sort((a, b) => a - b);
+
+    return runs.map(run => {
+        const all: Map<MetricName, MetricAggregate> = new Map();
+
+        // For each metric, extract the per-run aggregate and map it to a MetricAggregate
+        result.metrics.forEach(metric => {
+            const runAgg = result.runs.get(metric.name)?.find(agg => agg.run === run);
+            if (runAgg) {
+                // Map the chosen statistic to the "average" field based on strategy
+                let averageValue: number;
+                switch (aggregationStrategy) {
+                    case AggregationStrategy.AVERAGE:
+                        averageValue = runAgg.average;
+                        break;
+                    case AggregationStrategy.MINIMUM:
+                        averageValue = runAgg.minimum;
+                        break;
+                    case AggregationStrategy.MAXIMUM:
+                        averageValue = runAgg.maximum;
+                        break;
+                    case AggregationStrategy.MEDIAN:
+                        averageValue = runAgg.median;
+                        break;
+                    case AggregationStrategy.STANDARD_DEVIATION:
+                        averageValue = runAgg.standardDeviation;
+                        break;
+                    default:
+                        averageValue = runAgg.average;
+                }
+
+                all.set(metric.name, {
+                    average: averageValue,
+                    standardDeviation: runAgg.standardDeviation,
+                    minimum: runAgg.minimum,
+                    maximum: runAgg.maximum,
+                    median: runAgg.median,
+                });
+            }
+        });
+
+        return {
+            fileName: `${result.fileName} run ${run}`,
+            metrics: result.metrics,
+            runs: new Map(), // Empty since chart only reads "all"
+            all: all,
+        };
+    });
+}

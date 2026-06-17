@@ -126,6 +126,16 @@ interface SummaryChartOptions {
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
+  /**
+   * How to sort the chart data.
+   * "total" (default): sort by totalAverage ascending (current behavior)
+   * "preserve": keep input order (e.g., for pre-sorted per-run data)
+   */
+  sortBy?: "total" | "preserve";
+  /**
+   * Whether this chart shows per-run data (affects default title)
+   */
+  isPerRun?: boolean;
 }
 
 export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): ChartConfiguration<"bar"> => {
@@ -141,8 +151,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   }
 
   const chartData = results.map(result => mapSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
-  // Sort data by "Whole Update" total time ascending
-  chartData.sort((a, b) => a.totalAverage - b.totalAverage);
+  // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
+  if (options.sortBy !== "preserve") {
+    chartData.sort((a, b) => a.totalAverage - b.totalAverage);
+  }
 
   const metrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
@@ -372,7 +384,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const xAxisLabel = `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
 
-  const title = options.titleOverride ?? `${aggregationStrategyLabel} Per Tick Metrics`
+  const title = options.titleOverride ?? (options.isPerRun 
+    ? `${aggregationStrategyLabel} Per Tick Metrics (Per Run)` 
+    : `${aggregationStrategyLabel} Per Tick Metrics`)
 
 
   const configuration: ChartConfiguration<"bar"> = {
@@ -421,7 +435,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin] as any[],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
   };
 
   return configuration;

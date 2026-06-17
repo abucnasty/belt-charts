@@ -22,6 +22,11 @@ export type SummaryChartOptions = BaseChartOptions & {
   titleOverride: string | null;
 };
 
+// Summary per-run chart specific options
+export type SummaryPerRunChartOptions = SummaryChartOptions & {
+  sortBy: "run" | "total";
+};
+
 // Line/Bar chart specific options
 export type LineBarChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;

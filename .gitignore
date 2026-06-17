@@ -43,3 +43,6 @@ test/*.js
 dist
 
 *.csv
+
+# ignore temporary tests that create the "charts" directory
+charts
