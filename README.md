@@ -1,5 +1,7 @@
 # belt-charts
 
+[![npm version](https://img.shields.io/npm/v/belt-charts)](https://www.npmjs.com/package/belt-charts)
+
 A CLI tool for generating charts and visualizations from Belt benchmark verbose metrics data.
 
 ## Installation
