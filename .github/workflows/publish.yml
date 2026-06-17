@@ -23,7 +23,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check if version changed
+        id: version-check
+        run: |
+          PUBLISHED=$(npm view belt-charts version 2>/dev/null || echo "0.0.0")
+          LOCAL=$(node -p "require('./package.json').version")
+          if [ "$PUBLISHED" = "$LOCAL" ]; then
+            echo "Version $LOCAL is already published, skipping."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "New version $LOCAL (published: $PUBLISHED), will publish."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish
+        if: steps.version-check.outputs.skip == 'false'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
