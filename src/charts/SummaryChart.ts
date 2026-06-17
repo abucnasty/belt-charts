@@ -1,7 +1,7 @@
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { MetricRegistryInstance } from "../data/MetricRegistry"
+import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, percentDecrease } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
@@ -9,21 +9,7 @@ import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkA
 import fs from "fs";
 import { getMetricPattern } from "./styles"
 
-const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
-  [
-    MetricEnum.ENTITY_UPDATE,
-    MetricEnum.TRAINS,
-    MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-    MetricEnum.TRANSPORT_LINES_UPDATE,
-    MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-    MetricEnum.SPACE_PLATFORMS,
-    MetricEnum.PARTICLE_UPDATE,
-    MetricEnum.ELECTRIC_NETWORK_UPDATE,
-    MetricEnum.FLUID_FLOW_UPDATE,
-    MetricEnum.HEAT_NETWORK_UPDATE,
-    MetricEnum.OTHER
-  ].map(it => [it.name, it])
-)
+const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 
 interface SummaryChartMetricValue {
   metricName: string;

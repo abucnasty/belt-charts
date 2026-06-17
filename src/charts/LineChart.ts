@@ -4,23 +4,14 @@ import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from 
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
+import { MetricProfiles, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
 
 
-const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
-    [
-        MetricEnum.ENTITY_UPDATE,
-        MetricEnum.TRAINS,
-        MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-        MetricEnum.TRANSPORT_LINES_UPDATE,
-        MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-        MetricEnum.SPACE_PLATFORMS,
-        MetricEnum.PARTICLE_UPDATE,
-    ].map(it => [it.name, it])
-)
+const supportedMetrics = toMetricRecord(MetricProfiles.LINE_CHART);
 
 const backgroundPlugin = {
     id: "customBackground",
