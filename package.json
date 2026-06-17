@@ -4,21 +4,42 @@
   "description": "A CLI tool for generating charts from verbose data from belt",
   "main": "dist/index.js",
   "scripts": {
-    "build": "ncc build ./src/index.ts -o dist --no-cache",
+    "build": "ncc build ./src/index.ts -o dist --no-cache && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({}, null, 2))\"",
     "start": "node dist/index.js",
     "dev": "ncc build ./src/index.ts -w -o dist/",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:install": "npm pack && npm install -g belt-charts-*.tgz",
+    "prepack": "npm run build"
   },
   "bin": {
     "belt-charts": "./bin/belt-charts.cjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin",
+    "CHANGELOG.md"
   ],
-  "type": "module",
-  "keywords": [],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "cli",
+    "charts",
+    "belt",
+    "benchmark",
+    "visualization",
+    "metrics"
+  ],
   "author": "abucnasty",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abucnasty/belt-charts.git"
+  },
+  "homepage": "https://github.com/abucnasty/belt-charts#readme",
+  "bugs": {
+    "url": "https://github.com/abucnasty/belt-charts/issues"
+  },
   "dependencies": {
     "@sgratzl/chartjs-chart-boxplot": "^4.4.4",
     "chart.js": "^4.5.0",

@@ -1,2 +1,4 @@
 #!/usr/bin/env node
-require("../dist/index.js")
+
+// Wrapper for the bundled application
+require('../dist/index.js');
