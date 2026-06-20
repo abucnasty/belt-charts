@@ -10,10 +10,6 @@ export function nanoToMicro(nano: number): number {
   return nano / 1000;
 }
 
-export function microToNano(micro: number): number {
-  return micro * 1000;
-}
-
 export function milliToMicro(milli: number): number {
   return milli * 1000;
 }

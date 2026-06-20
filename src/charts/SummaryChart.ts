@@ -3,7 +3,7 @@ import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
 import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, percentDecrease } from "../utils"
-import { colors } from "./constants"
+import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
 import fsp from "node:fs/promises";
@@ -214,8 +214,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       ctx.save();
 
       // Start table lower down so it never overlaps
-      const tableTop = height - (metrics.length + 3) * 20;
-      const rowHeight = 20;
+      const tableTop = height - (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX;
+      const rowHeight = chartLayout.TABLE_ROW_HEIGHT_PX;
 
       // Measure text widths for each column to prevent overlap
       ctx.font = "bold 12px Arial";
@@ -251,7 +251,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Best").width);
         }
 
-        return maxWidth + 16; // Add padding
+        return maxWidth + chartLayout.TABLE_COLUMN_PADDING_PX; // Add padding
       });
 
       // Calculate total minimum width and scale proportionally to fit available space
@@ -318,7 +318,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     },
   };
 
-  const padding = options.includeTable ? { bottom: (metrics.length + 3) * 20 + 10 } : undefined
+  const padding = options.includeTable ? { bottom: (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX + chartLayout.TABLE_BOTTOM_MARGIN_PX } : undefined
 
   datasets.sort((a, b) => {
     return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)

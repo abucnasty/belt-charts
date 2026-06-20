@@ -1,5 +1,5 @@
 import { ChartConfiguration } from "chart.js";
-import { colors } from "./constants";
+import { colors, chartLayout } from "./constants";
 import { backgroundPlugin } from "./plugins";
 import { MetricEnum } from "../data/MetricEnum";
 import { average, max, median, milliToMicro, min, nanoToMicro, roundTo } from "../utils";
@@ -61,8 +61,8 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
-    const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * 0.9
-    const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * 1.1
+    const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * chartLayout.AXIS_SCALE_LOWER_PADDING
+    const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * chartLayout.AXIS_SCALE_UPPER_PADDING
 
     return {
         type: "boxplot",

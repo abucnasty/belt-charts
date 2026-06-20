@@ -42,11 +42,11 @@ Items identified during maintainability review. Check off as completed.
   `src/data/MetricRegistry.ts`: `MetricProfiles.LINE_CHART`, `MetricProfiles.SUMMARY_CHART`,
   `MetricProfiles.ALL`.
 
-- [ ] **Name magic numbers in chart files** — `LineChart.ts` uses bare `60`, `15`, `30` for
+- [x] **Name magic numbers in chart files** — `LineChart.ts` uses bare `60`, `15`, `30` for
   window thresholds; `BoxPlot.ts` uses `0.9`/`1.1` for scale padding; `SummaryChart.ts` uses
   `20`/`16` for px layout. Move to named constants in `src/charts/constants.ts`.
 
-- [ ] **Delete dead export `microToNano()`** — exported from `src/utils.ts` but never called.
+- [x] **Delete dead export `microToNano()`** — exported from `src/utils.ts` but never called.
 
 ---
 

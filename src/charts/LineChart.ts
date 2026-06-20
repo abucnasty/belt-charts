@@ -6,7 +6,7 @@ import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
 import { MetricProfiles, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
-import { colors } from "./constants"
+import { colors, chartLayout } from "./constants"
 import { backgroundPlugin } from "./plugins";
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
@@ -24,7 +24,7 @@ export interface LineChartOptions {
 
 const autoTickWindow = (maxTick: number): number => {
 
-    const second = 60;
+    const second = chartLayout.TICKS_PER_SECOND;
     const minute = second * 60
 
     if (maxTick >= minute) {
