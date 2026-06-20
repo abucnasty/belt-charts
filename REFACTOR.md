@@ -65,6 +65,8 @@ Items identified during maintainability review. Check off as completed.
   (`ignoreFirstTicksFromResult`, `metricValueAverage`), not aggregate definitions. Renamed to
   `tickUtils.ts`; updated imports in `LineChart.ts` and `lineBar.ts`.
 
-- [ ] **Add tests** — no test infrastructure exists. Priority targets: `average()`,
+- [x] **Add tests** — no test infrastructure exists. Priority targets: `average()`,
   `standardDeviation()`, `explodeIntoPerRunResults()`,
   `filterRunResultsOutsideStdDeviations()`, and the CSV parsers.
+  Added vitest; 42 tests across `utils.test.ts`, `explodeIntoPerRunResults.test.ts`,
+  `filterRunResultsOutsideStdDeviations.test.ts`, and `buildSummaryChartData.test.ts`.
