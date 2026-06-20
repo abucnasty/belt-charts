@@ -2,107 +2,16 @@ import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
 import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
-import { nanoToMicro, percentDecrease } from "../utils"
+import { percentDecrease } from "../utils"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
-import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
+import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
+import { buildSummaryChartData } from "../data/SummaryTransform"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
 import { backgroundPlugin } from "./plugins"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
-
-interface SummaryChartMetricValue {
-  metricName: string;
-  metricDescription: string;
-  average: number;
-  min?: number;
-  max?: number;
-}
-
-interface SummaryChartData {
-  mapName: string;
-  totalAverage: number;
-  metrics: Array<MetricEnum>;
-  metricValues: SummaryChartMetricValue[];
-}
-
-const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetrics: Partial<Record<MetricName, MetricEnum>>, aggregationStrategy: AggregationStrategy): SummaryChartData => {
-  const fileName = result.fileName;
-  const metrics = result.metrics;
-
-  let include_other = true;
-
-  if (configuredMetrics[MetricEnum.HEAT_NETWORK_UPDATE.name] || configuredMetrics[MetricEnum.FLUID_FLOW_UPDATE.name]) {
-    // other is not computable if these metrics are included since they are part of the electricHeatFluidCircuitUpdate metric
-    include_other = false;
-  }
-
-
-  const otherMetricAverages = metrics
-    .filter(it => it.name !== MetricEnum.WHOLE_UPDATE.name)
-    .filter(it => configuredMetrics[it.name] != undefined)
-    .filter(it => supportedMetrics[it.name] != MetricEnum.OTHER)
-    .flatMap(metric => {
-      const metricAggregate = result.all.get(metric.name)
-      if (!metricAggregate) {
-        return []
-      }
-      return [{
-        metricName: metric.name,
-        metricDescription: metric.description,
-        average: nanoToMicro(metricAggregate.average),
-        min: nanoToMicro(metricAggregate.minimum),
-        max: nanoToMicro(metricAggregate.maximum)
-      }]
-    })
-    .sort((a, b) => b.average - a.average); // Descending order
-
-  const sumOfParts = otherMetricAverages.reduce((sum, metricAverage) => sum + metricAverage.average, 0);
-
-  const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name)
-
-  const metricValues: SummaryChartMetricValue[] = [
-    ...otherMetricAverages,
-  ]
-
-  if (!wholeUpdateAgg) {
-    return {
-      mapName: result.fileName,
-      metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
-      metricValues: metricValues,
-      totalAverage: sumOfParts,
-    }
-  }
-
-
-
-  const wholeUpdateAverage = nanoToMicro(wholeUpdateAgg.average);
-  const otherAvg = wholeUpdateAverage - sumOfParts;
-
-  if (include_other) {
-    metricValues.push({
-      metricName: MetricEnum.OTHER.name,
-      metricDescription: MetricEnum.OTHER.description,
-      average: otherAvg,
-    })
-  }
-
-  metricValues.push({
-    metricName: MetricEnum.WHOLE_UPDATE.name,
-    metricDescription: MetricEnum.WHOLE_UPDATE.description,
-    average: wholeUpdateAverage,
-    min: nanoToMicro(wholeUpdateAgg.minimum),
-    max: nanoToMicro(wholeUpdateAgg.maximum)
-  })
-
-  return {
-    mapName: result.fileName,
-    metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
-    metricValues: metricValues,
-    totalAverage: wholeUpdateAverage,
-  }
-}
 
 interface SummaryChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -142,7 +51,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     configuredDisplayMetrics = { ...supportedMetrics }
   }
 
-  const chartData = results.map(result => mapSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
+  const chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
   // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
   if (options.sortBy !== "preserve") {
     chartData.sort((a, b) => a.totalAverage - b.totalAverage);

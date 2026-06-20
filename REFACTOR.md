@@ -56,8 +56,9 @@ Items identified during maintainability review. Check off as completed.
   parse CSV(s) → build chart config → render → write PNG. Extract a
   `runChartPipeline(opts, parser, chartFactory)` helper.
 
-- [ ] **Move data transforms out of `SummaryChart.ts`** — computing "other" (whole − parts),
+- [x] **Move data transforms out of `SummaryChart.ts`** — computing "other" (whole − parts),
   sorting by total average, and calculating % decrease is data transformation, not presentation.
+  Extracted `buildSummaryChartData`, `SummaryChartData`, `SummaryChartMetricValue` to `src/data/SummaryTransform.ts`.
   Move to `src/data/` so it can be tested independently.
 
 - [ ] **Rename `BenchmarkAggregates.ts`** — this file contains tick utilities
