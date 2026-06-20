@@ -52,7 +52,7 @@ Items identified during maintainability review. Check off as completed.
 
 ## P3 — Architecture
 
-- [ ] **Shared command pipeline** — all 6 commands independently implement: glob → filter runs →
+- [x] **Shared command pipeline** — all 6 commands independently implement: glob → filter runs →
   parse CSV(s) → build chart config → render → write PNG. Extract a
   `runChartPipeline(opts, parser, chartFactory)` helper.
 
