@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createLineChartForMetrics } from "../charts/LineChart";
 import { parseBenchmarkAveragePerTickResultFromCsv } from "../data/BenchmarkTickResult";
-import { ignoreFirstTicksFromResult } from "../data/BenchmarkAggregates";
+import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";

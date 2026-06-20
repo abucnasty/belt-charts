@@ -61,9 +61,9 @@ Items identified during maintainability review. Check off as completed.
   Extracted `buildSummaryChartData`, `SummaryChartData`, `SummaryChartMetricValue` to `src/data/SummaryTransform.ts`.
   Move to `src/data/` so it can be tested independently.
 
-- [ ] **Rename `BenchmarkAggregates.ts`** — this file contains tick utilities
-  (`ignoreFirstTicksFromResult`, `metricValueAverage`), not aggregate definitions. Rename to
-  `tickUtils.ts` or merge into `BenchmarkTickResult.ts`.
+- [x] **Rename `BenchmarkAggregates.ts`** — this file contains tick utilities
+  (`ignoreFirstTicksFromResult`, `metricValueAverage`), not aggregate definitions. Renamed to
+  `tickUtils.ts`; updated imports in `LineChart.ts` and `lineBar.ts`.
 
 - [ ] **Add tests** — no test infrastructure exists. Priority targets: `average()`,
   `standardDeviation()`, `explodeIntoPerRunResults()`,

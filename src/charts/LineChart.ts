@@ -1,5 +1,5 @@
 import assert from "assert";
-import { metricValueAverage } from "../data/BenchmarkAggregates"
+import { metricValueAverage } from "../data/tickUtils"
 import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from "../data/BenchmarkTickResult"
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
