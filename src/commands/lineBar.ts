@@ -1,3 +1,4 @@
+import path from "path";
 import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createLineChartForMetrics } from "../charts/LineChart";
@@ -53,9 +54,10 @@ async function generateLineOrBarCharts(
 
   console.log("Chart configurations created.");
   const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
+  const ext = path.extname(options.output) || ".png";
 
   for (const { result, config } of configurations) {
-    const fileName = `${fileNameWithoutExt}_${result.fileName}.png`;
+    const fileName = `${fileNameWithoutExt}_${result.fileName}${ext}`;
     await renderChartToFile(config, options.width, options.height, fileName);
   }
 }
