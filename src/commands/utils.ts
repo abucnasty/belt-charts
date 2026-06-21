@@ -161,8 +161,17 @@ export async function resolveChartInputs(
   return { files, runsToRemove };
 }
 
+type SupportedFormat = "png" | "svg";
+
+function formatFromExtension(filePath: string): SupportedFormat {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".svg") return "svg";
+  return "png";
+}
+
 /**
- * Renders a Chart.js config to a PNG file.
+ * Renders a Chart.js config to a file. Supports PNG and SVG output;
+ * format is inferred from the output file extension.
  * Handles Canvas construction, rendering, and cleanup.
  */
 export async function renderChartToFile(
@@ -172,9 +181,10 @@ export async function renderChartToFile(
   outputPath: string,
 ): Promise<void> {
   const resolvedPath = path.resolve(process.cwd(), outputPath);
+  const format = formatFromExtension(resolvedPath);
   const canvas = new Canvas(width, height);
   const chart = new Chart(canvas as any, config);
-  const imageBuffer = await canvas.toBuffer("png");
+  const imageBuffer = await canvas.toBuffer(format);
   await fsp.writeFile(resolvedPath, imageBuffer);
   console.log(`Chart saved to ${resolvedPath}`);
   chart.destroy();
