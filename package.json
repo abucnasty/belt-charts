@@ -1,6 +1,6 @@
 {
   "name": "belt-charts",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A CLI tool for generating charts from verbose data from belt",
   "main": "dist/index.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "prepublishOnly": "npm run build",
     "test:install": "npm pack && npm install -g belt-charts-*.tgz",
     "prepack": "npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "npm rebuild skia-canvas"
   },
   "bin": {
     "belt-charts": "./bin/belt-charts.cjs"
