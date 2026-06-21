@@ -1,37 +1,18 @@
 import assert from "assert";
-import { metricValueAverage } from "../data/BenchmarkAggregates"
+import { metricValueAverage } from "../data/tickUtils"
 import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from "../data/BenchmarkTickResult"
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
+import { MetricProfiles, toMetricRecord } from "../data/MetricRegistry"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
-import { colors } from "./constants"
+import { colors, chartLayout } from "./constants"
+import { backgroundPlugin } from "./plugins";
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
 
 
-const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
-    [
-        MetricEnum.ENTITY_UPDATE,
-        MetricEnum.TRAINS,
-        MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-        MetricEnum.TRANSPORT_LINES_UPDATE,
-        MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-        MetricEnum.SPACE_PLATFORMS,
-        MetricEnum.PARTICLE_UPDATE,
-    ].map(it => [it.name, it])
-)
-
-const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-        const { ctx, width, height } = chart;
-        ctx.save();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-    },
-};
+const supportedMetrics = toMetricRecord(MetricProfiles.LINE_CHART);
 
 export interface LineChartOptions {
     maxTicks: number,
@@ -43,7 +24,7 @@ export interface LineChartOptions {
 
 const autoTickWindow = (maxTick: number): number => {
 
-    const second = 60;
+    const second = chartLayout.TICKS_PER_SECOND;
     const minute = second * 60
 
     if (maxTick >= minute) {
@@ -63,7 +44,7 @@ const autoTickWindow = (maxTick: number): number => {
 
 export const createLineChartForMetrics = (result: BenchmarkTickResult, options: LineChartOptions): ChartConfiguration<"bar" | "line"> => {
 
-    const datasets = []
+    const datasets: any[] = []
 
     const resultMetricValues = transformResultToMetricValues(result, options.aggregationStrategy)
 
@@ -79,7 +60,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
     }
 
     result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
-        const metricValues = resultMetricValues.get(metric.name)
+        const metricValues = resultMetricValues.get(metric.name)!
             .filter(it => it.tick <= maxTicks)
         filteredMetricValueMap.set(metric.name, metricValues)
     })
@@ -94,11 +75,14 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
     }
 
 
+    let firstDatasetPoints: { x: number; y: number }[] | undefined;
+
     result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
 
-        const data = filteredMetricValueMap.get(metric.name).filter(it => it.tick <= maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
+        const data = filteredMetricValueMap.get(metric.name)!.filter(it => it.tick <= maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
         // sort by tick ascending
         data.sort((a, b) => a.x - b.x);
+        if (!firstDatasetPoints) firstDatasetPoints = data;
         datasets.push({
             label: metric.name,
             data: data,
@@ -109,12 +93,14 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
         })
     })
 
-    const wholeUpdateAverage = nanoToMicro(metricValueAverage(resultMetricValues.get(MetricEnum.WHOLE_UPDATE.name)))
+    const wholeUpdateAverage = nanoToMicro(metricValueAverage(resultMetricValues.get(MetricEnum.WHOLE_UPDATE.name)!))
+
+    assert(firstDatasetPoints !== undefined, "No supported metric datasets were created")
 
     datasets.push({
-        type: "line",
+        type: "line" as const,
         label: "Whole Update Average",
-        data: datasets[0].data.map(it => ({
+        data: firstDatasetPoints.map(it => ({
             x: it.x,
             y: wholeUpdateAverage
         })),
@@ -123,7 +109,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
         borderDash: [6, 1]
     })
 
-    const ticks = datasets[0].data.map(it => it.x)
+    const ticks = firstDatasetPoints.map(it => it.x)
     // sort by tick ascending
     ticks.sort((a, b) => a - b);
 

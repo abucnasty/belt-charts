@@ -1,4 +1,8 @@
 import path from "path";
+import { globSync } from "glob";
+import { Canvas } from "skia-canvas";
+import { Chart, type ChartConfiguration } from "chart.js";
+import fsp from "node:fs/promises";
 import { Command } from "commander";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import {
@@ -6,18 +10,18 @@ import {
   parseRunResultsFile,
 } from "../data/ResultsFile";
 import { MetricEnum } from "../data/MetricEnum";
+import { ensureOutputDir } from "../utils";
+import { BaseChartOptions } from "./types";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
 }
 
-export function applyTrimPrefix(
-  result: { fileName: string },
-  trimPrefix: string,
-): void {
+export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimPrefix: string): T {
   if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-    result.fileName = result.fileName.slice(trimPrefix.length);
+    return { ...result, fileName: result.fileName.slice(trimPrefix.length) };
   }
+  return result;
 }
 
 export async function loadRunFilters(
@@ -137,4 +141,41 @@ export function addAggregateStrategyOption(command: Command): Command {
     "Aggregate the runs by either minimum per tick or average per tick",
     "average",
   );
+}
+
+/**
+ * Resolves glob pattern to matched files, loads run outlier filters, and
+ * ensures the output directory exists. Shared by all command action handlers.
+ */
+export async function resolveChartInputs(
+  pattern: string,
+  options: Pick<BaseChartOptions, "aggregateFile" | "stddevFilter" | "output">,
+): Promise<{ files: string[]; runsToRemove: Map<string, Set<number>> }> {
+  const files = globSync(pattern);
+  if (files.length === 0) {
+    console.error(`No files matched the given pattern ${pattern}`);
+    process.exit(1);
+  }
+  const runsToRemove = await loadRunFilters(options.aggregateFile, options.stddevFilter);
+  ensureOutputDir(path.resolve(process.cwd(), options.output));
+  return { files, runsToRemove };
+}
+
+/**
+ * Renders a Chart.js config to a PNG file.
+ * Handles Canvas construction, rendering, and cleanup.
+ */
+export async function renderChartToFile(
+  config: ChartConfiguration,
+  width: number,
+  height: number,
+  outputPath: string,
+): Promise<void> {
+  const resolvedPath = path.resolve(process.cwd(), outputPath);
+  const canvas = new Canvas(width, height);
+  const chart = new Chart(canvas as any, config);
+  const imageBuffer = await canvas.toBuffer("png");
+  await fsp.writeFile(resolvedPath, imageBuffer);
+  console.log(`Chart saved to ${resolvedPath}`);
+  chart.destroy();
 }

@@ -1,121 +1,17 @@
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { MetricRegistryInstance } from "../data/MetricRegistry"
-import { nanoToMicro, percentDecrease } from "../utils"
-import { colors } from "./constants"
+import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
+import { percentDecrease } from "../utils"
+import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
-import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult"
-import fs from "fs";
+import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
+import { buildSummaryChartData } from "../data/SummaryTransform"
+import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
+import { backgroundPlugin } from "./plugins"
 
-const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
-  [
-    MetricEnum.ENTITY_UPDATE,
-    MetricEnum.TRAINS,
-    MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-    MetricEnum.TRANSPORT_LINES_UPDATE,
-    MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-    MetricEnum.SPACE_PLATFORMS,
-    MetricEnum.PARTICLE_UPDATE,
-    MetricEnum.ELECTRIC_NETWORK_UPDATE,
-    MetricEnum.FLUID_FLOW_UPDATE,
-    MetricEnum.HEAT_NETWORK_UPDATE,
-    MetricEnum.OTHER
-  ].map(it => [it.name, it])
-)
-
-interface SummaryChartMetricValue {
-  metricName: string;
-  metricDescription: string;
-  average: number;
-  min?: number;
-  max?: number;
-}
-
-interface SummaryChartData {
-  mapName: string;
-  totalAverage: number;
-  metrics: Array<MetricEnum>;
-  metricValues: SummaryChartMetricValue[];
-}
-
-const mapSummaryChartData = (result: BenchmarkAggregateRunResult, configuredMetrics: Partial<Record<MetricName, MetricEnum>>, aggregationStrategy: AggregationStrategy): SummaryChartData => {
-  const fileName = result.fileName;
-  const metrics = result.metrics;
-
-  let include_other = true;
-
-  if (configuredMetrics[MetricEnum.HEAT_NETWORK_UPDATE.name] || configuredMetrics[MetricEnum.FLUID_FLOW_UPDATE.name]) {
-    // other is not computable if these metrics are included since they are part of the electricHeatFluidCircuitUpdate metric
-    include_other = false;
-  }
-
-
-  const otherMetricAverages = metrics
-    .filter(it => it.name !== MetricEnum.WHOLE_UPDATE.name)
-    .filter(it => configuredMetrics[it.name] != undefined)
-    .filter(it => supportedMetrics[it.name] != MetricEnum.OTHER)
-    .flatMap(metric => {
-      const metricAggregate = result.all.get(metric.name)
-      if (!metricAggregate) {
-        return []
-      }
-      return [{
-        metricName: metric.name,
-        metricDescription: metric.description,
-        average: nanoToMicro(metricAggregate.average),
-        min: nanoToMicro(metricAggregate.minimum),
-        max: nanoToMicro(metricAggregate.maximum)
-      }]
-    })
-    .sort((a, b) => b.average - a.average); // Descending order
-
-  const sumOfParts = otherMetricAverages.reduce((sum, metricAverage) => sum + metricAverage.average, 0);
-
-  const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name)
-
-  const metricValues: SummaryChartMetricValue[] = [
-    ...otherMetricAverages,
-  ]
-
-  if (!wholeUpdateAgg) {
-    return {
-      mapName: result.fileName,
-      metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
-      metricValues: metricValues,
-      totalAverage: sumOfParts,
-    }
-  }
-
-
-
-  const wholeUpdateAverage = nanoToMicro(wholeUpdateAgg.average);
-  const otherAvg = wholeUpdateAverage - sumOfParts;
-
-  if (include_other) {
-    metricValues.push({
-      metricName: MetricEnum.OTHER.name,
-      metricDescription: MetricEnum.OTHER.description,
-      average: otherAvg,
-    })
-  }
-
-  metricValues.push({
-    metricName: MetricEnum.WHOLE_UPDATE.name,
-    metricDescription: MetricEnum.WHOLE_UPDATE.description,
-    average: wholeUpdateAverage,
-    min: nanoToMicro(wholeUpdateAgg.minimum),
-    max: nanoToMicro(wholeUpdateAgg.maximum)
-  })
-
-  return {
-    mapName: result.fileName,
-    metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
-    metricValues: metricValues,
-    totalAverage: wholeUpdateAverage,
-  }
-}
+const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 
 interface SummaryChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -138,7 +34,12 @@ interface SummaryChartOptions {
   isPerRun?: boolean;
 }
 
-export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): ChartConfiguration<"bar"> => {
+export interface SummaryChartResult {
+  config: ChartConfiguration<"bar">;
+  exportTable: (() => Promise<void>) | null;
+}
+
+export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): SummaryChartResult => {
 
 
   let configuredDisplayMetrics: Partial<Record<MetricName, MetricEnum>> = {}
@@ -150,7 +51,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     configuredDisplayMetrics = { ...supportedMetrics }
   }
 
-  const chartData = results.map(result => mapSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
+  const chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
   // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
   if (options.sortBy !== "preserve") {
     chartData.sort((a, b) => a.totalAverage - b.totalAverage);
@@ -167,18 +68,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         backgroundColor: getMetricPattern(metric.name),
       }
     })
-
-  // Plugin: black background
-  const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-      const { ctx, width, height } = chart;
-      ctx.save();
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
-    },
-  };
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
@@ -227,26 +116,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const tableStats = computeTableStats();
 
-  const csvExportPlugin = {
-    afterDraw: () => {
-      if (!options.csvTableExportName) return;
-
-      const csvContent = [
-        tableStats.header.flat().join(","),
-        ...tableStats.rows.map(row => row.values.join(","))
-      ].join("\n");
-
-      const markdownTable = [
-        `|${tableStats.header.join("|")}|`,
-        `|${tableStats.header.map(() => "---").join("|")}|`,
-        ...tableStats.rows.map(row => `|${row.values.join("|")}|`)
-      ].join("\n");
-
-      fs.writeFileSync(`${options.csvTableExportName}.csv`, csvContent);
-      fs.writeFileSync(`${options.csvTableExportName}.md`, markdownTable);
-    }
-  };
-
   const tablePlugin = {
     id: "valueTable",
     afterDraw: (chart: any) => {
@@ -254,8 +123,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       ctx.save();
 
       // Start table lower down so it never overlaps
-      const tableTop = height - (metrics.length + 3) * 20;
-      const rowHeight = 20;
+      const tableTop = height - (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX;
+      const rowHeight = chartLayout.TABLE_ROW_HEIGHT_PX;
 
       // Measure text widths for each column to prevent overlap
       ctx.font = "bold 12px Arial";
@@ -291,7 +160,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Best").width);
         }
 
-        return maxWidth + 16; // Add padding
+        return maxWidth + chartLayout.TABLE_COLUMN_PADDING_PX; // Add padding
       });
 
       // Calculate total minimum width and scale proportionally to fit available space
@@ -358,7 +227,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     },
   };
 
-  const padding = options.includeTable && { bottom: (metrics.length + 3) * 20 + 10 }
+  const padding = options.includeTable ? { bottom: (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX + chartLayout.TABLE_BOTTOM_MARGIN_PX } : undefined
 
   datasets.sort((a, b) => {
     return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)
@@ -435,9 +304,26 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin].filter(Boolean) as any[],
   };
 
-  return configuration;
+  const exportTable = options.csvTableExportName
+    ? async () => {
+        const exportName = options.csvTableExportName!;
+        const csvContent = [
+          tableStats.header.flat().join(","),
+          ...tableStats.rows.map(row => row.values.join(","))
+        ].join("\n");
+        const markdownTable = [
+          `|${tableStats.header.join("|")  }|`,
+          `|${tableStats.header.map(() => "---").join("|")  }|`,
+          ...tableStats.rows.map(row => `|${row.values.join("|")  }|`)
+        ].join("\n");
+        await fsp.writeFile(`${exportName}.csv`, csvContent);
+        await fsp.writeFile(`${exportName}.md`, markdownTable);
+      }
+    : null;
+
+  return { config: configuration, exportTable };
 
 }

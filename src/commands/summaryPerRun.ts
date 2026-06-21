@@ -1,37 +1,34 @@
-import path from "path";
-import { globSync } from "glob";
 import { Command } from "commander";
-import { Canvas } from "skia-canvas";
-import { Chart } from "chart.js";
-import fsp from "node:fs/promises";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
-import { createSummaryChartConfiguration } from "../charts/SummaryChart";
-import { 
+import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
+import {
   parseBenchmarkAggregatesPerRunResultFromCsv,
-  explodeIntoPerRunResults
+  explodeIntoPerRunResults,
+  SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
-import { ensureOutputDir } from "../utils";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
   runsToRemove: Map<string, Set<number>>,
   options: SummaryPerRunChartOptions,
 ): Promise<void> {
-  const allPerRunResults = [];
+  const allPerRunResults: SingleRunAggregateResult[] = [];
 
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
+    const result = applyTrimPrefix(
+      await parseBenchmarkAggregatesPerRunResultFromCsv(
+        file,
+        options.removeFirstTicks,
+        options.maxTicks,
+        options.metrics,
+        runsToRemove.get(baseName) ?? new Set(),
+      ),
+      options.trimPrefix,
     );
-    applyTrimPrefix(result, options.trimPrefix);
     
     // Explode into per-run results
     const perRunResults = explodeIntoPerRunResults(result, options.aggregateStrategy);
@@ -63,27 +60,21 @@ async function generateSummaryPerRun(
     });
   }
 
-  const config = createSummaryChartConfiguration(allPerRunResults, {
+  const { config, exportTable } = createSummaryChartConfiguration(allPerRunResults, {
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
     csvTableExportName: options.summaryTableFile
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
-    titleOverride: options.titleOverride,
+    titleOverride: options.titleOverride ?? undefined,
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
   });
 
   console.log("Chart configuration created.");
-  const canvas = new Canvas(options.width, options.height);
-  const chart = new Chart(canvas as any, config);
-  const imageBuffer = await canvas.toBuffer("png");
-
-  const outputFile = path.resolve(process.cwd(), options.output);
-  await fsp.writeFile(outputFile, imageBuffer);
-  console.log(`Summary per-run chart saved to ${outputFile}`);
-  chart.destroy();
+  await renderChartToFile(config, options.width, options.height, options.output);
+  await exportTable?.();
 }
 
 export function createSummaryPerRunCommand(): Command {
@@ -145,17 +136,7 @@ export function createSummaryPerRunCommand(): Command {
         sortBy: opts.sortBy,
       };
 
-      const files = globSync(pattern);
-      if (files.length === 0) {
-        console.error(`No files matched the given pattern ${pattern}`);
-        process.exit(1);
-      }
-
-      const runsToRemove = await loadRunFilters(
-        options.aggregateFile,
-        options.stddevFilter,
-      );
-      ensureOutputDir(path.resolve(process.cwd(), options.output));
+      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
 
       await generateSummaryPerRun(files, runsToRemove, options);
     });
