@@ -80,15 +80,12 @@ async function generateEntityBreakdown(
 
   const outputFile = path.resolve(process.cwd(), options.output);
   await fsp.writeFile(outputFile, imageBuffer);
-  console.log(`Entity breakdown chart saved to ${outputFile}`);
+  console.log(`Entity summary chart saved to ${outputFile}`);
   chart.destroy();
 }
 
-export function createEntityBreakdownCommand(): Command {
-  return addBaseOptions(
-    new Command("entity-breakdown")
-      .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
-  )
+function buildEntitySummaryOptions(command: Command): Command {
+  return command
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in the chart (default true)",
@@ -119,12 +116,6 @@ export function createEntityBreakdownCommand(): Command {
       (it: string) => parseInt(it),
       15,
     )
-    .option<boolean>(
-      "--per-run <boolean>",
-      "Show one bar per run instead of averaging across runs (default false)",
-      (it) => it.toLowerCase() == "true",
-      false,
-    )
     .option<"run" | "total">(
       "--sort-by <run | total>",
       "(per-run only) Sort bars by run number or entityUpdate total (default: total)",
@@ -134,44 +125,63 @@ export function createEntityBreakdownCommand(): Command {
         return "total";
       },
       "total",
-    )
-    .action(async (pattern, opts) => {
-      // This chart always needs entityUpdate + all its registered children. The base --metrics
-      // option's default targets the summary chart; for entity-breakdown we always parse the
-      // entity-specific set so `--metrics` from the base options is ignored here.
-      const metrics = DEFAULT_ENTITY_METRICS;
-
-      const options: EntityBreakdownChartOptions = {
-        width: opts.width,
-        height: opts.height,
-        output: opts.output,
-        removeFirstTicks: opts.removeFirstTicks,
-        maxTicks: opts.maxTicks,
-        trimPrefix: opts.trimPrefix,
-        aggregateFile: opts.aggregateFile,
-        stddevFilter: opts.stddevFilter,
-        metrics,
-        aggregateStrategy: opts.aggregateStrategy,
-        summaryTable: opts.summaryTable,
-        summaryTableFile: opts.summaryTableFile,
-        titleOverride: opts.titleOverride,
-        topN: opts.topN,
-        perRun: opts.perRun,
-        sortBy: opts.sortBy,
-      };
-
-      const files = globSync(pattern);
-      if (files.length === 0) {
-        console.error(`No files matched the given pattern ${pattern}`);
-        process.exit(1);
-      }
-
-      const runsToRemove = await loadRunFilters(
-        options.aggregateFile,
-        options.stddevFilter,
-      );
-      ensureOutputDir(path.resolve(process.cwd(), options.output));
-
-      await generateEntityBreakdown(files, runsToRemove, options);
-    });
+    );
 }
+
+function makeEntitySummaryAction(perRun: boolean) {
+  return async (pattern: string, opts: any) => {
+    const metrics = DEFAULT_ENTITY_METRICS;
+    const options: EntityBreakdownChartOptions = {
+      width: opts.width,
+      height: opts.height,
+      output: opts.output,
+      removeFirstTicks: opts.removeFirstTicks,
+      maxTicks: opts.maxTicks,
+      trimPrefix: opts.trimPrefix,
+      aggregateFile: opts.aggregateFile,
+      stddevFilter: opts.stddevFilter,
+      metrics,
+      aggregateStrategy: opts.aggregateStrategy,
+      summaryTable: opts.summaryTable,
+      summaryTableFile: opts.summaryTableFile,
+      titleOverride: opts.titleOverride,
+      topN: opts.topN,
+      perRun,
+      sortBy: opts.sortBy,
+    };
+
+    const files = globSync(pattern);
+    if (files.length === 0) {
+      console.error(`No files matched the given pattern ${pattern}`);
+      process.exit(1);
+    }
+
+    const runsToRemove = await loadRunFilters(
+      options.aggregateFile,
+      options.stddevFilter,
+    );
+    ensureOutputDir(path.resolve(process.cwd(), options.output));
+
+    await generateEntityBreakdown(files, runsToRemove, options);
+  };
+}
+
+export function createEntitySummaryCommand(): Command {
+  return buildEntitySummaryOptions(
+    addBaseOptions(
+      new Command("entity-summary")
+        .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
+    )
+  ).action(makeEntitySummaryAction(false));
+}
+
+export function createEntitySummaryPerRunCommand(): Command {
+  return buildEntitySummaryOptions(
+    addBaseOptions(
+      new Command("entity-summary-per-run")
+        .description("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
+    )
+  ).action(makeEntitySummaryAction(true));
+}
+
+

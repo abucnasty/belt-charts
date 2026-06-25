@@ -12,7 +12,8 @@ import {
   createBarCommand,
   createBoxPlotCommand,
   createTableCommand,
-  createEntityBreakdownCommand,
+  createEntitySummaryCommand,
+  createEntitySummaryPerRunCommand,
   createEntityMatrixCommand,
 } from "./commands";
 
@@ -36,7 +37,8 @@ program.addCommand(createLineCommand());
 program.addCommand(createBarCommand());
 program.addCommand(createBoxPlotCommand());
 program.addCommand(createTableCommand());
-program.addCommand(createEntityBreakdownCommand());
+program.addCommand(createEntitySummaryCommand());
+program.addCommand(createEntitySummaryPerRunCommand());
 program.addCommand(createEntityMatrixCommand());
 
 program.parse();

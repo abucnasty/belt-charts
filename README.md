@@ -88,13 +88,13 @@ belt-charts bar "results/my_amazing_map*.csv"
   --tick-window-aggregation 60
 ```
 
-Entity Breakdown Chart (requires Factorio verbose metrics CSVs that include the PascalCase per-entity columns under `entityUpdate`):
+Entity Summary Chart (requires Factorio verbose metrics CSVs that include the PascalCase per-entity columns under `entityUpdate`):
 ```
-belt-charts entity-breakdown "results/my_amazing_map*.csv"
+belt-charts entity-summary "results/my_amazing_map*.csv"
   -w 1600
   -h 1000
   --remove-first-ticks 30
-  -o "charts/entity_breakdown.png"
+  -o "charts/entity_summary.png"
   -a "average"
   --top-n 15
   --summary-table true
@@ -102,16 +102,15 @@ belt-charts entity-breakdown "results/my_amazing_map*.csv"
   --trim-prefix "my_amazing_map_"
 ```
 
-Entity Breakdown Chart (per-run):
+Entity Summary Per-Run Chart (one bar per run):
 ```
-belt-charts entity-breakdown "results/my_amazing_map*.csv"
+belt-charts entity-summary-per-run "results/my_amazing_map*.csv"
   -w 1600
   -h 1000
   --remove-first-ticks 30
-  -o "charts/entity_breakdown_per_run.png"
+  -o "charts/entity_summary_per_run.png"
   -a "average"
   --top-n 15
-  --per-run true
   --sort-by run
   --summary-table true
   --summary-table-file true
