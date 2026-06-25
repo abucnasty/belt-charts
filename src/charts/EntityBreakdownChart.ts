@@ -177,14 +177,14 @@ export const createEntityBreakdownChartConfiguration = (
       const stats = totalStats[idx];
       const metricValues = tableHeaderMetrics.map(m => {
         const value = data.metricValues.find(mv => mv.metricName === m.name);
-        return Math.round(value?.average ?? NaN);
+        return value ? parseFloat(value.average.toFixed(2)) : NaN;
       });
       return {
         mapName: data.mapName,
         values: [
           data.mapName,
           ...metricValues,
-          Math.round(data.entityUpdateTotal),
+          parseFloat(data.entityUpdateTotal.toFixed(2)),
           stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
           stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`,
         ],
@@ -237,10 +237,10 @@ export const createEntityBreakdownChartConfiguration = (
           const dataIdx = colIdx - 1;
           tableHeaderMetrics.forEach(m => {
             const mv = chartData[dataIdx]?.metricValues.find(it => it.metricName === m.name);
-            const valueText = `${Math.round(mv?.average ?? NaN)}`;
+            const valueText = `${(mv?.average ?? 0).toFixed(2)}`;
             maxWidth = Math.max(maxWidth, ctx.measureText(valueText).width);
           });
-          maxWidth = Math.max(maxWidth, ctx.measureText(`${Math.round(chartData[dataIdx]?.entityUpdateTotal ?? 0)}`).width);
+          maxWidth = Math.max(maxWidth, ctx.measureText(`${(chartData[dataIdx]?.entityUpdateTotal ?? 0).toFixed(2)}`).width);
           const stats = tableStats.totalStats[dataIdx];
           if (stats?.decreaseFromPrevious !== null && stats?.decreaseFromPrevious !== undefined) {
             maxWidth = Math.max(maxWidth, ctx.measureText(`${stats.decreaseFromPrevious}%`).width);
@@ -283,7 +283,7 @@ export const createEntityBreakdownChartConfiguration = (
         ctx.fillText(m.description, columnPositions[0] + columnWidths[0] / 2, y);
         chartData.forEach((res, colIdx) => {
           const mv = res.metricValues.find(it => it.metricName === m.name);
-          const avg = Math.round(mv?.average ?? NaN);
+          const avg = (mv?.average ?? 0).toFixed(2);
           ctx.fillText(`${avg}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, y);
         });
       });
@@ -293,7 +293,7 @@ export const createEntityBreakdownChartConfiguration = (
       ctx.font = "bold 12px Arial";
       ctx.fillText("Entity Update Total", columnPositions[0] + columnWidths[0] / 2, nextRow);
       chartData.forEach((data, colIdx) => {
-        ctx.fillText(`${Math.round(data.entityUpdateTotal)}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, nextRow);
+        ctx.fillText(`${data.entityUpdateTotal.toFixed(2)}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, nextRow);
       });
 
       ctx.font = "12px Arial";

@@ -41,6 +41,7 @@ async function generateEntityMatrix(
   renderEntityMatrixChart(results, {
     aggregationStrategy: options.aggregateStrategy,
     topN: options.topN,
+    minPercent: options.minPercent,
     titleOverride: options.titleOverride,
   }, canvas);
 
@@ -67,6 +68,12 @@ export function createEntityMatrixCommand(): Command {
       (it: string) => parseInt(it),
       15,
     )
+    .option<number>(
+      "--min-percent <number>",
+      "Hide entity rows whose max value never exceeds this % of entityUpdate total in any file. 0 = no filter. Default 1.",
+      (it: string) => parseFloat(it),
+      1,
+    )
     .option<string | null>(
       "--title-override <string>",
       "Override the title of the chart",
@@ -86,6 +93,7 @@ export function createEntityMatrixCommand(): Command {
         metrics: opts.metrics,
         aggregateStrategy: opts.aggregateStrategy,
         topN: opts.topN,
+        minPercent: opts.minPercent,
         titleOverride: opts.titleOverride,
       };
 

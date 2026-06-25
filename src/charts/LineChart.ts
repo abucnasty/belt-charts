@@ -127,6 +127,10 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
         const data = filteredMetricValueMap.get(metric.name).filter(it => it.tick <= maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
         // sort by tick ascending
         data.sort((a, b) => a.x - b.x);
+
+        // Skip metrics that are entirely zero — they add a legend entry but no visual.
+        if (data.every(pt => pt.y === 0)) return;
+
         datasets.push({
             label: metric.name,
             data: data,

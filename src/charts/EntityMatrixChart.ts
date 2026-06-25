@@ -31,6 +31,12 @@ export interface EntityMatrixChartOptions {
   aggregationStrategy: AggregationStrategy;
   /** Keep top N entities by max-across-designs. 0 = all. Default 15. */
   topN: number;
+  /**
+   * Exclude entity rows whose max value across all designs is less than this
+   * percentage of the corresponding entityUpdate total. 0 = no filter (default).
+   * E.g. 1.0 = hide any entity that never exceeds 1% of entityUpdate in any file.
+   */
+  minPercent: number;
   titleOverride?: string | null;
 }
 
@@ -74,10 +80,24 @@ export function renderEntityMatrixChart(
     return bMax - aMax;
   });
 
+  // Apply minPercent filter: drop rows where the entity never exceeds minPercent%
+  // of entityUpdate in any design.
+  const entityUpdateTotals = results.map(r =>
+    getAggregateValue(r, MetricEnum.ENTITY_UPDATE.name as MetricName, options.aggregationStrategy)
+  );
+  const filteredRows = options.minPercent > 0
+    ? allRows.filter(row =>
+        row.values.some((v, i) => {
+          const total = entityUpdateTotals[i];
+          return !isNaN(v) && total > 0 && (v / total) * 100 >= options.minPercent;
+        })
+      )
+    : allRows;
+
   // Apply top-N
-  const topN = options.topN > 0 ? options.topN : allRows.length;
-  const topRows = allRows.slice(0, topN);
-  const restRows = allRows.slice(topN);
+  const topN = options.topN > 0 ? options.topN : filteredRows.length;
+  const topRows = filteredRows.slice(0, topN);
+  const restRows = filteredRows.slice(topN);
 
   // Compute "Other Entity Update" row
   const entityUpdateValues = results.map((r, i) => {
@@ -210,7 +230,7 @@ export function renderEntityMatrixChart(
     ctx.stroke();
 
     // Label
-    ctx.fillText(`${Math.round(v)} µs`, x, axisY + 20);
+    ctx.fillText(`${v.toFixed(2)} µs`, x, axisY + 20);
   }
 
   // X-axis label
@@ -275,7 +295,7 @@ export function renderEntityMatrixChart(
         ctx.fillStyle = colors.white;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        ctx.fillText(`${Math.round(value)}`, labelX, labelY);
+        ctx.fillText(`${value.toFixed(2)}`, labelX, labelY);
       }
     }
   }

@@ -61,5 +61,6 @@ export type EntityBreakdownChartOptions = BaseChartOptions & {
 export type EntityMatrixChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   topN: number;
+  minPercent: number;
   titleOverride: string | null;
 };
