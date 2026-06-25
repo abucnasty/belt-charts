@@ -1,22 +1,11 @@
 import { ChartConfiguration } from "chart.js";
-import { colors } from "./constants";
+import { colors, chartLayout } from "./constants";
+import { backgroundPlugin } from "./plugins";
 import { MetricEnum } from "../data/MetricEnum";
 import { average, max, median, milliToMicro, min, nanoToMicro, roundTo } from "../utils";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
-
-// Plugin: black background
-const backgroundPlugin = {
-    id: "customBackground",
-    beforeDraw: (chart: any) => {
-        const { ctx, width, height } = chart;
-        ctx.save();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-    },
-};
 
 export interface BoxChartOptions {
     /**
@@ -38,7 +27,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
         const valuesPerRun: number[] = []
 
-        const wholeUpdateRunAggregates = result.runs.get(MetricEnum.WHOLE_UPDATE.name)
+        const wholeUpdateRunAggregates = result.runs.get(MetricEnum.WHOLE_UPDATE.name)!
 
         wholeUpdateRunAggregates.forEach(aggregate => {
             valuesPerRun.push(nanoToMicro(aggregate.average))
@@ -72,8 +61,8 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
-    const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * 0.9
-    const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * 1.1
+    const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * chartLayout.AXIS_SCALE_LOWER_PADDING
+    const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * chartLayout.AXIS_SCALE_UPPER_PADDING
 
     return {
         type: "boxplot",

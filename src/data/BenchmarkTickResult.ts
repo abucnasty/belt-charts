@@ -1,11 +1,10 @@
-import fs from "fs";
-import csv from "csv-parser";
 import path from "path";
 import { MetricName } from "./Metric";
 import { MetricRegistryInstance } from "./MetricRegistry";
 import { average, max, median, min, standardDeviation } from "../utils";
 import { MetricEnum } from "./MetricEnum";
 import { AggregationStrategy } from "./AggregationStrategy";
+import { readCsvRows } from "./csvReader";
 
 export type BenchmarkResultRaw = Record<MetricName, number> & {
     tick: number;
@@ -78,10 +77,7 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
     let metrics: MetricEnum[] = [];
     const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
 
-    await new Promise<void>((resolve, reject) => {
-        fs.createReadStream(filePath)
-            .pipe(csv())
-            .on("data", (row: BenchmarkResultRaw) => {
+    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
                 const run = Number(row.run);
                 if (runResultsToRemove.has(run)) {
                     return
@@ -100,9 +96,6 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                             }
                             return [metric];
                         });
-                    metrics.forEach(metric => {
-                        rawResultsPerTick[metric.name] = new Map();
-                    });
                 }
                 const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
                 if (wholeUpdate == undefined) {
@@ -113,9 +106,6 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                 } else {
                     rawResultsPerTick.get(tick)!.push(row);
                 }
-            })
-            .on("end", () => resolve())
-            .on("error", reject);
     });
 
     const metricStats: Map<MetricName, MetricTickStat[]> = new Map(metrics.map(it => [it.name, []]));

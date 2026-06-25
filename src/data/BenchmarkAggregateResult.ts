@@ -1,5 +1,3 @@
-import fs from "fs";
-import csv from "csv-parser";
 import path from "path";
 import { MetricName } from "./Metric";
 import { MetricRegistryInstance } from "./MetricRegistry";
@@ -8,6 +6,7 @@ import { MetricEnum } from "./MetricEnum";
 import { BenchmarkResultRaw } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
+import { readCsvRows } from "./csvReader";
 
 export type MetricAggregate = {
     average: number; // in nanoseconds
@@ -45,10 +44,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
     console.log(`Parsing benchmark aggregate run results from CSV file: ${filePath} removing the first ${removeFirstTicks} ticks`)
 
-    await new Promise<void>((resolve, reject) => {
-        fs.createReadStream(filePath)
-            .pipe(csv())
-            .on("data", (row: BenchmarkResultRaw) => {
+    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
                 const run = Number(row.run)
                 if (runsToRemove.has(run)) {
                     return
@@ -75,11 +71,11 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
                 }
 
                 if (runValuesPerMetric.get(run) === undefined) {
-                    const metricToRunValues = {}
+                    const metricToRunValues: Partial<Record<MetricName, RunValue[]>> = {};
                     metrics.forEach(metric => {
-                        metricToRunValues[metric.name] = []
+                        metricToRunValues[metric.name] = [];
                     });
-                    runValuesPerMetric.set(run, metricToRunValues)
+                    runValuesPerMetric.set(run, metricToRunValues);
                 }
 
                 const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
@@ -87,16 +83,14 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
                     throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
                 }
 
+                const runEntry = runValuesPerMetric.get(run)!;
                 metrics.forEach(metric => {
-                    runValuesPerMetric.get(run)[metric.name].push({
+                    runEntry[metric.name]!.push({
                         value: Number(row[metric.name]),
                         run: Number(row.run)
-                    })
-                })
-            })
-            .on("end", () => resolve())
-            .on("error", reject);
-    })
+                    });
+                });
+    });
 
 
     const runAggregates: Map<MetricName, MetricRunAggregate[]> = new Map()
@@ -110,8 +104,8 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
     for (const [run, metricToRunValues] of runValuesPerMetric) {
         metrics.forEach(metric => {
-            const rawValues = metricToRunValues[metric.name].map(it => it.value)
-            runAggregates.get(metric.name).push({
+            const rawValues = metricToRunValues[metric.name]!.map(it => it.value)
+            runAggregates.get(metric.name)!.push({
                 average: average(rawValues),
                 standardDeviation: standardDeviation(rawValues),
                 minimum: min(rawValues),
@@ -125,9 +119,9 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     const all: Map<MetricName, MetricAggregate> = new Map()
 
     metrics.forEach(metric => {
-        const metricRawValues = []
+        const metricRawValues: number[] = []
         runValuesPerMetric.forEach((metricToRunValues) => {
-            metricToRunValues[metric.name].forEach(it => {
+            metricToRunValues[metric.name]!.forEach(it => {
                 metricRawValues.push(it.value)
             })
         })
@@ -232,6 +226,15 @@ export const saveBenchmarkAggregateRunResultsToCsv = async (results: BenchmarkAg
 }
 
 /**
+ * A benchmark result scoped to a single run.
+ * Produced by explodeIntoPerRunResults — the `runs` map is empty;
+ * `all` holds the single run's aggregate stats.
+ */
+export interface SingleRunAggregateResult extends BenchmarkAggregateRunResult {
+    readonly __singleRun: true;
+}
+
+/**
  * Explode a BenchmarkAggregateRunResult into an array of per-run results,
  * where each result represents a single run with its aggregate metrics.
  * The aggregation strategy determines which per-run statistic (average/median/min/max/stddev)
@@ -240,7 +243,7 @@ export const saveBenchmarkAggregateRunResultsToCsv = async (results: BenchmarkAg
 export const explodeIntoPerRunResults = (
     result: BenchmarkAggregateRunResult,
     aggregationStrategy: AggregationStrategy
-): BenchmarkAggregateRunResult[] => {
+): SingleRunAggregateResult[] => {
     // Collect all unique run numbers
     const runsSet = new Set<number>();
     result.runs.forEach(runAggregates => {
@@ -292,6 +295,7 @@ export const explodeIntoPerRunResults = (
             metrics: result.metrics,
             runs: new Map(), // Empty since chart only reads "all"
             all: all,
-        };
+            __singleRun: true,
+        } as SingleRunAggregateResult;
     });
 }

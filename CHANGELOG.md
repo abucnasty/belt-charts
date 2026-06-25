@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bar`/`line` commands now pass the caller's `--metrics` list through to the chart, replacing the previous hardcoded allow-list; the default set is unchanged when `--metrics` is not provided
 - Legend swatch size increased to 20×40 px so pattern tiles render fully without clipping
 
+## [1.1.2] - 2026-06-20
+
+### Fixed
+- Correct `postinstall` script to invoke `skia-canvas`'s `prebuild.mjs` directly instead of `npm rebuild`, which does not re-run custom install scripts.
+
+## [1.1.1] - 2026-06-20
+
+### Fixed
+- Add `postinstall` script to rebuild `skia-canvas` native binaries after global installation, resolving `Cannot find module '../skia.node'` errors on fresh installs.
+
+## [1.1.0] - 2026-06-20
+
+### Added
+- SVG export support for all chart commands. Pass a `.svg` extension to `--output` to produce vector output (e.g. `-o charts/summary.svg`). Format is inferred from the file extension; PNG remains the default.
+
+## [1.0.1] - 2026-06-20
+
+### Fixed
+- Avoid bundling host-specific `skia-canvas` native binaries in published artifacts, preventing `ERR_DLOPEN_FAILED` / `invalid ELF header` errors after npm install on other platforms.
+
 ## [1.0.0] - 2026-06-16
 
 ### Added
@@ -43,5 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform support (Linux, macOS, Windows)
 - Node.js 14+ compatibility
 
-[Unreleased]: https://github.com/abucnasty/belt-charts/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/abucnasty/belt-charts/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/abucnasty/belt-charts/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/abucnasty/belt-charts/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/abucnasty/belt-charts/releases/tag/v1.0.0

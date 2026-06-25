@@ -167,6 +167,28 @@ belt-charts entity-heatmap "results/my_amazing_map*.csv"
   --trim-prefix "my_amazing_map_"
 ```
 
+## SVG Export
+
+All chart commands support SVG output in addition to PNG. The format is inferred from the `--output` file extension — simply use `.svg` instead of `.png`:
+
+```bash
+belt-charts summary "results/*.csv" -o "charts/summary.svg" ...
+belt-charts boxplot "results/*.csv" -o "charts/boxplot.svg" ...
+belt-charts bar "results/*.csv" -o "charts/timeseries.svg" ...
+```
+
+SVG files are rendered using [skia-canvas](https://github.com/samizdatco/skia-canvas)'s native vector backend, producing true vector output rather than an embedded bitmap. This makes them resolution-independent and suitable for embedding in reports or web pages.
+
+For `line` and `bar` commands (which generate one file per input CSV), the extension is preserved per-file:
+
+```bash
+# Input: results/map_a.csv, results/map_b.csv
+# Output: charts/timeseries_map_a.svg, charts/timeseries_map_b.svg
+belt-charts bar "results/*.csv" -o "charts/timeseries.svg" ...
+```
+
+PNG is the default when no extension is specified or when `.png` is used.
+
 ## Requirements
 
 - Node.js >= 14.0.0

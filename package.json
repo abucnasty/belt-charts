@@ -1,15 +1,17 @@
 {
   "name": "belt-charts",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "description": "A CLI tool for generating charts from verbose data from belt",
   "main": "dist/index.js",
   "scripts": {
-    "build": "ncc build ./src/index.ts -o dist --no-cache && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({}, null, 2))\"",
+    "build": "rm -rf dist && ncc build ./src/index.ts -o dist --no-cache --external skia-canvas && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({}, null, 2))\"",
     "start": "node dist/index.js",
-    "dev": "ncc build ./src/index.ts -w -o dist/",
+    "dev": "rm -rf dist && ncc build ./src/index.ts -w -o dist/ --external skia-canvas",
     "prepublishOnly": "npm run build",
     "test:install": "npm pack && npm install -g belt-charts-*.tgz",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "postinstall": "node node_modules/skia-canvas/lib/prebuild.mjs download --or-compile"
   },
   "bin": {
     "belt-charts": "./bin/belt-charts.cjs"
@@ -56,6 +58,7 @@
     "@types/node": "^22.18.8",
     "@vercel/ncc": "^0.38.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.9"
   }
 }

@@ -67,7 +67,7 @@ async function generateEntityBreakdown(
     csvTableExportName: options.summaryTableFile
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
-    titleOverride: options.titleOverride,
+    titleOverride: options.titleOverride ?? undefined,
     topN: options.topN,
     sortBy,
     isPerRun: options.perRun,

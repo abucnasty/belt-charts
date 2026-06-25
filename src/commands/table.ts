@@ -1,5 +1,3 @@
-import path from "path";
-import { globSync } from "glob";
 import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import {
@@ -7,9 +5,8 @@ import {
   saveBenchmarkAggregateRunResultsToCsv,
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { ensureOutputDir } from "../utils";
 import { TableChartOptions } from "./types";
-import { getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+import { getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs } from "./utils";
 
 async function generateTable(
   files: string[],
@@ -21,14 +18,16 @@ async function generateTable(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
+    const result = applyTrimPrefix(
+      await parseBenchmarkAggregatesPerRunResultFromCsv(
+        file,
+        options.removeFirstTicks,
+        options.maxTicks,
+        options.metrics,
+        runsToRemove.get(baseName) ?? new Set(),
+      ),
+      options.trimPrefix,
     );
-    applyTrimPrefix(result, options.trimPrefix);
     aggregateResults.push(result);
   }
 
@@ -128,17 +127,7 @@ export function createTableCommand(): Command {
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
       };
 
-      const files = globSync(pattern);
-      if (files.length === 0) {
-        console.error(`No files matched the given pattern ${pattern}`);
-        process.exit(1);
-      }
-
-      const runsToRemove = await loadRunFilters(
-        options.aggregateFile,
-        options.stddevFilter,
-      );
-      ensureOutputDir(path.resolve(process.cwd(), options.output));
+      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
 
       await generateTable(files, runsToRemove, options);
     });

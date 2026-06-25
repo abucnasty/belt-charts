@@ -1,17 +1,13 @@
 import path from "path";
-import { globSync } from "glob";
 import { Command } from "commander";
-import { Canvas } from "skia-canvas";
-import { Chart } from "chart.js";
-import fsp from "node:fs/promises";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createLineChartForMetrics } from "../charts/LineChart";
 import { parseBenchmarkAveragePerTickResultFromCsv } from "../data/BenchmarkTickResult";
-import { ignoreFirstTicksFromResult } from "../data/BenchmarkAggregates";
+import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
-import { nanoToMicro, ensureOutputDir } from "../utils";
+import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
 
 async function generateLineOrBarCharts(
   files: string[],
@@ -31,7 +27,7 @@ async function generateLineOrBarCharts(
     if (options.removeFirstTicks > 0) {
       result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
     }
-    applyTrimPrefix(result, options.trimPrefix);
+    result = applyTrimPrefix(result, options.trimPrefix);
     benchmarkResults.push(result);
   }
 
@@ -59,16 +55,11 @@ async function generateLineOrBarCharts(
 
   console.log("Chart configurations created.");
   const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
+  const ext = path.extname(options.output) || ".png";
 
   for (const { result, config } of configurations) {
-    const canvas = new Canvas(options.width, options.height);
-    const chart = new Chart(canvas as any, config);
-    const imageBuffer = await canvas.toBuffer("png");
-    const fileName = `${fileNameWithoutExt}_${result.fileName}.png`;
-
-    await fsp.writeFile(fileName, imageBuffer);
-    chart.destroy();
-    console.log(`Metric Line Chart Generated for ${fileName}`);
+    const fileName = `${fileNameWithoutExt}_${result.fileName}${ext}`;
+    await renderChartToFile(config, options.width, options.height, fileName);
   }
 }
 
@@ -112,17 +103,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         type,
       };
 
-      const files = globSync(pattern);
-      if (files.length === 0) {
-        console.error(`No files matched the given pattern ${pattern}`);
-        process.exit(1);
-      }
-
-      const runsToRemove = await loadRunFilters(
-        options.aggregateFile,
-        options.stddevFilter,
-      );
-      ensureOutputDir(path.resolve(process.cwd(), options.output));
+      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
 
       await generateLineOrBarCharts(files, runsToRemove, options);
     });

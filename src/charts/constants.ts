@@ -134,3 +134,22 @@ export const metricStyles: Record<string, MetricStyle> = {
   // Catch-all for metrics not explicitly styled
   other: { color: colors.dark_grey },
 };
+
+/**
+ * Numeric layout constants shared across chart rendering.
+ * Change these here rather than hunting for bare numbers in chart files.
+ */
+export const chartLayout = {
+  /** Factorio game ticks per real-world second. */
+  TICKS_PER_SECOND: 60,
+  /** Height of each row in the in-chart summary table (px). */
+  TABLE_ROW_HEIGHT_PX: 20,
+  /** Horizontal padding added to each column in the summary table (px). */
+  TABLE_COLUMN_PADDING_PX: 16,
+  /** Extra bottom margin below the summary table rows (px). */
+  TABLE_BOTTOM_MARGIN_PX: 10,
+  /** Scale multiplier applied below the dataset minimum for Y-axis lower bound. */
+  AXIS_SCALE_LOWER_PADDING: 0.9,
+  /** Scale multiplier applied above the dataset maximum for Y-axis upper bound. */
+  AXIS_SCALE_UPPER_PADDING: 1.1,
+} as const;
