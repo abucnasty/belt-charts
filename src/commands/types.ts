@@ -64,3 +64,13 @@ export type EntityMatrixChartOptions = BaseChartOptions & {
   minPercent: number;
   titleOverride: string | null;
 };
+
+// Entity heatmap chart specific options
+export type EntityHeatmapChartOptions = BaseChartOptions & {
+  aggregateStrategy: AggregationStrategy;
+  topN: number;
+  minPercent: number;
+  normalize: "global" | "column" | "row";
+  showValues: boolean;
+  titleOverride: string | null;
+};

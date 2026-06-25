@@ -147,6 +147,26 @@ belt-charts entity-matrix "results/my_amazing_map*.csv"
   --trim-prefix "my_amazing_map_"
 ```
 
+Entity Heatmap (rows = entity types, columns = designs/files, cells colored by µs intensity):
+
+Three normalization modes control what "hot" means:
+- `global` — single scale across the whole chart; best for spotting the absolute worst entity/design combination
+- `column` — each design column is scaled independently; best for comparing entity profiles within a single design
+- `row` — each entity row is scaled independently; best for spotting which design stresses a particular entity the most
+```
+belt-charts entity-heatmap "results/my_amazing_map*.csv"
+  -w 1400
+  -h 900
+  --remove-first-ticks 30
+  -o "charts/entity_heatmap_global.png"
+  -a "average"
+  --top-n 20
+  --min-percent 0.5
+  --normalize global
+  --show-values true
+  --trim-prefix "my_amazing_map_"
+```
+
 ## Requirements
 
 - Node.js >= 14.0.0
