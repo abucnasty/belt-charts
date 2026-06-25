@@ -56,3 +56,10 @@ export type EntityBreakdownChartOptions = BaseChartOptions & {
   perRun: boolean;
   sortBy: "run" | "total";
 };
+
+// Entity matrix chart specific options
+export type EntityMatrixChartOptions = BaseChartOptions & {
+  aggregateStrategy: AggregationStrategy;
+  topN: number;
+  titleOverride: string | null;
+};

@@ -136,6 +136,18 @@ belt-charts bar "results/my_amazing_map*.csv"
   --tick-window-aggregation 1
 ```
 
+Entity Matrix Chart (panel view — rows = entity types, columns = designs/files, shared x-axis):
+```
+belt-charts entity-matrix "results/my_amazing_map*.csv"
+  -w 1400
+  -h 800
+  --remove-first-ticks 30
+  -o "charts/entity_matrix.png"
+  -a "average"
+  --top-n 15
+  --trim-prefix "my_amazing_map_"
+```
+
 ## Requirements
 
 - Node.js >= 14.0.0

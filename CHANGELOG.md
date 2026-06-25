@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `entity-breakdown` command for stacked-bar charts decomposing `entityUpdate` into its per-entity-type contributions, with an automatic `Other Entity Update` remainder slice
+- `entity-matrix` command for panel charts comparing entity types across multiple benchmark files; rows = entity types, columns = designs (input files), shared x-axis scale, top-N filtering
 - `--top-n` and `--per-run` flags on the new entity breakdown command
 - Registered the 65 PascalCase entity-update child metrics exposed by Factorio's verbose benchmark output (`Inserter`, `AssemblingMachine`, `Locomotive`, etc.); each is tagged with `parent: "entityUpdate"`
 - Registered new top-level `pollutionUpdate` metric
