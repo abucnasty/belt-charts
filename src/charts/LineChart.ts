@@ -4,13 +4,14 @@ import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from 
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
+import { MetricRegistryInstance } from "../data/MetricRegistry"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
 import { colors } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
 
 
-const supportedMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
+const defaultMetrics: Partial<Record<MetricName, MetricEnum>> = Object.fromEntries(
     [
         MetricEnum.ENTITY_UPDATE,
         MetricEnum.TRAINS,
@@ -38,7 +39,9 @@ export interface LineChartOptions {
     maxUpdateValue: number,
     type: "bar" | "line",
     aggregationStrategy: AggregationStrategy,
-    tickWindow?: number
+    tickWindow?: number,
+    /** Metrics to render as stacked areas. When omitted the default top-level set is used. */
+    metrics?: MetricEnum[],
 }
 
 const autoTickWindow = (maxTick: number): number => {
@@ -78,7 +81,32 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
         maxTicks = wholeUpdateValues[wholeUpdateValues.length - 1].tick
     }
 
-    result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
+    // Use caller-supplied metrics if provided; fall back to the default top-level set.
+    // wholeUpdate is always excluded from stacked areas (it becomes the dashed reference line).
+    // entityUpdate is also excluded from stacked areas when entity children are present —
+    // in that case entityUpdate itself becomes the reference line ("Total Entity Update Average").
+    const rawDisplayMetrics: Partial<Record<MetricName, MetricEnum>> = options.metrics
+        ? Object.fromEntries(
+            options.metrics
+                .filter(m => m.name !== MetricEnum.WHOLE_UPDATE.name)
+                .map(m => [m.name, m])
+          )
+        : defaultMetrics;
+
+    // Detect entity-breakdown mode: any metric whose parent is entityUpdate.
+    const entityBreakdownMode = Object.values(rawDisplayMetrics).some(
+        m => (MetricRegistryInstance.get(m.name) as { parent?: string })?.parent === MetricEnum.ENTITY_UPDATE.name
+    );
+
+    // In entity-breakdown mode remove the entityUpdate parent from the stacked display
+    // so we don't double-count it; it becomes the reference line instead.
+    const displayMetrics: Partial<Record<MetricName, MetricEnum>> = entityBreakdownMode
+        ? Object.fromEntries(
+            Object.entries(rawDisplayMetrics).filter(([name]) => name !== MetricEnum.ENTITY_UPDATE.name)
+          )
+        : rawDisplayMetrics;
+
+    result.metrics.filter(it => displayMetrics[it.name] !== undefined).forEach(metric => {
         const metricValues = resultMetricValues.get(metric.name)
             .filter(it => it.tick <= maxTicks)
         filteredMetricValueMap.set(metric.name, metricValues)
@@ -94,7 +122,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
     }
 
 
-    result.metrics.filter(it => supportedMetrics[it.name] !== undefined).forEach(metric => {
+    result.metrics.filter(it => displayMetrics[it.name] !== undefined).forEach(metric => {
 
         const data = filteredMetricValueMap.get(metric.name).filter(it => it.tick <= maxTicks).map(it => ({ x: it.tick, y: nanoToMicro(it.value) }));
         // sort by tick ascending
@@ -111,12 +139,26 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
 
     const wholeUpdateAverage = nanoToMicro(metricValueAverage(resultMetricValues.get(MetricEnum.WHOLE_UPDATE.name)))
 
+    // In entity-breakdown mode the reference line is the entityUpdate average;
+    // otherwise it is the wholeUpdate average (standard behaviour).
+    let referenceAverage: number;
+    let referenceLabel: string;
+    if (entityBreakdownMode) {
+        const entityUpdateValues = resultMetricValues.get(MetricEnum.ENTITY_UPDATE.name);
+        assert(entityUpdateValues !== undefined, "No ENTITY_UPDATE metric values found for entity breakdown timeseries");
+        referenceAverage = nanoToMicro(metricValueAverage(entityUpdateValues));
+        referenceLabel = "Total Entity Update Average";
+    } else {
+        referenceAverage = wholeUpdateAverage;
+        referenceLabel = "Whole Update Average";
+    }
+
     datasets.push({
         type: "line",
-        label: "Whole Update Average",
+        label: referenceLabel,
         data: datasets[0].data.map(it => ({
             x: it.x,
-            y: wholeUpdateAverage
+            y: referenceAverage
         })),
         borderColor: colors.white,
         borderWidth: 4,

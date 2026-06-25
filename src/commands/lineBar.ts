@@ -53,6 +53,7 @@ async function generateLineOrBarCharts(
       type: options.type,
       aggregationStrategy: options.aggregateStrategy,
       tickWindow: options.tickWindowAggregation,
+      metrics: options.metrics,
     }),
   }));
 

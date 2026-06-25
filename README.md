@@ -102,6 +102,40 @@ belt-charts entity-breakdown "results/my_amazing_map*.csv"
   --trim-prefix "my_amazing_map_"
 ```
 
+Entity Breakdown Chart (per-run):
+```
+belt-charts entity-breakdown "results/my_amazing_map*.csv"
+  -w 1600
+  -h 1000
+  --remove-first-ticks 30
+  -o "charts/entity_breakdown_per_run.png"
+  -a "average"
+  --top-n 15
+  --per-run true
+  --sort-by run
+  --summary-table true
+  --summary-table-file true
+  --trim-prefix "my_amazing_map_"
+```
+
+Entity Breakdown Timeseries (stacked bar over time, one chart per file):
+When any entity-type metric (PascalCase) is included in `--metrics`, `entityUpdate` is
+automatically excluded from the stacked areas and becomes the "Total Entity Update Average"
+reference line instead of "Whole Update Average".
+```
+belt-charts bar "results/my_amazing_map*.csv"
+  -w 1400
+  -h 800
+  --remove-first-ticks 1
+  -o "charts/entity_timeseries.png"
+  -a "average"
+  --max-ticks 1800
+  --max-update 2200
+  --trim-prefix "my_amazing_map_"
+  --metrics "entityUpdate,Inserter,AssemblingMachine,MiningDrill,Loader,Furnace,Lab,Boiler,Generator,Reactor"
+  --tick-window-aggregation 1
+```
+
 ## Requirements
 
 - Node.js >= 14.0.0
