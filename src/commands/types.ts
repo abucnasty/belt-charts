@@ -45,3 +45,14 @@ export type BoxPlotChartOptions = BaseChartOptions & {
 export type TableChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
 };
+
+// Entity breakdown chart specific options
+export type EntityBreakdownChartOptions = BaseChartOptions & {
+  aggregateStrategy: AggregationStrategy;
+  summaryTable: boolean;
+  summaryTableFile: boolean;
+  titleOverride: string | null;
+  topN: number;
+  perRun: boolean;
+  sortBy: "run" | "total";
+};

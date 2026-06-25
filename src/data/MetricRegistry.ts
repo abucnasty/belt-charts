@@ -31,6 +31,10 @@ export class MetricRegistry {
     public all(): MetricEnum[] {
         return Array.from(this.metrics.values())
     }
+
+    public getChildrenOf(parentName: MetricName): MetricEnum[] {
+        return this.all().filter(metric => (metric as { parent?: string }).parent === parentName);
+    }
 }
 
 export const MetricRegistryInstance = new MetricRegistry(Object.values(MetricEnum));

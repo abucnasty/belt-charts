@@ -413,6 +413,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         legend: {
           labels: {
             color: colors.white,
+            // Pattern tile is 20×20; ensure swatch is tall enough to show a full repeat.
+            boxHeight: 20,
+            boxWidth: 40,
             // order by supported metric order
             sort: (a, b) => {
               return Object.values(supportedMetrics).findIndex(it => it.description == a.text) - Object.values(supportedMetrics).findIndex(it => it.description == b.text)

@@ -110,6 +110,9 @@ export interface MetricStyle {
  */
 export const metricStyles: Record<string, MetricStyle> = {
   [MetricEnum.ENTITY_UPDATE.name]: { color: colors.blue },
+  // AssemblingMachine inherits entityUpdate's blue so a future --breakdown that
+  // substitutes the entityUpdate slice for its children keeps a visually consistent stack.
+  [MetricEnum.ASSEMBLING_MACHINE.name]: { color: colors.blue },
   [MetricEnum.TRAINS.name]: { color: colors.yellow },
   [MetricEnum.CONTROL_BEHAVIOR_UPDATE.name]: { color: colors.reddish_purple },
   [MetricEnum.TRANSPORT_LINES_UPDATE.name]: { color: colors.green },

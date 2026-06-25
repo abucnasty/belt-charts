@@ -88,6 +88,20 @@ belt-charts bar "results/my_amazing_map*.csv"
   --tick-window-aggregation 60
 ```
 
+Entity Breakdown Chart (requires Factorio verbose metrics CSVs that include the PascalCase per-entity columns under `entityUpdate`):
+```
+belt-charts entity-breakdown "results/my_amazing_map*.csv"
+  -w 1600
+  -h 1000
+  --remove-first-ticks 30
+  -o "charts/entity_breakdown.png"
+  -a "average"
+  --top-n 15
+  --summary-table true
+  --summary-table-file true
+  --trim-prefix "my_amazing_map_"
+```
+
 ## Requirements
 
 - Node.js >= 14.0.0

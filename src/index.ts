@@ -12,6 +12,7 @@ import {
   createBarCommand,
   createBoxPlotCommand,
   createTableCommand,
+  createEntityBreakdownCommand,
 } from "./commands";
 
 Chart.register(
@@ -34,5 +35,6 @@ program.addCommand(createLineCommand());
 program.addCommand(createBarCommand());
 program.addCommand(createBoxPlotCommand());
 program.addCommand(createTableCommand());
+program.addCommand(createEntityBreakdownCommand());
 
 program.parse();

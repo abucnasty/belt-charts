@@ -1,6 +1,8 @@
 import { Canvas } from "skia-canvas";
 import { MetricName } from "../data/Metric";
-import { colors, metricStyles, PatternType } from "./constants";
+import { MetricEnum } from "../data/MetricEnum";
+import { MetricRegistryInstance } from "../data/MetricRegistry";
+import { colors, metricStyles, MetricStyle, PatternType, unfriendly_colors } from "./constants";
 
 /**
  * Lighten a hex color by a specified amount
@@ -259,12 +261,82 @@ function drawPattern(
 }
 
 /**
+ * FNV-1a 32-bit hash for stable mapping of metric names to indices.
+ */
+function fnv1a(input: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+const DETERMINISTIC_PATTERNS: PatternType[] = [
+  "diagonal",
+  "diagonal-right-left",
+  "dot",
+  "disc",
+  "ring",
+  "cross",
+  "plus",
+  "dash",
+  "cross-dash",
+  "dot-dash",
+  "line",
+  "line-vertical",
+  "weave",
+  "zigzag",
+  "zigzag-vertical",
+  "square",
+  "box",
+  "triangle",
+  "triangle-inverted",
+  "diamond",
+  "diamond-box",
+];
+
+let DETERMINISTIC_COLORS: string[] | null = null;
+function getDeterministicColors(): string[] {
+  if (!DETERMINISTIC_COLORS) {
+    DETERMINISTIC_COLORS = Object.values(unfriendly_colors);
+  }
+  return DETERMINISTIC_COLORS;
+}
+
+/**
+ * Compute a deterministic color+pattern combo for a metric name. Stable across runs.
+ */
+export function getDeterministicEntityStyle(metricName: string): MetricStyle {
+  const colorPalette = getDeterministicColors();
+  const hash = fnv1a(metricName);
+  const color = colorPalette[hash % colorPalette.length];
+  const pattern = DETERMINISTIC_PATTERNS[Math.floor(hash / colorPalette.length) % DETERMINISTIC_PATTERNS.length];
+  return { color, pattern };
+}
+
+/**
+ * Resolve the effective style for a metric: explicit entry > deterministic (entityUpdate children) > "other" fallback.
+ */
+function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
+  const explicit = metricStyles[metricName];
+  if (explicit) {
+    return explicit;
+  }
+  const registered = MetricRegistryInstance.get(metricName as MetricName);
+  if (registered && (registered as { parent?: string }).parent === MetricEnum.ENTITY_UPDATE.name) {
+    return getDeterministicEntityStyle(metricName);
+  }
+  return metricStyles["other"];
+}
+
+/**
  * Get the color for a metric
  * @param metricName - The metric name (e.g., "entityUpdate")
  * @returns The hex color string
  */
 export function getMetricColor(metricName: MetricName | string): string {
-  return metricStyles[metricName]?.color ?? metricStyles["other"].color;
+  return resolveMetricStyle(metricName).color;
 }
 
 /**
@@ -275,7 +347,7 @@ export function getMetricColor(metricName: MetricName | string): string {
 export function getMetricPatternType(
   metricName: MetricName | string
 ): PatternType | undefined {
-  return metricStyles[metricName]?.pattern;
+  return resolveMetricStyle(metricName).pattern;
 }
 
 /**
@@ -286,7 +358,7 @@ export function getMetricPatternType(
 export function getMetricPattern(
   metricName: MetricName | string
 ): CanvasPattern | string {
-  const style = metricStyles[metricName] ?? metricStyles["other"];
+  const style = resolveMetricStyle(metricName);
   if (style.pattern) {
     return drawPattern(style.pattern, style.color);
   }
