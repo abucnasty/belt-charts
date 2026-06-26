@@ -59,17 +59,23 @@ export async function loadRunFilters(
 }
 
 // Common options for all chart types
+export const DEFAULT_METRICS = [
+  MetricEnum.WHOLE_UPDATE,
+  MetricEnum.ENTITY_UPDATE,
+  MetricEnum.CONTROL_BEHAVIOR_UPDATE,
+  MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
+  MetricEnum.TRAINS,
+  MetricEnum.TRANSPORT_LINES_UPDATE,
+  MetricEnum.SPACE_PLATFORMS,
+  MetricEnum.PARTICLE_UPDATE,
+]
+
+/** Returns opts.metrics if the flag was provided, otherwise the default metric set. */
+export function resolveMetrics(optsMetrics: MetricEnum[] | undefined): MetricEnum[] {
+  return optsMetrics ?? DEFAULT_METRICS;
+}
+
 export function addBaseOptions(command: Command): Command {
-  const DEFAULT_METRICS = [
-    MetricEnum.WHOLE_UPDATE,
-    MetricEnum.ENTITY_UPDATE,
-    MetricEnum.CONTROL_BEHAVIOR_UPDATE,
-    MetricEnum.ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE,
-    MetricEnum.TRAINS,
-    MetricEnum.TRANSPORT_LINES_UPDATE,
-    MetricEnum.SPACE_PLATFORMS,
-    MetricEnum.PARTICLE_UPDATE,
-  ]
   return command
     .argument(
       "<glob-pattern>",
@@ -120,7 +126,7 @@ export function addBaseOptions(command: Command): Command {
     )
     .option(
       "--metrics <string>",
-      `Comma separated list of specific metrics to use (default: "${DEFAULT_METRICS.map(it => it.name).join(",")}")`,
+      `Comma-separated metric names. Examples: "wholeUpdate,entityUpdate,controlBehaviorUpdate" (summary); "entityUpdate,Inserter,AssemblingMachine,MiningDrill" (entity breakdown). Use "*" for all defaults.`,
       (it: string) => {
         if (it == "*") {
           return DEFAULT_METRICS;
@@ -130,7 +136,12 @@ export function addBaseOptions(command: Command): Command {
           .split(",")
           .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
-      DEFAULT_METRICS
+    )
+    .option<number>(
+      "--min-percent <number>",
+      "Hide any metric whose max value never exceeds this % of the reference total across all files. 0 = no filter.",
+      (it: string) => parseFloat(it),
+      0,
     );
 }
 

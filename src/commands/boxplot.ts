@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateBoxPlot(
   files: string[],
@@ -63,9 +63,10 @@ export function createBoxPlotCommand(): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         minUpdate: opts.minUpdate,
         maxUpdate: opts.maxUpdate,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

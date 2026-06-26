@@ -7,7 +7,7 @@ import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateLineOrBarCharts(
   files: string[],
@@ -49,6 +49,7 @@ async function generateLineOrBarCharts(
       type: options.type,
       aggregationStrategy: options.aggregateStrategy,
       tickWindow: options.tickWindowAggregation,
+      metrics: options.metrics,
     }),
   }));
 
@@ -95,11 +96,12 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
         tickWindowAggregation: opts.tickWindowAggregation,
         maxUpdate: opts.maxUpdate,
         type,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

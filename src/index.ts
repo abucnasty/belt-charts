@@ -12,6 +12,10 @@ import {
   createBarCommand,
   createBoxPlotCommand,
   createTableCommand,
+  createEntitySummaryCommand,
+  createEntitySummaryPerRunCommand,
+  createEntityMatrixCommand,
+  createEntityHeatmapCommand,
 } from "./commands";
 
 Chart.register(
@@ -34,5 +38,9 @@ program.addCommand(createLineCommand());
 program.addCommand(createBarCommand());
 program.addCommand(createBoxPlotCommand());
 program.addCommand(createTableCommand());
+program.addCommand(createEntitySummaryCommand());
+program.addCommand(createEntitySummaryPerRunCommand());
+program.addCommand(createEntityMatrixCommand());
+program.addCommand(createEntityHeatmapCommand());
 
 program.parse();

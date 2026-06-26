@@ -94,7 +94,9 @@ export type PatternType =
   | "triangle"
   | "triangle-inverted"
   | "diamond"
-  | "diamond-box";
+  | "diamond-box"
+  | "inserter"
+  | "assembling-machine";
 
 /**
  * Style configuration for a metric, combining color and optional pattern
@@ -110,6 +112,12 @@ export interface MetricStyle {
  */
 export const metricStyles: Record<string, MetricStyle> = {
   [MetricEnum.ENTITY_UPDATE.name]: { color: colors.blue },
+  // Top 4 entity types pinned to distinct colorblind-friendly colors.
+  [MetricEnum.ASSEMBLING_MACHINE.name]: { color: colors.blue },
+  // Inserter is yellow with a custom arm-silhouette pattern matching the in-game icon.
+  [MetricEnum.INSERTER.name]: { color: colors.yellow, pattern: "inserter" as const },
+  [MetricEnum.MINING_DRILL.name]: { color: colors.vermillion },
+  [MetricEnum.FURNACE.name]: { color: colors.orange },
   [MetricEnum.TRAINS.name]: { color: colors.yellow },
   [MetricEnum.CONTROL_BEHAVIOR_UPDATE.name]: { color: colors.reddish_purple },
   [MetricEnum.TRANSPORT_LINES_UPDATE.name]: { color: colors.green },

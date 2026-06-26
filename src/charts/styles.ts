@@ -1,6 +1,8 @@
 import { Canvas } from "skia-canvas";
 import { MetricName } from "../data/Metric";
-import { colors, metricStyles, PatternType } from "./constants";
+import { MetricEnum } from "../data/MetricEnum";
+import { MetricRegistryInstance } from "../data/MetricRegistry";
+import { colors, metricStyles, MetricStyle, PatternType, unfriendly_colors } from "./constants";
 
 /**
  * Lighten a hex color by a specified amount
@@ -250,6 +252,61 @@ function drawPattern(
       ctx.stroke();
       break;
 
+    case "assembling-machine": {
+      // Subtle square outline — reflects the boxy shape of the assembling machine.
+      const margin = size * 0.18;
+      ctx.lineWidth = size * 0.08;
+      ctx.strokeRect(margin, margin, size - margin * 2, size - margin * 2);
+      break;
+    }
+
+    case "inserter": {
+      // Factorio inserter silhouette: flat base at lower-right, diagonal arm to
+      // upper-left, V-shaped pincer at the tip opening away from the arm.
+      ctx.lineJoin = "round";
+
+      const baseX = size * 0.76;
+      const baseY = size * 0.80;
+      const tipX  = size * 0.22;
+      const tipY  = size * 0.20;
+
+      // Rectangular mounting base (filled rect)
+      const bw = size * 0.30;
+      const bh = size * 0.14;
+      ctx.fillRect(baseX - bw * 0.55, baseY - bh * 0.5, bw, bh);
+
+      // Arm from base to tip
+      ctx.lineCap = "round";
+      ctx.lineWidth = size * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY - size * 0.06);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+
+      // Pincer
+      // arm direction unit vector: (tipX-baseX, tipY-baseY) normalised ≈ (-0.707, -0.707)
+      // perpendicular: (0.707, -0.707)
+      const dx = -0.707;
+      const dy = -0.707;
+      const px =  0.707;
+      const py = -0.707;
+      const spread = size * 0.14;
+      const reach  = size * 0.16;
+
+      ctx.lineWidth = size * 0.10;
+      // left prong
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX + dx * reach - px * spread, tipY + dy * reach - py * spread);
+      ctx.stroke();
+      // right prong
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX + dx * reach + px * spread, tipY + dy * reach + py * spread);
+      ctx.stroke();
+      break;
+    }
+
     default:
       // Fallback: fill with solid color
       ctx.fillRect(0, 0, size, size);
@@ -259,12 +316,96 @@ function drawPattern(
 }
 
 /**
+ * FNV-1a 32-bit hash for stable mapping of metric names to indices.
+ */
+function fnv1a(input: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+const DETERMINISTIC_PATTERNS: PatternType[] = [
+  "diagonal",
+  "diagonal-right-left",
+  "dot",
+  "disc",
+  "ring",
+  "cross",
+  "plus",
+  "dash",
+  "cross-dash",
+  "dot-dash",
+  "line",
+  "line-vertical",
+  "weave",
+  "zigzag",
+  "zigzag-vertical",
+  "square",
+  "box",
+  "triangle",
+  "triangle-inverted",
+  "diamond",
+  "diamond-box",
+];
+
+let DETERMINISTIC_COLORS: string[] | null = null;
+function getDeterministicColors(): string[] {
+  if (!DETERMINISTIC_COLORS) {
+    // Exclude the 4 pinned entity colors (blue, yellow, vermillion, orange) so
+    // remaining entities get visually distinct colors from the named ones.
+    // Start with the remaining CB-friendly colors, then supplement with
+    // perceptually distinct extras.
+    DETERMINISTIC_COLORS = [
+      colors.green,           // #009E73
+      colors.sky_blue,        // #56B4E9
+      colors.reddish_purple,  // #CC79A7
+      unfriendly_colors.teal,
+      unfriendly_colors.lavender,
+      unfriendly_colors.lime,
+      unfriendly_colors.cyan,
+      unfriendly_colors.coral,
+      unfriendly_colors.indigo,
+      unfriendly_colors.mint,
+    ];
+  }
+  return DETERMINISTIC_COLORS;
+}
+
+/**
+ * Compute a deterministic color for a metric name. Stable across runs, no patterns.
+ */
+export function getDeterministicEntityStyle(metricName: string): MetricStyle {
+  const colorPalette = getDeterministicColors();
+  const hash = fnv1a(metricName);
+  const color = colorPalette[hash % colorPalette.length];
+  return { color };
+}
+
+/**
+ * Resolve the effective style for a metric: explicit entry > deterministic (entityUpdate children) > "other" fallback.
+ */
+function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
+  const explicit = metricStyles[metricName];
+  if (explicit) {
+    return explicit;
+  }
+  const registered = MetricRegistryInstance.get(metricName as MetricName);
+  if (registered && (registered as { parent?: string }).parent === MetricEnum.ENTITY_UPDATE.name) {
+    return getDeterministicEntityStyle(metricName);
+  }
+  return metricStyles["other"];
+}
+
+/**
  * Get the color for a metric
  * @param metricName - The metric name (e.g., "entityUpdate")
  * @returns The hex color string
  */
 export function getMetricColor(metricName: MetricName | string): string {
-  return metricStyles[metricName]?.color ?? metricStyles["other"].color;
+  return resolveMetricStyle(metricName).color;
 }
 
 /**
@@ -275,7 +416,7 @@ export function getMetricColor(metricName: MetricName | string): string {
 export function getMetricPatternType(
   metricName: MetricName | string
 ): PatternType | undefined {
-  return metricStyles[metricName]?.pattern;
+  return resolveMetricStyle(metricName).pattern;
 }
 
 /**
@@ -286,7 +427,7 @@ export function getMetricPatternType(
 export function getMetricPattern(
   metricName: MetricName | string
 ): CanvasPattern | string {
-  const style = metricStyles[metricName] ?? metricStyles["other"];
+  const style = resolveMetricStyle(metricName);
   if (style.pattern) {
     return drawPattern(style.pattern, style.color);
   }

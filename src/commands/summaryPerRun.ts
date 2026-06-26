@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
@@ -70,6 +70,7 @@ async function generateSummaryPerRun(
     titleOverride: options.titleOverride ?? undefined,
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
+    minPercent: options.minPercent,
   });
 
   console.log("Chart configuration created.");
@@ -128,12 +129,13 @@ export function createSummaryPerRunCommand(): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: opts.aggregateStrategy,
         summaryTable: opts.summaryTable,
         summaryTableFile: opts.summaryTableFile,
         titleOverride: opts.titleOverride,
         sortBy: opts.sortBy,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
