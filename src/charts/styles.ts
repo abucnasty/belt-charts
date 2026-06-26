@@ -252,6 +252,63 @@ function drawPattern(
       ctx.stroke();
       break;
 
+    case "assembling-machine": {
+      // Subtle square outline — reflects the boxy shape of the assembling machine.
+      const margin = size * 0.18;
+      ctx.lineWidth = size * 0.08;
+      ctx.strokeRect(margin, margin, size - margin * 2, size - margin * 2);
+      break;
+    }
+
+    case "inserter": {
+      // Factorio inserter silhouette: flat base at lower-right, diagonal arm to
+      // upper-left, V-shaped pincer at the tip opening away from the arm.
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      const baseX = size * 0.76;
+      const baseY = size * 0.80;
+      const tipX  = size * 0.22;
+      const tipY  = size * 0.20;
+
+      // Flat mounting base (short horizontal stub)
+      ctx.lineWidth = size * 0.16;
+      ctx.beginPath();
+      ctx.moveTo(baseX - size * 0.16, baseY);
+      ctx.lineTo(baseX + size * 0.10, baseY);
+      ctx.stroke();
+
+      // Arm from base to tip
+      ctx.lineWidth = size * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY - size * 0.06);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+
+      // Pincer: two prongs diverging forward from the tip
+      // arm direction unit vector: (tipX-baseX, tipY-baseY) normalised ≈ (-0.707, -0.707)
+      // perpendicular: (0.707, -0.707)
+      const dx = -0.707;
+      const dy = -0.707;
+      const px =  0.707;
+      const py = -0.707;
+      const spread = size * 0.14;
+      const reach  = size * 0.16;
+
+      ctx.lineWidth = size * 0.10;
+      // left prong
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX + dx * reach - px * spread, tipY + dy * reach - py * spread);
+      ctx.stroke();
+      // right prong
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX + dx * reach + px * spread, tipY + dy * reach + py * spread);
+      ctx.stroke();
+      break;
+    }
+
     default:
       // Fallback: fill with solid color
       ctx.fillRect(0, 0, size, size);
@@ -299,20 +356,34 @@ const DETERMINISTIC_PATTERNS: PatternType[] = [
 let DETERMINISTIC_COLORS: string[] | null = null;
 function getDeterministicColors(): string[] {
   if (!DETERMINISTIC_COLORS) {
-    DETERMINISTIC_COLORS = Object.values(unfriendly_colors);
+    // Exclude the 4 pinned entity colors (blue, yellow, vermillion, orange) so
+    // remaining entities get visually distinct colors from the named ones.
+    // Start with the remaining CB-friendly colors, then supplement with
+    // perceptually distinct extras.
+    DETERMINISTIC_COLORS = [
+      colors.green,           // #009E73
+      colors.sky_blue,        // #56B4E9
+      colors.reddish_purple,  // #CC79A7
+      unfriendly_colors.teal,
+      unfriendly_colors.lavender,
+      unfriendly_colors.lime,
+      unfriendly_colors.cyan,
+      unfriendly_colors.coral,
+      unfriendly_colors.indigo,
+      unfriendly_colors.mint,
+    ];
   }
   return DETERMINISTIC_COLORS;
 }
 
 /**
- * Compute a deterministic color+pattern combo for a metric name. Stable across runs.
+ * Compute a deterministic color for a metric name. Stable across runs, no patterns.
  */
 export function getDeterministicEntityStyle(metricName: string): MetricStyle {
   const colorPalette = getDeterministicColors();
   const hash = fnv1a(metricName);
   const color = colorPalette[hash % colorPalette.length];
-  const pattern = DETERMINISTIC_PATTERNS[Math.floor(hash / colorPalette.length) % DETERMINISTIC_PATTERNS.length];
-  return { color, pattern };
+  return { color };
 }
 
 /**

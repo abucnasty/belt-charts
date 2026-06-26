@@ -177,7 +177,7 @@ export const MetricEnum = {
     INSERTER: { name: "Inserter", description: "Inserter", parent: "entityUpdate" },
     ROBOPORT: { name: "Roboport", description: "Roboport", parent: "entityUpdate" },
     LOADER: { name: "Loader", description: "Loader", parent: "entityUpdate" },
-    ASSEMBLING_MACHINE: { name: "AssemblingMachine", description: "Assembling Machine", parent: "entityUpdate" },
+    ASSEMBLING_MACHINE: { name: "AssemblingMachine", description: "Assembly Machine", parent: "entityUpdate" },
     AGRICULTURAL_TOWER: { name: "AgriculturalTower", description: "Agricultural Tower", parent: "entityUpdate" },
     OLD_AGRICULTURAL_TOWER: { name: "OldAgriculturalTower", description: "Old Agricultural Tower", parent: "entityUpdate" },
     FURNACE: { name: "Furnace", description: "Furnace", parent: "entityUpdate" },
