@@ -263,7 +263,6 @@ function drawPattern(
     case "inserter": {
       // Factorio inserter silhouette: flat base at lower-right, diagonal arm to
       // upper-left, V-shaped pincer at the tip opening away from the arm.
-      ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
       const baseX = size * 0.76;
@@ -271,21 +270,20 @@ function drawPattern(
       const tipX  = size * 0.22;
       const tipY  = size * 0.20;
 
-      // Flat mounting base (short horizontal stub)
-      ctx.lineWidth = size * 0.16;
-      ctx.beginPath();
-      ctx.moveTo(baseX - size * 0.16, baseY);
-      ctx.lineTo(baseX + size * 0.10, baseY);
-      ctx.stroke();
+      // Rectangular mounting base (filled rect)
+      const bw = size * 0.30;
+      const bh = size * 0.14;
+      ctx.fillRect(baseX - bw * 0.55, baseY - bh * 0.5, bw, bh);
 
       // Arm from base to tip
+      ctx.lineCap = "round";
       ctx.lineWidth = size * 0.12;
       ctx.beginPath();
       ctx.moveTo(baseX, baseY - size * 0.06);
       ctx.lineTo(tipX, tipY);
       ctx.stroke();
 
-      // Pincer: two prongs diverging forward from the tip
+      // Pincer
       // arm direction unit vector: (tipX-baseX, tipY-baseY) normalised ≈ (-0.707, -0.707)
       // perpendicular: (0.707, -0.707)
       const dx = -0.707;
