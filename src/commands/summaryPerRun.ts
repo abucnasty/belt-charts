@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
@@ -129,7 +129,7 @@ export function createSummaryPerRunCommand(): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: opts.aggregateStrategy,
         summaryTable: opts.summaryTable,
         summaryTableFile: opts.summaryTableFile,

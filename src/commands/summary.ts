@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummary(
   files: string[],
@@ -83,7 +83,7 @@ export function createSummaryCommand(): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: opts.aggregateStrategy,
         summaryTable: opts.summaryTable,
         summaryTableFile: opts.summaryTableFile,

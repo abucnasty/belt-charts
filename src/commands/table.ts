@@ -6,7 +6,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs } from "./utils";
+import { getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
 
 async function generateTable(
   files: string[],
@@ -123,7 +123,7 @@ export function createTableCommand(): Command {
         trimPrefix: opts.trimPrefix,
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
-        metrics: opts.metrics,
+        metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
         minPercent: opts.minPercent,
       };

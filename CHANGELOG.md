@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Entity breakdown timeseries: passing any PascalCase entity metric in `--metrics` on the `bar`/`line` commands automatically switches the reference line from "Whole Update Average" to "Total Entity Update Average" and removes `entityUpdate` from the stacked areas to avoid double-counting
 
 ### Changed
+- `--metrics` help text now shows human-readable examples instead of a JSONified array of metric objects
 - Entity child metrics now use the colorblind-friendly palette (green, sky blue, reddish purple, teal, lavender, lime, cyan, coral, indigo, mint) instead of the extended unfriendly color set; no patterns on most entities
 - `AssemblingMachine` pinned to solid blue, `Inserter` pinned to yellow with a custom arm-silhouette pattern, `MiningDrill` pinned to vermillion, `Furnace` pinned to orange — these four are always visually distinct
 - CSV parsers now warn-and-skip unknown columns instead of throwing, so the tool no longer hard-fails on future Factorio metrics
