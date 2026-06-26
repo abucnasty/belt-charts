@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-06-25
+
+### Changed
+- Inserter arm-silhouette pattern is no longer shown by default; pass the hidden flag (aquillo veterans can find it) to `entity-summary`, `entity-summary-per-run`, `entity-matrix`, or `entity-heatmap` to enable it as an easter egg
+
 ## [1.3.0] - 2026-06-25
 
 ### Added

@@ -1,6 +1,6 @@
 import path from "path";
 import { globSync } from "glob";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { Canvas } from "skia-canvas";
 import { Chart } from "chart.js";
 import fsp from "node:fs/promises";
@@ -15,6 +15,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
@@ -128,7 +129,8 @@ function buildEntitySummaryOptions(command: Command): Command {
         return "total";
       },
       "total",
-    );
+    )
+    .addOption(new Option("--fish").hideHelp());
 }
 
 function makeEntitySummaryAction(perRun: boolean) {
@@ -165,6 +167,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       options.stddevFilter,
     );
     ensureOutputDir(path.resolve(process.cwd(), options.output));
+    if (opts.fish) enableInserterEasterEgg();
 
     await generateEntityBreakdown(files, runsToRemove, options);
   };

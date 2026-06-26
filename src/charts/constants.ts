@@ -114,8 +114,7 @@ export const metricStyles: Record<string, MetricStyle> = {
   [MetricEnum.ENTITY_UPDATE.name]: { color: colors.blue },
   // Top 4 entity types pinned to distinct colorblind-friendly colors.
   [MetricEnum.ASSEMBLING_MACHINE.name]: { color: colors.blue },
-  // Inserter is yellow with a custom arm-silhouette pattern matching the in-game icon.
-  [MetricEnum.INSERTER.name]: { color: colors.yellow, pattern: "inserter" as const },
+  [MetricEnum.INSERTER.name]: { color: colors.yellow },
   [MetricEnum.MINING_DRILL.name]: { color: colors.vermillion },
   [MetricEnum.FURNACE.name]: { color: colors.orange },
   [MetricEnum.TRAINS.name]: { color: colors.yellow },

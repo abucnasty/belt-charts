@@ -4,6 +4,12 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { colors, metricStyles, MetricStyle, PatternType, unfriendly_colors } from "./constants";
 
+let inserterEasterEggEnabled = false;
+
+export function enableInserterEasterEgg(): void {
+  inserterEasterEggEnabled = true;
+}
+
 /**
  * Lighten a hex color by a specified amount
  * @param hex - The hex color string (e.g., "#0072B2")
@@ -390,6 +396,9 @@ export function getDeterministicEntityStyle(metricName: string): MetricStyle {
 function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
   const explicit = metricStyles[metricName];
   if (explicit) {
+    if (inserterEasterEggEnabled && metricName === MetricEnum.INSERTER.name) {
+      return { ...explicit, pattern: "inserter" as const };
+    }
     return explicit;
   }
   const registered = MetricRegistryInstance.get(metricName as MetricName);

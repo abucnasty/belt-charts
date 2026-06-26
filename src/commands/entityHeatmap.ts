@@ -1,6 +1,6 @@
 import path from "path";
 import { globSync } from "glob";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { Canvas } from "skia-canvas";
 import fsp from "node:fs/promises";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
@@ -11,6 +11,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityHeatmapChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveMetrics } from "./utils";
+import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
@@ -94,6 +95,7 @@ export function createEntityHeatmapCommand(): Command {
       (it: string) => it,
       null,
     )
+    .addOption(new Option("--fish").hideHelp())
     .action(async (pattern, opts) => {
       const options: EntityHeatmapChartOptions = {
         width: opts.width,
@@ -124,6 +126,7 @@ export function createEntityHeatmapCommand(): Command {
         options.stddevFilter,
       );
       ensureOutputDir(path.resolve(process.cwd(), options.output));
+      if (opts.fish) enableInserterEasterEgg();
 
       await generateEntityHeatmap(files, runsToRemove, options);
     });
