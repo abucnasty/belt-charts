@@ -131,6 +131,12 @@ export function addBaseOptions(command: Command): Command {
           .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
       },
       DEFAULT_METRICS
+    )
+    .option<number>(
+      "--min-percent <number>",
+      "Hide any metric whose max value never exceeds this % of the reference total across all files. 0 = no filter.",
+      (it: string) => parseFloat(it),
+      0,
     );
 }
 

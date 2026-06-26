@@ -70,12 +70,6 @@ export function createEntityHeatmapCommand(): Command {
       (it: string) => parseInt(it),
       20,
     )
-    .option<number>(
-      "--min-percent <number>",
-      "Hide entity rows whose max value never exceeds this % of entityUpdate total in any file. 0 = no filter. Default 0.5.",
-      (it: string) => parseFloat(it),
-      0.5,
-    )
     .option<HeatmapNormalizeMode>(
       "--normalize <global | column | row>",
       "Color scale normalization: global = single scale for all cells, column = per-design, row = per-entity-type. Default: global.",

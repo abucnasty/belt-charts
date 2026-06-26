@@ -12,6 +12,8 @@ export type BaseChartOptions = {
   aggregateFile: string;
   stddevFilter: number;
   metrics: MetricEnum[];
+  /** Hide any metric/entity whose max value never exceeds this % of its reference total. 0 = no filter. */
+  minPercent: number;
 };
 
 // Summary chart specific options
@@ -61,7 +63,6 @@ export type EntityBreakdownChartOptions = BaseChartOptions & {
 export type EntityMatrixChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   topN: number;
-  minPercent: number;
   titleOverride: string | null;
 };
 
@@ -69,7 +70,6 @@ export type EntityMatrixChartOptions = BaseChartOptions & {
 export type EntityHeatmapChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   topN: number;
-  minPercent: number;
   normalize: "global" | "column" | "row";
   showValues: boolean;
   titleOverride: string | null;

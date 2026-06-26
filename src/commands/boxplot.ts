@@ -66,6 +66,7 @@ export function createBoxPlotCommand(): Command {
         metrics: opts.metrics,
         minUpdate: opts.minUpdate,
         maxUpdate: opts.maxUpdate,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

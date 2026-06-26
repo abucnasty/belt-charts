@@ -29,19 +29,9 @@ export interface EntityBreakdownChartOptions {
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
-  /**
-   * Limit displayed entity children to the top N largest (by average across all results).
-   * Remaining children are folded into the "Other Entity Update" slice. 0 = show all.
-   */
   topN?: number;
-  /**
-   * "total" (default): sort bars by entityUpdate ascending.
-   * "preserve": keep input order (used for per-run mode).
-   */
+  minPercent?: number;
   sortBy?: "total" | "preserve";
-  /**
-   * Whether this chart shows per-run data (affects default title).
-   */
   isPerRun?: boolean;
 }
 
@@ -101,8 +91,18 @@ export const createEntityBreakdownChartConfiguration = (
     .sort((a, b) => b[1] - a[1])
     .map(([name]) => name);
 
+  // Apply minPercent filter: hide children whose max value never exceeds minPercent% of entityUpdate.
+  const minPercent = options.minPercent ?? 0;
+  const filteredChildren = minPercent > 0
+    ? rankedChildren.filter(name => {
+        const maxVal = childMaxByName.get(name) ?? 0;
+        const maxTotal = Math.max(...rawChartData.map(d => d.entityUpdateTotal));
+        return maxTotal > 0 && (maxVal / maxTotal) * 100 >= minPercent;
+      })
+    : rankedChildren;
+
   const topN = options.topN ?? 0;
-  const displayedChildren = topN > 0 ? rankedChildren.slice(0, topN) : rankedChildren;
+  const displayedChildren = topN > 0 ? filteredChildren.slice(0, topN) : filteredChildren;
   const displayedSet = new Set(displayedChildren);
 
   // Fold non-displayed children + structural remainder into "Other Entity Update".

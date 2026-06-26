@@ -101,6 +101,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         tickWindowAggregation: opts.tickWindowAggregation,
         maxUpdate: opts.maxUpdate,
         type,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

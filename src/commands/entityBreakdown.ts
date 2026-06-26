@@ -69,6 +69,7 @@ async function generateEntityBreakdown(
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
     topN: options.topN,
+    minPercent: options.minPercent,
     sortBy,
     isPerRun: options.perRun,
   });
@@ -148,6 +149,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       topN: opts.topN,
       perRun,
       sortBy: opts.sortBy,
+      minPercent: opts.minPercent,
     };
 
     const files = globSync(pattern);

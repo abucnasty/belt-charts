@@ -125,6 +125,7 @@ export function createTableCommand(): Command {
         stddevFilter: opts.stddevFilter,
         metrics: opts.metrics,
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

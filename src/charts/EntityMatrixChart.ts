@@ -34,7 +34,6 @@ export interface EntityMatrixChartOptions {
   /**
    * Exclude entity rows whose max value across all designs is less than this
    * percentage of the corresponding entityUpdate total. 0 = no filter (default).
-   * E.g. 1.0 = hide any entity that never exceeds 1% of entityUpdate in any file.
    */
   minPercent: number;
   titleOverride?: string | null;

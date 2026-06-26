@@ -15,23 +15,14 @@ const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 
 interface SummaryChartOptions {
   aggregationStrategy: AggregationStrategy;
-  /**
-   * metrics to plot
-   */
   metrics?: MetricEnum[];
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
-  /**
-   * How to sort the chart data.
-   * "total" (default): sort by totalAverage ascending (current behavior)
-   * "preserve": keep input order (e.g., for pre-sorted per-run data)
-   */
   sortBy?: "total" | "preserve";
-  /**
-   * Whether this chart shows per-run data (affects default title)
-   */
   isPerRun?: boolean;
+  /** Hide metrics whose max average across all results is below this % of wholeUpdate. 0 = no filter. */
+  minPercent?: number;
 }
 
 export interface SummaryChartResult {
@@ -57,7 +48,18 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     chartData.sort((a, b) => a.totalAverage - b.totalAverage);
   }
 
-  const metrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
+  const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
+
+  // Apply minPercent filter: hide metrics whose max average never exceeds minPercent% of wholeUpdate.
+  const minPercent = options.minPercent ?? 0;
+  const metrics = minPercent > 0
+    ? allMetrics.filter(metric => {
+        if (metric.name === MetricEnum.WHOLE_UPDATE.name) return true;
+        const maxAvg = Math.max(...chartData.map(d => d.metricValues.find(mv => mv.metricName === metric.name)?.average ?? 0));
+        const maxTotal = Math.max(...chartData.map(d => d.totalAverage));
+        return maxTotal > 0 && (maxAvg / maxTotal) * 100 >= minPercent;
+      })
+    : allMetrics;
 
   const datasets = metrics
     .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars

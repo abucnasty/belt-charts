@@ -70,6 +70,7 @@ async function generateSummaryPerRun(
     titleOverride: options.titleOverride ?? undefined,
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
+    minPercent: options.minPercent,
   });
 
   console.log("Chart configuration created.");
@@ -134,6 +135,7 @@ export function createSummaryPerRunCommand(): Command {
         summaryTableFile: opts.summaryTableFile,
         titleOverride: opts.titleOverride,
         sortBy: opts.sortBy,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

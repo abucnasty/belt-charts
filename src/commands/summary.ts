@@ -36,6 +36,7 @@ async function generateSummary(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    minPercent: options.minPercent,
   });
 
   console.log("Chart configuration created.");
@@ -87,6 +88,7 @@ export function createSummaryCommand(): Command {
         summaryTable: opts.summaryTable,
         summaryTableFile: opts.summaryTableFile,
         titleOverride: opts.titleOverride,
+        minPercent: opts.minPercent,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
