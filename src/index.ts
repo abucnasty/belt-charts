@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { version } from "../package.json";
 import {
   BoxPlotController,
   BoxAndWiskers,
@@ -30,7 +31,8 @@ const program = new Command();
 
 program
   .name("belt-charts")
-  .description("Extension of Belt's verbose_metrics to generate charts");
+  .description("Extension of Belt's verbose_metrics to generate charts")
+  .version(version, "-v, --version", "Output the current version");
 
 program.addCommand(createSummaryCommand());
 program.addCommand(createSummaryPerRunCommand());
