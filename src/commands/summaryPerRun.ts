@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
@@ -19,7 +19,7 @@ async function generateSummaryPerRun(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyTrimPrefix(
+    const result = applyLabel(
       await parseBenchmarkAggregatesPerRunResultFromCsv(
         file,
         options.removeFirstTicks,
@@ -28,6 +28,7 @@ async function generateSummaryPerRun(
         runsToRemove.get(baseName) ?? new Set(),
       ),
       options.trimPrefix,
+      options.customNames,
     );
     
     // Explode into per-run results
@@ -37,10 +38,10 @@ async function generateSummaryPerRun(
 
   // Sort if necessary
   if (options.sortBy === "run") {
-    // Sort by fileName then run number (extract run number from "fileName run N")
+    // Sort by fileName then run number (extract run number from "fileName (run N)")
     allPerRunResults.sort((a, b) => {
-      const aMatch = a.fileName.match(/^(.+) run (\d+)$/);
-      const bMatch = b.fileName.match(/^(.+) run (\d+)$/);
+      const aMatch = a.fileName.match(/^(.+) \(run (\d+)\)$/);
+      const bMatch = b.fileName.match(/^(.+) \(run (\d+)\)$/);
       
       if (!aMatch || !bMatch) {
         return a.fileName.localeCompare(b.fileName);
@@ -127,6 +128,7 @@ export function createSummaryPerRunCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        customNames: opts.name ?? new Map(),
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -139,6 +141,7 @@ export function createSummaryPerRunCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      warnUnmatchedNames(files, options.customNames);
 
       await generateSummaryPerRun(files, runsToRemove, options);
     });

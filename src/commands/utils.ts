@@ -24,6 +24,35 @@ export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimP
   return result;
 }
 
+/**
+ * Applies a custom label for this result if one exists in `customNames`, otherwise
+ * falls back to trimming the prefix. The custom name fully replaces the label and
+ * bypasses `trimPrefix`.
+ */
+export function applyLabel<T extends { fileName: string }>(
+  result: T,
+  trimPrefix: string,
+  customNames: Map<string, string>,
+): T {
+  const custom = customNames.get(result.fileName);
+  if (custom !== undefined) {
+    return { ...result, fileName: custom };
+  }
+  return applyTrimPrefix(result, trimPrefix);
+}
+
+/**
+ * Warns about any custom name keys that don't match any of the resolved input files.
+ */
+export function warnUnmatchedNames(files: string[], customNames: Map<string, string>): void {
+  const baseNames = new Set(files.map(getBaseName));
+  for (const key of customNames.keys()) {
+    if (!baseNames.has(key)) {
+      console.warn(`--name: key "${key}" did not match any input file (known base names: ${[...baseNames].join(", ")})`);
+    }
+  }
+}
+
 export async function loadRunFilters(
   aggregateFile: string,
   stddevFilter: number,
@@ -111,6 +140,20 @@ export function addBaseOptions(command: Command): Command {
       "Trim the prefix of the map name",
       (it: string) => it,
       "",
+    )
+    .option(
+      "--name <baseName=label>",
+      "Map a save-file base name to a custom chart label (repeatable). e.g. --name \"my_map=My Map\". Takes precedence over --trim-prefix.",
+      (val: string, acc: Map<string, string>) => {
+        const idx = val.indexOf("=");
+        if (idx === -1) {
+          console.warn(`--name: invalid format "${val}", expected "<baseName>=<label>". Skipping.`);
+          return acc;
+        }
+        acc.set(val.slice(0, idx), val.slice(idx + 1));
+        return acc;
+      },
+      new Map<string, string>(),
     )
     .option(
       "--aggregate-file <string>",

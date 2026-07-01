@@ -10,7 +10,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityHeatmapChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveMetrics } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
@@ -26,7 +26,7 @@ async function generateEntityHeatmap(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyTrimPrefix(
+    const result = applyLabel(
       await parseBenchmarkAggregatesPerRunResultFromCsv(
         file,
         options.removeFirstTicks,
@@ -35,6 +35,7 @@ async function generateEntityHeatmap(
         runsToRemove.get(baseName) ?? new Set(),
       ),
       options.trimPrefix,
+      options.customNames,
     );
     results.push(result);
   }
@@ -104,6 +105,7 @@ export function createEntityHeatmapCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        customNames: opts.name ?? new Map(),
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -127,6 +129,7 @@ export function createEntityHeatmapCommand(): Command {
       );
       ensureOutputDir(path.resolve(process.cwd(), options.output));
       if (opts.fish) enableInserterEasterEgg();
+      warnUnmatchedNames(files, options.customNames);
 
       await generateEntityHeatmap(files, runsToRemove, options);
     });

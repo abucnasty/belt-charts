@@ -6,7 +6,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
+import { getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
 
 async function generateTable(
   files: string[],
@@ -18,7 +18,7 @@ async function generateTable(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyTrimPrefix(
+    const result = applyLabel(
       await parseBenchmarkAggregatesPerRunResultFromCsv(
         file,
         options.removeFirstTicks,
@@ -27,6 +27,7 @@ async function generateTable(
         runsToRemove.get(baseName) ?? new Set(),
       ),
       options.trimPrefix,
+      options.customNames,
     );
     aggregateResults.push(result);
   }
@@ -83,6 +84,20 @@ export function createTableCommand(): Command {
       "",
     )
     .option(
+      "--name <baseName=label>",
+      "Map a save-file base name to a custom chart label (repeatable). e.g. --name \"my_map=My Map\". Takes precedence over --trim-prefix.",
+      (val: string, acc: Map<string, string>) => {
+        const idx = val.indexOf("=");
+        if (idx === -1) {
+          console.warn(`--name: invalid format "${val}", expected "<baseName>=<label>". Skipping.`);
+          return acc;
+        }
+        acc.set(val.slice(0, idx), val.slice(idx + 1));
+        return acc;
+      },
+      new Map<string, string>(),
+    )
+    .option(
       "--aggregate-file <string>",
       "Path to aggregate run results file",
       (it: string) => it,
@@ -121,6 +136,7 @@ export function createTableCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        customNames: opts.name ?? new Map(),
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -129,6 +145,7 @@ export function createTableCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      warnUnmatchedNames(files, options.customNames);
 
       await generateTable(files, runsToRemove, options);
     });

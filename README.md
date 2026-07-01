@@ -42,6 +42,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--remove-first-ticks <n>` | `1` | Skip the first N ticks (removes benchmark warm-up spikes) |
 | `--max-ticks <n>` | `0` | Only include ticks up to N. `0` = no limit |
 | `--trim-prefix <string>` | `""` | Strip a common prefix from all file names in chart labels |
+| `--name <baseName>=<label>` | *(none)* | Override the chart label for one input file. Repeatable — use once per file. The key is the pre-trim base name (filename minus `.csv` / `_verbose_metrics`). Takes precedence over `--trim-prefix`. In per-run charts the custom label becomes the base: `<label> (run N)`. |
 | `--metrics <list>` | *default set* | Comma-separated list of metric names to include, e.g. `"wholeUpdate,entityUpdate"`. Use `*` for all defaults |
 | `--min-percent <number>` | `0` | Hide any metric/entity whose max value never exceeds this % of the reference total across all files. `0` = no filter |
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
@@ -70,6 +71,8 @@ belt-charts summary "results/my_amazing_map*.csv"
   --summary-table true
   --summary-table-file true
   --trim-prefix "my_amazing_map_"
+  --name "my_amazing_map_a=Design A"
+  --name "my_amazing_map_b=Design B"
   --min-percent 1
 ```
 

@@ -291,7 +291,7 @@ export const explodeIntoPerRunResults = (
         });
 
         return {
-            fileName: `${result.fileName} run ${run}`,
+            fileName: `${result.fileName} (run ${run})`,
             metrics: result.metrics,
             runs: new Map(), // Empty since chart only reads "all"
             all: all,

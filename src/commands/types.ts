@@ -9,6 +9,7 @@ export type BaseChartOptions = {
   removeFirstTicks: number;
   maxTicks: number;
   trimPrefix: string;
+  customNames: Map<string, string>;
   aggregateFile: string;
   stddevFilter: number;
   metrics: MetricEnum[];

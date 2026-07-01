@@ -14,7 +14,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
@@ -30,7 +30,7 @@ async function generateEntityBreakdown(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyTrimPrefix(
+    const result = applyLabel(
       await parseBenchmarkAggregatesPerRunResultFromCsv(
         file,
         options.removeFirstTicks,
@@ -39,6 +39,7 @@ async function generateEntityBreakdown(
         runsToRemove.get(baseName) ?? new Set(),
       ),
       options.trimPrefix,
+      options.customNames,
     );
     aggregateResults.push(result);
   }
@@ -51,8 +52,8 @@ async function generateEntityBreakdown(
 
     if (options.sortBy === "run") {
       chartInput.sort((a, b) => {
-        const aMatch = a.fileName.match(/^(.+) run (\d+)$/);
-        const bMatch = b.fileName.match(/^(.+) run (\d+)$/);
+        const aMatch = a.fileName.match(/^(.+) \(run (\d+)\)$/);
+        const bMatch = b.fileName.match(/^(.+) \(run (\d+)\)$/);
         if (!aMatch || !bMatch) {
           return a.fileName.localeCompare(b.fileName);
         }
@@ -143,6 +144,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       removeFirstTicks: opts.removeFirstTicks,
       maxTicks: opts.maxTicks,
       trimPrefix: opts.trimPrefix,
+      customNames: opts.name ?? new Map(),
       aggregateFile: opts.aggregateFile,
       stddevFilter: opts.stddevFilter,
       metrics,
@@ -168,6 +170,7 @@ function makeEntitySummaryAction(perRun: boolean) {
     );
     ensureOutputDir(path.resolve(process.cwd(), options.output));
     if (opts.fish) enableInserterEasterEgg();
+    warnUnmatchedNames(files, options.customNames);
 
     await generateEntityBreakdown(files, runsToRemove, options);
   };
