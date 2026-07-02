@@ -29,6 +29,7 @@ async function generateSummaryPerRun(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     
     // Explode into per-run results
@@ -139,6 +140,7 @@ export function createSummaryPerRunCommand(): Command {
         titleOverride: opts.titleOverride,
         sortBy: opts.sortBy,
         minPercent: opts.minPercent,
+        titleCase: opts.titleCase,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

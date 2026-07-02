@@ -36,6 +36,7 @@ async function generateEntityHeatmap(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     results.push(result);
   }
@@ -116,6 +117,7 @@ export function createEntityHeatmapCommand(): Command {
         normalize: opts.normalize,
         showValues: opts.showValues,
         titleOverride: opts.titleOverride,
+        titleCase: opts.titleCase,
       };
 
       const files = globSync(pattern);

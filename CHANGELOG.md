@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-01
+
+### Added
+- `--title-case` base option on **all** commands: converts chart labels to space-separated title case, normalizing snake_case, kebab-case, PascalCase, camelCase, and SCREAMING_SNAKE (e.g. `60_electric_network_bench` → `60 Electric Network Bench`, `BeltV2` → `Belt V2`). Applied as the final step in the label pipeline — after `--trim-prefix` — and bypassed entirely for entries that have an explicit `--name` or `--names-file` override.
+
 ## [1.4.0] - 2026-07-01
 
 ### Added

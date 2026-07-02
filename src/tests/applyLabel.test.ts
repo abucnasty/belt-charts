@@ -49,4 +49,25 @@ describe("applyLabel", () => {
     const result = applyLabel(makeResult("other_map"), "prefix_", new Map());
     expect(result.fileName).toBe("other_map");
   });
+
+  it("applies title case to the fileName when titleCase is true", () => {
+    const result = applyLabel(makeResult("my_map"), "", new Map(), true);
+    expect(result.fileName).toBe("My Map");
+  });
+
+  it("does not apply title case when titleCase is false", () => {
+    const result = applyLabel(makeResult("my_map"), "", new Map(), false);
+    expect(result.fileName).toBe("my_map");
+  });
+
+  it("applies title case after trim-prefix", () => {
+    const result = applyLabel(makeResult("prefix_my_map"), "prefix_", new Map(), true);
+    expect(result.fileName).toBe("My Map");
+  });
+
+  it("does not apply title case when a custom name matches", () => {
+    const customNames = new Map([["my_map", "My Custom Label"]]);
+    const result = applyLabel(makeResult("my_map"), "", customNames, true);
+    expect(result.fileName).toBe("My Custom Label");
+  });
 });

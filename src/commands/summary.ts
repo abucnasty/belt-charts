@@ -25,6 +25,7 @@ async function generateSummary(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     aggregateResults.push(result);
   }
@@ -92,6 +93,7 @@ export function createSummaryCommand(): Command {
         summaryTableFile: opts.summaryTableFile,
         titleOverride: opts.titleOverride,
         minPercent: opts.minPercent,
+        titleCase: opts.titleCase,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

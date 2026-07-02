@@ -27,7 +27,7 @@ async function generateLineOrBarCharts(
     if (options.removeFirstTicks > 0) {
       result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
     }
-    result = applyLabel(result, options.trimPrefix, options.customNames);
+    result = applyLabel(result, options.trimPrefix, options.customNames, options.titleCase);
     benchmarkResults.push({ result, baseNameForOutput: baseName });
   }
 
@@ -105,6 +105,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         maxUpdate: opts.maxUpdate,
         type,
         minPercent: opts.minPercent,
+        titleCase: opts.titleCase,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

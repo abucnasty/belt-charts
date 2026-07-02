@@ -28,6 +28,7 @@ async function generateTable(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     aggregateResults.push(result);
   }
@@ -134,6 +135,11 @@ export function createTableCommand(): Command {
       "Aggregate the runs by either minimum per tick or average per tick",
       "average",
     )
+    .option(
+      "--title-case",
+      "Convert labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
+      false,
+    )
     .action(async (pattern, opts) => {
       const options: TableChartOptions = {
         width: opts.width,
@@ -149,6 +155,7 @@ export function createTableCommand(): Command {
         metrics: resolveMetrics(opts.metrics),
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
         minPercent: opts.minPercent,
+        titleCase: opts.titleCase ?? false,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

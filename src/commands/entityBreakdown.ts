@@ -40,6 +40,7 @@ async function generateEntityBreakdown(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     aggregateResults.push(result);
   }
@@ -157,6 +158,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       perRun,
       sortBy: opts.sortBy,
       minPercent: opts.minPercent,
+      titleCase: opts.titleCase,
     };
 
     const files = globSync(pattern);
