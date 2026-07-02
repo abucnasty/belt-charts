@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateBoxPlot(
   files: string[],
@@ -63,6 +63,7 @@ export function createBoxPlotCommand(): Command {
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
         customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -72,6 +73,9 @@ export function createBoxPlotCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
       warnUnmatchedNames(files, options.customNames);
 
       await generateBoxPlot(files, runsToRemove, options);

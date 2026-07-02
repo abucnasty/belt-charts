@@ -10,7 +10,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityHeatmapChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
@@ -106,6 +106,7 @@ export function createEntityHeatmapCommand(): Command {
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
         customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -129,6 +130,9 @@ export function createEntityHeatmapCommand(): Command {
       );
       ensureOutputDir(path.resolve(process.cwd(), options.output));
       if (opts.fish) enableInserterEasterEgg();
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
       warnUnmatchedNames(files, options.customNames);
 
       await generateEntityHeatmap(files, runsToRemove, options);

@@ -14,7 +14,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
@@ -145,6 +145,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       maxTicks: opts.maxTicks,
       trimPrefix: opts.trimPrefix,
       customNames: opts.name ?? new Map(),
+      namesFile: opts.namesFile ?? "",
       aggregateFile: opts.aggregateFile,
       stddevFilter: opts.stddevFilter,
       metrics,
@@ -170,6 +171,9 @@ function makeEntitySummaryAction(perRun: boolean) {
     );
     ensureOutputDir(path.resolve(process.cwd(), options.output));
     if (opts.fish) enableInserterEasterEgg();
+    if (options.namesFile) {
+      options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+    }
     warnUnmatchedNames(files, options.customNames);
 
     await generateEntityBreakdown(files, runsToRemove, options);

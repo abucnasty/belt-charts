@@ -6,7 +6,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
+import { getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
 
 async function generateTable(
   files: string[],
@@ -98,6 +98,12 @@ export function createTableCommand(): Command {
       new Map<string, string>(),
     )
     .option(
+      "--names-file <path>",
+      "Path to a names-mapping file. Each non-blank, non-comment line: baseName=label. --name flags override entries in this file.",
+      (it: string) => it,
+      "",
+    )
+    .option(
       "--aggregate-file <string>",
       "Path to aggregate run results file",
       (it: string) => it,
@@ -137,6 +143,7 @@ export function createTableCommand(): Command {
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
         customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -145,6 +152,9 @@ export function createTableCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
       warnUnmatchedNames(files, options.customNames);
 
       await generateTable(files, runsToRemove, options);

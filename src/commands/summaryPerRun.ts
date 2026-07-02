@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
@@ -129,6 +129,7 @@ export function createSummaryPerRunCommand(): Command {
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
         customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -141,6 +142,9 @@ export function createSummaryPerRunCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
       warnUnmatchedNames(files, options.customNames);
 
       await generateSummaryPerRun(files, runsToRemove, options);

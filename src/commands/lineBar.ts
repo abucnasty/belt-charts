@@ -7,7 +7,7 @@ import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyLabel, warnUnmatchedNames, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateLineOrBarCharts(
   files: string[],
@@ -96,6 +96,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
         customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -107,6 +108,9 @@ function createLineBarCommand(type: "line" | "bar"): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
       warnUnmatchedNames(files, options.customNames);
 
       await generateLineOrBarCharts(files, runsToRemove, options);

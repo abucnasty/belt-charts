@@ -10,6 +10,7 @@ export type BaseChartOptions = {
   maxTicks: number;
   trimPrefix: string;
   customNames: Map<string, string>;
+  namesFile: string;
   aggregateFile: string;
   stddevFilter: number;
   metrics: MetricEnum[];
