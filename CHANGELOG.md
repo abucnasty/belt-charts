@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2026-07-01
 
 ### Added
 - `--name <baseName>=<label>` base option on **all** commands: map an input file's base name to a custom chart label. Repeatable — use once per file. The key is the pre-trim base name (filename minus `.csv` / `_verbose_metrics`). Custom names take precedence over `--trim-prefix`. In per-run charts the label propagates into every bar: `<label> (run N)`.
