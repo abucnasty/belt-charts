@@ -36,6 +36,7 @@ async function generateEntityMatrix(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     results.push(result);
   }
@@ -96,6 +97,7 @@ export function createEntityMatrixCommand(): Command {
         topN: opts.topN,
         minPercent: opts.minPercent,
         titleOverride: opts.titleOverride,
+        titleCase: opts.titleCase,
       };
 
       const files = globSync(pattern);

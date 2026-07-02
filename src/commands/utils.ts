@@ -25,21 +25,34 @@ export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimP
   return result;
 }
 
+export function toTitleCase(s: string): string {
+  return s
+    .split(/[-_]|(?<=[a-z\d])(?=[A-Z])|(?<=[a-zA-Z])(?=\d)/)
+    .filter(w => w.length > 0)
+    .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 /**
  * Applies a custom label for this result if one exists in `customNames`, otherwise
- * falls back to trimming the prefix. The custom name fully replaces the label and
- * bypasses `trimPrefix`.
+ * falls back to trimming the prefix and optionally applying title case.
+ * Custom names bypass all transformations (trimPrefix and titleCase).
  */
 export function applyLabel<T extends { fileName: string }>(
   result: T,
   trimPrefix: string,
   customNames: Map<string, string>,
+  titleCase?: boolean,
 ): T {
   const custom = customNames.get(result.fileName);
   if (custom !== undefined) {
     return { ...result, fileName: custom };
   }
-  return applyTrimPrefix(result, trimPrefix);
+  let r = applyTrimPrefix(result, trimPrefix);
+  if (titleCase) {
+    r = { ...r, fileName: toTitleCase(r.fileName) };
+  }
+  return r;
 }
 
 /**
@@ -229,6 +242,11 @@ export function addBaseOptions(command: Command): Command {
       "Hide any metric whose max value never exceeds this % of the reference total across all files. 0 = no filter.",
       (it: string) => parseFloat(it),
       0,
+    )
+    .option(
+      "--title-case",
+      "Convert chart labels to title case (capitalize the first letter of each underscore-separated word). Applied after --trim-prefix; bypassed by --name overrides.",
+      false,
     );
 }
 

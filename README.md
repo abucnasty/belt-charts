@@ -46,8 +46,30 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--names-file <path>` | `""` | Path to a names-mapping file. Each non-blank, non-comment line: `baseName=label`. Lines starting with `#` are comments. `--name` flags override entries in this file on duplicate keys. |
 | `--metrics <list>` | *default set* | Comma-separated list of metric names to include, e.g. `"wholeUpdate,entityUpdate"`. Use `*` for all defaults |
 | `--min-percent <number>` | `0` | Hide any metric/entity whose max value never exceeds this % of the reference total across all files. `0` = no filter |
+| `--title-case` | `false` | Convert chart labels to space-separated title case, normalizing snake_case, kebab-case, PascalCase, camelCase, and SCREAMING_SNAKE (e.g. `belt_v2` → `Belt V2`, `BeltV2` → `Belt V2`). Applied after `--trim-prefix`; `--name` / `--names-file` overrides bypass it entirely |
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
+
+> **Label pipeline** — `--name`/`--names-file`, `--trim-prefix`, and `--title-case` are applied in order. If a `--name` match is found the custom label is used as-is and the remaining steps are skipped; otherwise `--trim-prefix` strips the leading prefix and then `--title-case` normalizes the result to space-separated title case.
+>
+> `--title-case` recognises snake_case (`_`), kebab-case (`-`), PascalCase, camelCase, and SCREAMING_SNAKE — all produce the same space-separated title case output:
+>
+> | Input | Output |
+> |---|---|
+> | `belt_v2` | `Belt V2` |
+> | `belt-v2` | `Belt V2` |
+> | `BeltV2` | `Belt V2` |
+> | `beltV2` | `Belt V2` |
+> | `BELT_V2` | `Belt V2` |
+>
+> Example with `--trim-prefix "my_map_" --title-case`:
+> ```
+> my_map_belt_v2_verbose_metrics.csv
+>   → base name : my_map_belt_v2
+>   → trim      : belt_v2
+>   → title case: Belt V2
+> ```
+> Adding `--name "my_map_belt_v2=Belt Design v2"` bypasses both transforms and uses `Belt Design v2` directly.
 
 ---
 

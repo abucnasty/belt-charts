@@ -24,6 +24,7 @@ async function generateBoxPlot(
       ),
       options.trimPrefix,
       options.customNames,
+      options.titleCase,
     );
     aggregateResults.push(result);
   }
@@ -70,6 +71,7 @@ export function createBoxPlotCommand(): Command {
         minUpdate: opts.minUpdate,
         maxUpdate: opts.maxUpdate,
         minPercent: opts.minPercent,
+        titleCase: opts.titleCase,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

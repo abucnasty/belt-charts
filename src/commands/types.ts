@@ -16,6 +16,8 @@ export type BaseChartOptions = {
   metrics: MetricEnum[];
   /** Hide any metric/entity whose max value never exceeds this % of its reference total. 0 = no filter. */
   minPercent: number;
+  /** Capitalize the first letter of each underscore-separated word in chart labels. Bypassed by --name overrides. */
+  titleCase: boolean;
 };
 
 // Summary chart specific options
