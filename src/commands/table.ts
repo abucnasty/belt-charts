@@ -137,7 +137,7 @@ export function createTableCommand(): Command {
     )
     .option(
       "--title-case",
-      "Convert labels to title case (capitalize the first letter of each underscore-separated word). Applied after --trim-prefix; bypassed by --name overrides.",
+      "Convert labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
       false,
     )
     .action(async (pattern, opts) => {

@@ -245,7 +245,7 @@ export function addBaseOptions(command: Command): Command {
     )
     .option(
       "--title-case",
-      "Convert chart labels to title case (capitalize the first letter of each underscore-separated word). Applied after --trim-prefix; bypassed by --name overrides.",
+      "Convert chart labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
       false,
     );
 }
