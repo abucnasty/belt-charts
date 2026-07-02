@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-07-01
+
+### Added
+- `--name <baseName>=<label>` base option on **all** commands: map an input file's base name to a custom chart label. Repeatable — use once per file. The key is the pre-trim base name (filename minus `.csv` / `_verbose_metrics`). Custom names take precedence over `--trim-prefix`. In per-run charts the label propagates into every bar: `<label> (run N)`.
+- `--names-file <path>` base option on **all** commands: path to a flat text file of name mappings (`baseName=label` per line, `#` comment lines, blank lines ignored). `--name` flag entries override file entries on duplicate keys.
+
+### Changed
+- Per-run label format changed from `<name> run N` to `<name> (run N)` for readability. This affects `summary-per-run`, `entity-summary-per-run`, and the `--sort-by run` option on those commands.
+
 ## [1.3.1] - 2026-06-25
 
 ### Changed

@@ -42,8 +42,8 @@ describe("explodeIntoPerRunResults", () => {
 
   it("names each result with the source fileName and run number", () => {
     const result = explodeIntoPerRunResults(makeResult(), AggregationStrategy.AVERAGE);
-    expect(result[0].fileName).toBe("test-map run 1");
-    expect(result[1].fileName).toBe("test-map run 2");
+    expect(result[0].fileName).toBe("test-map (run 1)");
+    expect(result[1].fileName).toBe("test-map (run 2)");
   });
 
   it("sorts results by run number ascending", () => {
@@ -58,6 +58,20 @@ describe("explodeIntoPerRunResults", () => {
     const result = explodeIntoPerRunResults(reversed, AggregationStrategy.AVERAGE);
     expect(result[0].fileName).toContain("run 1");
     expect(result[1].fileName).toContain("run 3");
+  });
+
+  it("propagates a pre-labeled fileName into the per-run label", () => {
+    const labeled: BenchmarkAggregateRunResult = {
+      fileName: "Custom Label",
+      metrics: [MetricEnum.WHOLE_UPDATE],
+      runs: new Map([
+        [MetricEnum.WHOLE_UPDATE.name, [makeRunAggregate(1, 5000), makeRunAggregate(2, 6000)]],
+      ]),
+      all: new Map([[MetricEnum.WHOLE_UPDATE.name, makeAggregate(5500)]]),
+    };
+    const result = explodeIntoPerRunResults(labeled, AggregationStrategy.AVERAGE);
+    expect(result[0].fileName).toBe("Custom Label (run 1)");
+    expect(result[1].fileName).toBe("Custom Label (run 2)");
   });
 
   it("each result has an empty runs map", () => {

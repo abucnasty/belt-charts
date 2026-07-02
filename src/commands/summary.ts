@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyTrimPrefix, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummary(
   files: string[],
@@ -15,7 +15,7 @@ async function generateSummary(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyTrimPrefix(
+    const result = applyLabel(
       await parseBenchmarkAggregatesPerRunResultFromCsv(
         file,
         options.removeFirstTicks,
@@ -24,6 +24,7 @@ async function generateSummary(
         runsToRemove.get(baseName) ?? new Set(),
       ),
       options.trimPrefix,
+      options.customNames,
     );
     aggregateResults.push(result);
   }
@@ -81,6 +82,8 @@ export function createSummaryCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        customNames: opts.name ?? new Map(),
+        namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         metrics: resolveMetrics(opts.metrics),
@@ -92,6 +95,10 @@ export function createSummaryCommand(): Command {
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
+      if (options.namesFile) {
+        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+      }
+      warnUnmatchedNames(files, options.customNames);
 
       await generateSummary(files, runsToRemove, options);
     });

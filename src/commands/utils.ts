@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "node:fs";
 import { globSync } from "glob";
 import { Canvas } from "skia-canvas";
 import { Chart, type ChartConfiguration } from "chart.js";
@@ -22,6 +23,72 @@ export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimP
     return { ...result, fileName: result.fileName.slice(trimPrefix.length) };
   }
   return result;
+}
+
+/**
+ * Applies a custom label for this result if one exists in `customNames`, otherwise
+ * falls back to trimming the prefix. The custom name fully replaces the label and
+ * bypasses `trimPrefix`.
+ */
+export function applyLabel<T extends { fileName: string }>(
+  result: T,
+  trimPrefix: string,
+  customNames: Map<string, string>,
+): T {
+  const custom = customNames.get(result.fileName);
+  if (custom !== undefined) {
+    return { ...result, fileName: custom };
+  }
+  return applyTrimPrefix(result, trimPrefix);
+}
+
+/**
+ * Parses a names-file into a Map<baseName, label>.
+ *
+ * Format (one entry per line):
+ *   key=label        # split on the first = only; label may contain =
+ *   # comment lines are ignored
+ *   (blank lines are ignored)
+ *
+ * Malformed lines (no `=`) produce a warning and are skipped.
+ */
+export function parseNamesFile(filePath: string): Map<string, string> {
+  const raw = fs.readFileSync(filePath, "utf8");
+  const map = new Map<string, string>();
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const idx = line.indexOf("=");
+    if (idx === -1) {
+      console.warn(`--names-file: malformed line (no '=' found), skipping: ${JSON.stringify(line)}`);
+      continue;
+    }
+    map.set(line.slice(0, idx), line.slice(idx + 1));
+  }
+  return map;
+}
+
+/**
+ * Merges a file-sourced names map with flag-sourced names.
+ * Flag entries (`--name`) win on duplicate keys.
+ */
+export function mergeCustomNames(
+  fileMap: Map<string, string>,
+  flagMap: Map<string, string>,
+): Map<string, string> {
+  return new Map([...fileMap, ...flagMap]);
+}
+
+/**
+ * Warns about any custom name keys that don't match any of the resolved input files.
+ */
+export function warnUnmatchedNames(files: string[], customNames: Map<string, string>): void {
+  const baseNames = new Set(files.map(getBaseName));
+  for (const key of customNames.keys()) {
+    if (!baseNames.has(key)) {
+      console.warn(`--name: key "${key}" did not match any input file (known base names: ${[...baseNames].join(", ")})`);
+    }
+  }
 }
 
 export async function loadRunFilters(
@@ -109,6 +176,26 @@ export function addBaseOptions(command: Command): Command {
     .option(
       "--trim-prefix <string>",
       "Trim the prefix of the map name",
+      (it: string) => it,
+      "",
+    )
+    .option(
+      "--name <baseName=label>",
+      "Map a save-file base name to a custom chart label (repeatable). e.g. --name \"my_map=My Map\". Takes precedence over --trim-prefix and --names-file.",
+      (val: string, acc: Map<string, string>) => {
+        const idx = val.indexOf("=");
+        if (idx === -1) {
+          console.warn(`--name: invalid format "${val}", expected "<baseName>=<label>". Skipping.`);
+          return acc;
+        }
+        acc.set(val.slice(0, idx), val.slice(idx + 1));
+        return acc;
+      },
+      new Map<string, string>(),
+    )
+    .option(
+      "--names-file <path>",
+      "Path to a names-mapping file. Each non-blank, non-comment line: baseName=label. --name flags override entries in this file.",
       (it: string) => it,
       "",
     )
