@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-07-03
+
+### Fixed
+- `skia-canvas` native binary now downloads automatically on first run instead of relying on a `postinstall` lifecycle script. Setting `ignore-scripts=true` globally in `~/.npmrc` (or via `npm config set ignore-scripts true`) is a recommended supply-chain security practice that prevents malicious packages from executing arbitrary commands during `npm install` — but it also silently skips legitimate native-binary setup scripts like skia-canvas's. Moving the download to first-run means belt-charts works correctly regardless of that setting. Previously this resulted in a cryptic `Cannot find module '../skia.node'` error with no recovery path.
+
 ## [1.5.0] - 2026-07-01
 
 ### Added
