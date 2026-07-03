@@ -141,6 +141,7 @@ export function createSummaryPerRunCommand(): Command {
         sortBy: opts.sortBy,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
+        maxUpdate: null,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
