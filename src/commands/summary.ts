@@ -39,6 +39,7 @@ async function generateSummary(
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
     minPercent: options.minPercent,
+    maxUpdate: options.maxUpdate,
   });
 
   console.log("Chart configuration created.");
@@ -75,6 +76,12 @@ export function createSummaryCommand(): Command {
       (it: string) => it,
       null,
     )
+    .option<number | null>(
+      "--max-update <number>",
+      "Set the maximum x-axis value (microseconds)",
+      (it: string) => parseFloat(it),
+      null,
+    )
     .action(async (pattern, opts) => {
       const options: SummaryChartOptions = {
         width: opts.width,
@@ -94,6 +101,7 @@ export function createSummaryCommand(): Command {
         titleOverride: opts.titleOverride,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
+        maxUpdate: opts.maxUpdate,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
