@@ -83,6 +83,7 @@ Stacked-bar chart aggregating all metrics across input files, with an optional i
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
 | `--title-override <string>` | *(auto)* | Override the chart title |
+| `--max-update <number>` | *(auto)* | Fix the maximum x-axis value (microseconds). Useful for comparing charts at a consistent scale |
 
 ```
 belt-charts summary "results/my_amazing_map*.csv"
