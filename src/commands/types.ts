@@ -26,6 +26,7 @@ export type SummaryChartOptions = BaseChartOptions & {
   summaryTable: boolean;
   summaryTableFile: boolean;
   titleOverride: string | null;
+  maxUpdate: number | null;
 };
 
 // Summary per-run chart specific options

@@ -23,6 +23,8 @@ interface SummaryChartOptions {
   isPerRun?: boolean;
   /** Hide metrics whose max average across all results is below this % of wholeUpdate. 0 = no filter. */
   minPercent?: number;
+  /** Override the maximum x-axis value (microseconds). */
+  maxUpdate?: number | null;
 }
 
 export interface SummaryChartResult {
@@ -299,6 +301,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           stacked: true,
           ticks: { color: colors.white, },
           title: { display: true, text: xAxisLabel, color: "white" },
+          ...(options.maxUpdate != null ? { max: options.maxUpdate } : {}),
         },
         y: {
           stacked: true,
