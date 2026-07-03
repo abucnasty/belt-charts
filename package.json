@@ -10,8 +10,7 @@
     "prepublishOnly": "npm run build",
     "test:install": "npm pack && npm install -g belt-charts-*.tgz",
     "prepack": "npm run build",
-    "test": "vitest run",
-    "postinstall": "node node_modules/skia-canvas/lib/prebuild.mjs download --or-compile"
+    "test": "vitest run"
   },
   "bin": {
     "belt-charts": "./bin/belt-charts.cjs"
