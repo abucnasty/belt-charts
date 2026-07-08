@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-07-08
+
+### Fixed
+- Entity heatmap and entity matrix charts now treat missing entities as `0` instead of `NaN` when another benchmark includes that entity. This prevents NaN from contaminating the "Other Entity Update" row.
+
 ## [1.6.0] - 2026-07-03
 
 ### Added
