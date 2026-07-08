@@ -70,7 +70,8 @@ export function renderEntityMatrixChart(
     metricName: metric.name,
     description: metric.description,
     values: results.map(r => getAggregateValue(r, metric.name as MetricName, options.aggregationStrategy)),
-  })).filter(row => row.values.some(v => !isNaN(v) && v > 0));
+  })).filter(row => row.values.some(v => !isNaN(v) && v > 0))
+    .map(row => ({ ...row, values: row.values.map(v => isNaN(v) ? 0 : v) }));
 
   // Sort descending by max value across designs
   allRows.sort((a, b) => {
