@@ -52,26 +52,37 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
+  // When the only requested metric is wholeUpdate, render it as a single white bar with no "Other".
+  const isWholeUpdateOnly =
+    !!options.metrics?.length &&
+    options.metrics.every(m => m.name === MetricEnum.WHOLE_UPDATE.name);
+
   // Apply minPercent filter: hide metrics whose max average never exceeds minPercent% of wholeUpdate.
   const minPercent = options.minPercent ?? 0;
-  const metrics = minPercent > 0
-    ? allMetrics.filter(metric => {
-        if (metric.name === MetricEnum.WHOLE_UPDATE.name) return true;
-        const maxAvg = Math.max(...chartData.map(d => d.metricValues.find(mv => mv.metricName === metric.name)?.average ?? 0));
-        const maxTotal = Math.max(...chartData.map(d => d.totalAverage));
-        return maxTotal > 0 && (maxAvg / maxTotal) * 100 >= minPercent;
-      })
-    : allMetrics;
+  const metrics = isWholeUpdateOnly
+    ? [MetricEnum.WHOLE_UPDATE]
+    : minPercent > 0
+      ? allMetrics.filter(metric => {
+          if (metric.name === MetricEnum.WHOLE_UPDATE.name) return true;
+          const maxAvg = Math.max(...chartData.map(d => d.metricValues.find(mv => mv.metricName === metric.name)?.average ?? 0));
+          const maxTotal = Math.max(...chartData.map(d => d.totalAverage));
+          return maxTotal > 0 && (maxAvg / maxTotal) * 100 >= minPercent;
+        })
+      : allMetrics;
 
-  const datasets = metrics
-    .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
-    .map(metric => {
-      return {
-        label: metric.description,
-        data: chartData.map(data => data.metricValues.find(it => it.metricName === metric.name)?.average || 0),
-        backgroundColor: getMetricPattern(metric.name),
-      }
-    })
+  const datasets = isWholeUpdateOnly
+    ? [{
+        label: MetricEnum.WHOLE_UPDATE.description,
+        data: chartData.map(data => data.totalAverage),
+        backgroundColor: colors.white,
+      }]
+    : metrics
+        .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
+        .map(metric => ({
+          label: metric.description,
+          data: chartData.map(data => data.metricValues.find(it => it.metricName === metric.name)?.average || 0),
+          backgroundColor: getMetricPattern(metric.name),
+        }))
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
