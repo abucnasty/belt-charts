@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-07-08
+
+### Fixed
+- Entity summary chart now treats missing entity child columns as `0` instead of `NaN` when a metric column is absent from a CSV file. Previously, if one benchmark included a child entity (e.g. `Furnace`) and another did not, the missing values parsed as `NaN`, which propagated into the "Other Entity Update" calculation and produced `NaN` in the chart and exported table.
+
 ## [1.8.0] - 2026-07-08
 
 ### Added

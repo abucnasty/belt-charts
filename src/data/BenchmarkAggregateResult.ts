@@ -90,8 +90,9 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
                 const runEntry = runValuesPerMetric.get(run)!;
                 metrics.forEach(metric => {
+                    const rawValue = Number(row[metric.name]);
                     runEntry[metric.name]!.push({
-                        value: Number(row[metric.name]),
+                        value: isNaN(rawValue) ? 0 : rawValue,
                         run: Number(row.run)
                     });
                 });
