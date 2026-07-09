@@ -22,12 +22,10 @@ async function generateSummary(
       options.metrics,
       runsToRemove.get(baseName) ?? new Set(),
     );
-    // Assign group before any label transforms: only trimPrefix is applied so group keys
-    // are still present before trimSubstrings removes them.
-    const groupMatchLabel = options.groupBy.length > 0
-      ? applyLabel(rawResult, options.trimPrefix, options.customNames, false, []).fileName
-      : "";
-    const group = options.groupBy.length > 0 ? assignToGroup(groupMatchLabel, options.groupBy) : null;
+    // Group matching runs against the raw source filename (originalFileName). This ensures group
+    // keys still match even when the same substrings appear in --trim-substring or --title-case
+    // would otherwise mutate them.
+    const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
     const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
     const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
     aggregateResults.push(result);

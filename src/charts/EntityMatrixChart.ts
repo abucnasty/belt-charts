@@ -192,9 +192,9 @@ export function renderEntityMatrixChart(
 
   // Measure total legend width to centre it
   const legendItems = results.map((r, i) => ({
-    label: r.fileName,
+    label: r.displayName,
     color: DESIGN_COLORS[i % DESIGN_COLORS.length],
-    width: legendSwatchSize + 6 + ctx.measureText(r.fileName).width,
+    width: legendSwatchSize + 6 + ctx.measureText(r.displayName).width,
   }));
   const totalLegendWidth = legendItems.reduce((sum, it) => sum + it.width + legendSpacing, 0) - legendSpacing;
   let lx = (W - totalLegendWidth) / 2;

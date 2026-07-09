@@ -38,13 +38,13 @@ async function generateSummaryPerRun(
 
   // Sort if necessary
   if (options.sortBy === "run") {
-    // Sort by fileName then run number (extract run number from "fileName (run N)")
+    // Sort by displayName then run number (extract run number from "displayName (run N)")
     allPerRunResults.sort((a, b) => {
-      const aMatch = a.fileName.match(/^(.+) \(run (\d+)\)$/);
-      const bMatch = b.fileName.match(/^(.+) \(run (\d+)\)$/);
+      const aMatch = a.displayName.match(/^(.+) \(run (\d+)\)$/);
+      const bMatch = b.displayName.match(/^(.+) \(run (\d+)\)$/);
       
       if (!aMatch || !bMatch) {
-        return a.fileName.localeCompare(b.fileName);
+        return a.displayName.localeCompare(b.displayName);
       }
       
       const aBase = aMatch[1];

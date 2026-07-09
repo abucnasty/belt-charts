@@ -37,12 +37,8 @@ async function generateEntityBreakdown(
       options.metrics,
       runsToRemove.get(baseName) ?? new Set(),
     );
-    // Assign group before any label transforms: only trimPrefix is applied so group keys
-    // are still present before trimSubstrings removes them.
-    const groupMatchLabel = options.groupBy.length > 0
-      ? applyLabel(rawResult, options.trimPrefix, options.customNames, false, []).fileName
-      : "";
-    const group = options.groupBy.length > 0 ? assignToGroup(groupMatchLabel, options.groupBy) : null;
+    // Group matching runs against the raw source filename (originalFileName).
+    const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
     const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
     const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
     aggregateResults.push(result);
@@ -56,10 +52,10 @@ async function generateEntityBreakdown(
 
     if (options.sortBy === "run") {
       chartInput.sort((a, b) => {
-        const aMatch = a.fileName.match(/^(.+) \(run (\d+)\)$/);
-        const bMatch = b.fileName.match(/^(.+) \(run (\d+)\)$/);
+        const aMatch = a.displayName.match(/^(.+) \(run (\d+)\)$/);
+        const bMatch = b.displayName.match(/^(.+) \(run (\d+)\)$/);
         if (!aMatch || !bMatch) {
-          return a.fileName.localeCompare(b.fileName);
+          return a.displayName.localeCompare(b.displayName);
         }
         const baseCompare = aMatch[1].localeCompare(bMatch[1]);
         if (baseCompare !== 0) return baseCompare;

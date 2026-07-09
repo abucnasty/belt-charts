@@ -19,7 +19,7 @@ interface EntityBreakdownMetricValue {
 }
 
 interface EntityBreakdownChartData {
-  mapName: string;
+  displayName: string;
   group?: string;
   entityUpdateTotal: number;
   metricValues: EntityBreakdownMetricValue[];
@@ -58,7 +58,7 @@ const mapEntityBreakdownData = (
   });
 
   return {
-    mapName: result.fileName,
+    displayName: result.displayName,
     group: result.group,
     entityUpdateTotal,
     metricValues: childValues,
@@ -130,7 +130,7 @@ export const createEntityBreakdownChartConfiguration = (
     const sumDisplayed = displayedValues.reduce((sum, mv) => sum + mv.average, 0);
     const otherAvg = Math.max(0, data.entityUpdateTotal - sumDisplayed);
     return {
-      mapName: data.mapName,
+      displayName: data.displayName,
       group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
       metricValues: [
@@ -169,7 +169,7 @@ export const createEntityBreakdownChartConfiguration = (
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
   const chartLabels = rows.map(row =>
-    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].mapName
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
   );
 
   const datasets = datasetOrder.map(name => ({
@@ -221,9 +221,9 @@ export const createEntityBreakdownChartConfiguration = (
         return value ? parseFloat(value.average.toFixed(2)) : NaN;
       });
       return {
-        mapName: data.mapName,
+        displayName: data.displayName,
         values: [
-          data.mapName,
+          data.displayName,
           ...metricValues,
           parseFloat(data.entityUpdateTotal.toFixed(2)),
           stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
@@ -270,7 +270,7 @@ export const createEntityBreakdownChartConfiguration = (
       const rowHeight = ROW_HEIGHT;
 
       ctx.font = "bold 12px Arial";
-      const header = ["Category", ...chartData.map(d => d.mapName)];
+      const header = ["Category", ...chartData.map(d => d.displayName)];
 
       const columnMinWidths = header.map((text, colIdx) => {
         let maxWidth = ctx.measureText(text).width;

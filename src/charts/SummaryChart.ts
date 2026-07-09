@@ -105,7 +105,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
   const chartLabels = rows.map(row =>
-    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].mapName
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
   );
 
   const datasets = isWholeUpdateOnly
@@ -155,10 +155,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
       const stats = wholeUpdateStats[idx];
       return {
-        mapName: data.mapName,
+        displayName: data.displayName,
         values: [
           ...(groupBy.length > 0 ? [data.group ?? ""] : []),
-          data.mapName,
+          data.displayName,
           ...metricValues,
           stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
           stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`
@@ -183,7 +183,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
       // Measure text widths for each column to prevent overlap
       ctx.font = "bold 12px Arial";
-      const header = ["Category", ...chartData.map(it => it.mapName)];
+      const header = ["Category", ...chartData.map(it => it.displayName)];
 
       // Calculate minimum width needed for each column based on content
       const columnMinWidths = header.map((text, colIdx) => {

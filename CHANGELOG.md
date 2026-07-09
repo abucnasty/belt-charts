@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `--title-case` now accepts an optional boolean value (`--title-case true` / `--title-case false`) in addition to the bare flag, for use in scripts where the value may be set conditionally.
 
+### Internal
+- Refactored the label pipeline to split the overloaded `fileName` field into two explicit fields on every result object: `originalFileName` (immutable, set at parse time) and `displayName` (mutable, transformed by the label pipeline). Group matching and `--name`/`--names-file` lookups now operate against `originalFileName` so they remain correct regardless of what `--trim-prefix`, `--trim-substring`, or `--title-case` does to the visible label. This eliminates a class of bugs where transforms applied before group assignment could strip or recase the group key, causing results to be silently excluded from the chart.
+
 ## [1.7.0] - 2026-07-08
 
 ### Added
