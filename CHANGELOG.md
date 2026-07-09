@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-08
+
 ### Added
 - `--group-by <keys>` option on `summary` and `entity-summary` commands: comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its label (longest-match wins, so `clone_18` beats `clone_1`). Results that don't match any key are excluded. Matched results are clustered under bold sky-blue group headers (`▸ groupName`) injected into the y-axis, sorted by the order keys appear in the list.
 - `--trim-substring <string>` base option on **all** commands: removes all occurrences of an exact substring from chart labels. Repeatable — use once per substring (e.g. `--trim-substring clone_0 --trim-substring clone_1`). Applied after `--trim-prefix` and before `--title-case`; bypassed for entries with an explicit `--name` override. When multiple substrings overlap (e.g. `clone_1` is a substring of `clone_18`), longer substrings are removed first to prevent partial matches.
