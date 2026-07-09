@@ -14,7 +14,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
@@ -30,18 +30,21 @@ async function generateEntityBreakdown(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        options.metrics,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
+    const rawResult = await parseBenchmarkAggregatesPerRunResultFromCsv(
+      file,
+      options.removeFirstTicks,
+      options.maxTicks,
+      options.metrics,
+      runsToRemove.get(baseName) ?? new Set(),
     );
+    // Assign group before any label transforms: only trimPrefix is applied so group keys
+    // are still present before trimSubstrings removes them.
+    const groupMatchLabel = options.groupBy.length > 0
+      ? applyLabel(rawResult, options.trimPrefix, options.customNames, false, []).fileName
+      : "";
+    const group = options.groupBy.length > 0 ? assignToGroup(groupMatchLabel, options.groupBy) : null;
+    const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
+    const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
     aggregateResults.push(result);
   }
 
@@ -77,6 +80,7 @@ async function generateEntityBreakdown(
     minPercent: options.minPercent,
     sortBy,
     isPerRun: options.perRun,
+    groupBy: options.groupBy,
   });
 
   console.log("Chart configuration created.");
@@ -145,6 +149,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       removeFirstTicks: opts.removeFirstTicks,
       maxTicks: opts.maxTicks,
       trimPrefix: opts.trimPrefix,
+      trimSubstrings: opts.trimSubstring ?? [],
       customNames: opts.name ?? new Map(),
       namesFile: opts.namesFile ?? "",
       aggregateFile: opts.aggregateFile,
@@ -159,6 +164,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       sortBy: opts.sortBy,
       minPercent: opts.minPercent,
       titleCase: opts.titleCase,
+      groupBy: opts.groupBy ?? [],
     };
 
     const files = globSync(pattern);

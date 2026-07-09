@@ -15,6 +15,7 @@ export interface SummaryChartMetricValue {
 
 export interface SummaryChartData {
   mapName: string;
+  group?: string;
   totalAverage: number;
   metrics: Array<MetricEnum>;
   metricValues: SummaryChartMetricValue[];
@@ -60,6 +61,7 @@ export function buildSummaryChartData(
   if (!wholeUpdateAgg) {
     return {
       mapName: result.fileName,
+      group: result.group,
       metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
       metricValues,
       totalAverage: sumOfParts,
@@ -87,6 +89,7 @@ export function buildSummaryChartData(
 
   return {
     mapName: result.fileName,
+    group: result.group,
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues,
     totalAverage: wholeUpdateAverage,

@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
 
 async function generateSummary(
   files: string[],
@@ -15,18 +15,21 @@ async function generateSummary(
   for (const file of files) {
     console.log(`Processing file: ${file}`);
     const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        options.metrics,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
+    const rawResult = await parseBenchmarkAggregatesPerRunResultFromCsv(
+      file,
+      options.removeFirstTicks,
+      options.maxTicks,
+      options.metrics,
+      runsToRemove.get(baseName) ?? new Set(),
     );
+    // Assign group before any label transforms: only trimPrefix is applied so group keys
+    // are still present before trimSubstrings removes them.
+    const groupMatchLabel = options.groupBy.length > 0
+      ? applyLabel(rawResult, options.trimPrefix, options.customNames, false, []).fileName
+      : "";
+    const group = options.groupBy.length > 0 ? assignToGroup(groupMatchLabel, options.groupBy) : null;
+    const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
+    const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
     aggregateResults.push(result);
   }
 
@@ -40,6 +43,7 @@ async function generateSummary(
     titleOverride: options.titleOverride ?? undefined,
     minPercent: options.minPercent,
     maxUpdate: options.maxUpdate,
+    groupBy: options.groupBy,
   });
 
   console.log("Chart configuration created.");
@@ -90,6 +94,7 @@ export function createSummaryCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -102,6 +107,7 @@ export function createSummaryCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         maxUpdate: opts.maxUpdate,
+        groupBy: opts.groupBy ?? [],
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

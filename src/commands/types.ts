@@ -18,6 +18,10 @@ export type BaseChartOptions = {
   minPercent: number;
   /** Capitalize the first letter of each underscore-separated word in chart labels. Bypassed by --name overrides. */
   titleCase: boolean;
+  /** List of substrings to remove from chart labels. Applied after --trim-prefix and before --title-case. */
+  trimSubstrings: string[];
+  /** Comma-separated group keys. Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
+  groupBy: string[];
 };
 
 // Summary chart specific options

@@ -25,6 +25,8 @@ interface SummaryChartOptions {
   minPercent?: number;
   /** Override the maximum x-axis value (microseconds). */
   maxUpdate?: number | null;
+  /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
+  groupBy?: string[];
 }
 
 export interface SummaryChartResult {
@@ -44,10 +46,24 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     configuredDisplayMetrics = { ...supportedMetrics }
   }
 
-  const chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
+  let chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
   // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
   if (options.sortBy !== "preserve") {
     chartData.sort((a, b) => a.totalAverage - b.totalAverage);
+  }
+
+  const groupBy = options.groupBy ?? [];
+  const getGroup = (data: { group?: string }): string | null => data.group ?? null;
+
+  if (groupBy.length > 0) {
+    // Filter to only results that match a group key, then sort by group order (index in groupBy list).
+    chartData = chartData.filter(d => getGroup(d) !== null);
+    chartData.sort((a, b) => {
+      const ai = groupBy.indexOf(getGroup(a)!);
+      const bi = groupBy.indexOf(getGroup(b)!);
+      if (ai !== bi) return ai - bi;
+      return a.totalAverage - b.totalAverage;
+    });
   }
 
   const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
@@ -70,23 +86,46 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         })
       : allMetrics;
 
+  // Build interleaved row structure: group header spacers + data rows.
+  // The zero-width-space prefix marks spacer entries; used in tick styling below.
+  const SPACER_PREFIX = "\u200B";
+  type ChartRow = { kind: "data"; idx: number } | { kind: "spacer"; groupLabel: string };
+  const rows: ChartRow[] = [];
+  if (groupBy.length > 0) {
+    let lastGroup: string | null = null;
+    chartData.forEach((data, idx) => {
+      const group = getGroup(data)!;
+      if (group !== lastGroup) {
+        rows.push({ kind: "spacer", groupLabel: group });
+        lastGroup = group;
+      }
+      rows.push({ kind: "data", idx });
+    });
+  } else {
+    chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
+  }
+  const chartLabels = rows.map(row =>
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].mapName
+  );
+
   const datasets = isWholeUpdateOnly
     ? [{
         label: MetricEnum.WHOLE_UPDATE.description,
-        data: chartData.map(data => data.totalAverage),
+        data: rows.map(row => row.kind === "spacer" ? null : chartData[row.idx].totalAverage),
         backgroundColor: colors.white,
       }]
     : metrics
         .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
         .map(metric => ({
           label: metric.description,
-          data: chartData.map(data => data.metricValues.find(it => it.metricName === metric.name)?.average || 0),
+          data: rows.map(row => row.kind === "spacer" ? null : (chartData[row.idx].metricValues.find(it => it.metricName === metric.name)?.average || 0)),
           backgroundColor: getMetricPattern(metric.name),
         }))
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
     const header = [
+      ...(groupBy.length > 0 ? ["Group"] : []),
       "Save File",
       ...metrics.map(it => it.description),
       '% Decrease from Previous',
@@ -118,6 +157,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       return {
         mapName: data.mapName,
         values: [
+          ...(groupBy.length > 0 ? [data.group ?? ""] : []),
           data.mapName,
           ...metricValues,
           stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
@@ -276,7 +316,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   const configuration: ChartConfiguration<"bar"> = {
     type: "bar",
     data: {
-      labels: chartData.map((r) => r.mapName),
+      labels: chartLabels,
       datasets: datasets
     },
     options: {
@@ -316,7 +356,19 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
         y: {
           stacked: true,
-          ticks: { color: colors.white, },
+          ticks: {
+            autoSkip: false,
+            color: (ctx: any) =>
+              chartLabels[ctx.index]?.startsWith(SPACER_PREFIX) ? colors.sky_blue : colors.white,
+            font: (ctx: any) =>
+              chartLabels[ctx.index]?.startsWith(SPACER_PREFIX)
+                ? { weight: "bold" as const, size: 13 }
+                : { size: 12 },
+            callback: (value: any) => {
+              const label = chartLabels[value] ?? "";
+              return label.startsWith(SPACER_PREFIX) ? `▸ ${label.slice(1)}` : label;
+            },
+          },
           grid: {
             color: colors.dark_grey
           },

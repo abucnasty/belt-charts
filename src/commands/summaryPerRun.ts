@@ -30,9 +30,8 @@ async function generateSummaryPerRun(
       options.trimPrefix,
       options.customNames,
       options.titleCase,
+      options.trimSubstrings,
     );
-    
-    // Explode into per-run results
     const perRunResults = explodeIntoPerRunResults(result, options.aggregateStrategy);
     allPerRunResults.push(...perRunResults);
   }
@@ -129,6 +128,7 @@ export function createSummaryPerRunCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -142,6 +142,7 @@ export function createSummaryPerRunCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         maxUpdate: null,
+        groupBy: opts.groupBy ?? [],
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

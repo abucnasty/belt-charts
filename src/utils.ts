@@ -156,6 +156,15 @@ export function timeWeightedAverageByChunks(
 }
 
 /**
+ * Returns the longest group key that is a substring of `fileName`, or null if none match.
+ * Longest-match ensures e.g. "q2_lds" beats "q2" when both are present.
+ */
+export function assignToGroup(fileName: string, groupKeys: string[]): string | null {
+  const sorted = [...groupKeys].sort((a, b) => b.length - a.length);
+  return sorted.find((key) => fileName.includes(key)) ?? null;
+}
+
+/**
  * Ensures the specified directory exists, if it doesn't, it creates it
  * 
  * @param path

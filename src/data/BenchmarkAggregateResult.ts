@@ -22,6 +22,8 @@ export type MetricRunAggregate = MetricAggregate & {
 
 export interface BenchmarkAggregateRunResult {
     fileName: string;
+    /** Optional group key set by the command layer for chart clustering. Carried through label transforms via object spread. */
+    group?: string;
     metrics: MetricEnum[]
     runs: Map<MetricName, MetricRunAggregate[]>
     all: Map<MetricName, MetricAggregate>
@@ -295,6 +297,7 @@ export const explodeIntoPerRunResults = (
             metrics: result.metrics,
             runs: new Map(), // Empty since chart only reads "all"
             all: all,
+            group: result.group,
             __singleRun: true,
         } as SingleRunAggregateResult;
     });

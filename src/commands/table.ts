@@ -29,6 +29,7 @@ async function generateTable(
       options.trimPrefix,
       options.customNames,
       options.titleCase,
+      options.trimSubstrings,
     );
     aggregateResults.push(result);
   }
@@ -148,6 +149,7 @@ export function createTableCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -156,6 +158,7 @@ export function createTableCommand(): Command {
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
         minPercent: opts.minPercent,
         titleCase: opts.titleCase ?? false,
+        groupBy: opts.groupBy ?? [],
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

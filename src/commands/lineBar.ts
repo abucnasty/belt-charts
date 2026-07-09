@@ -27,7 +27,7 @@ async function generateLineOrBarCharts(
     if (options.removeFirstTicks > 0) {
       result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
     }
-    result = applyLabel(result, options.trimPrefix, options.customNames, options.titleCase);
+    result = applyLabel(result, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
     benchmarkResults.push({ result, baseNameForOutput: baseName });
   }
 
@@ -95,6 +95,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -106,6 +107,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         type,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
+        groupBy: opts.groupBy ?? [],
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
