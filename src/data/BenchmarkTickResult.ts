@@ -31,7 +31,10 @@ export interface MetricTickStat {
 }
 
 export interface BenchmarkTickResult {
-    fileName: string;
+    /** Immutable base name of the source CSV. Set once at parse time and preserved through label transforms. */
+    originalFileName: string;
+    /** Transformed label shown in charts. Modified by the label pipeline. */
+    displayName: string;
     metrics: MetricEnum[]
     metricTickStats: Map<MetricName, MetricTickStat[]>
 }
@@ -125,7 +128,8 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
     })
 
     return {
-        fileName: baseName,
+        originalFileName: baseName,
+        displayName: baseName,
         metrics,
         metricTickStats: metricStats
     };

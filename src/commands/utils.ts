@@ -12,17 +12,29 @@ import {
 } from "../data/ResultsFile";
 import { MetricEnum } from "../data/MetricEnum";
 import { ensureOutputDir } from "../utils";
+import { assignToGroup } from "../utils";
 import { BaseChartOptions } from "./types";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
 }
 
-export function applyTrimPrefix<T extends { fileName: string }>(result: T, trimPrefix: string): T {
-  if (trimPrefix && result.fileName.startsWith(trimPrefix)) {
-    return { ...result, fileName: result.fileName.slice(trimPrefix.length) };
+export function applyTrimPrefix<T extends { displayName: string }>(result: T, trimPrefix: string): T {
+  if (trimPrefix && result.displayName.startsWith(trimPrefix)) {
+    return { ...result, displayName: result.displayName.slice(trimPrefix.length) };
   }
   return result;
+}
+
+export function applyTrimSubstrings<T extends { displayName: string }>(result: T, trimSubstrings: string[]): T {
+  if (trimSubstrings.length === 0) return result;
+  // Sort longest-first so that e.g. "clone_18" is removed before "clone_1" can partially match within it.
+  const sorted = [...trimSubstrings].sort((a, b) => b.length - a.length);
+  let name = result.displayName;
+  for (const sub of sorted) {
+    if (sub) name = name.split(sub).join("");
+  }
+  return { ...result, displayName: name };
 }
 
 export function toTitleCase(s: string): string {
@@ -34,23 +46,28 @@ export function toTitleCase(s: string): string {
 }
 
 /**
- * Applies a custom label for this result if one exists in `customNames`, otherwise
- * falls back to trimming the prefix and optionally applying title case.
- * Custom names bypass all transformations (trimPrefix and titleCase).
+ * Applies the display-name transform pipeline in order:
+ *   1. If `originalFileName` matches a `customNames` entry, use that label verbatim (bypasses all other steps).
+ *   2. Otherwise: trimPrefix -> trimSubstrings -> titleCase, writing to `displayName`.
+ * `originalFileName` is preserved unchanged so downstream lookups (group matching, run filters) still work.
  */
-export function applyLabel<T extends { fileName: string }>(
+export function applyLabel<T extends { originalFileName: string; displayName: string }>(
   result: T,
   trimPrefix: string,
   customNames: Map<string, string>,
   titleCase?: boolean,
+  trimSubstrings?: string[],
 ): T {
-  const custom = customNames.get(result.fileName);
+  const custom = customNames.get(result.originalFileName);
   if (custom !== undefined) {
-    return { ...result, fileName: custom };
+    return { ...result, displayName: custom };
   }
   let r = applyTrimPrefix(result, trimPrefix);
+  if (trimSubstrings?.length) {
+    r = applyTrimSubstrings(r, trimSubstrings);
+  }
   if (titleCase) {
-    r = { ...r, fileName: toTitleCase(r.fileName) };
+    r = { ...r, displayName: toTitleCase(r.displayName) };
   }
   return r;
 }
@@ -243,12 +260,27 @@ export function addBaseOptions(command: Command): Command {
       (it: string) => parseFloat(it),
       0,
     )
-    .option(
-      "--title-case",
+    .option<boolean>(
+      "--title-case [boolean]",
       "Convert chart labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
+      (it: string) => it !== "false",
       false,
+    )
+    .option<string[]>(
+      "--trim-substring <string>",
+      "Remove all occurrences of a substring from chart labels (repeatable). Applied after --trim-prefix and before --title-case. Bypassed by --name overrides.",
+      (val: string, acc: string[]) => [...acc, val],
+      [],
+    )
+    .option<string[]>(
+      "--group-by <keys>",
+      "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its label. Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
+      (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
+      [],
     );
 }
+
+export { assignToGroup } from "../utils";
 
 // Aggregate strategy option used by multiple chart types
 export function addAggregateStrategyOption(command: Command): Command {

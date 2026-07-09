@@ -37,12 +37,12 @@ async function generateEntityHeatmap(
       options.trimPrefix,
       options.customNames,
       options.titleCase,
+      options.trimSubstrings,
     );
     results.push(result);
   }
 
   const canvas = new Canvas(options.width, options.height);
-
   renderEntityHeatmapChart(results, {
     aggregationStrategy: options.aggregateStrategy,
     topN: options.topN,
@@ -106,6 +106,7 @@ export function createEntityHeatmapCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -118,6 +119,7 @@ export function createEntityHeatmapCommand(): Command {
         showValues: opts.showValues,
         titleOverride: opts.titleOverride,
         titleCase: opts.titleCase,
+        groupBy: opts.groupBy ?? [],
       };
 
       const files = globSync(pattern);

@@ -46,11 +46,12 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--names-file <path>` | `""` | Path to a names-mapping file. Each non-blank, non-comment line: `baseName=label`. Lines starting with `#` are comments. `--name` flags override entries in this file on duplicate keys. |
 | `--metrics <list>` | *default set* | Comma-separated list of metric names to include, e.g. `"wholeUpdate,entityUpdate"`. Use `*` for all defaults |
 | `--min-percent <number>` | `0` | Hide any metric/entity whose max value never exceeds this % of the reference total across all files. `0` = no filter |
+| `--trim-substring <string>` | *(none)* | Remove all occurrences of an exact substring from chart labels. Repeatable — use once per substring. Applied after `--trim-prefix` and before `--title-case`; `--name` / `--names-file` overrides bypass it entirely. Longer substrings are removed before shorter ones, so e.g. `clone_18` is removed cleanly even when `clone_1` is also in the list |
 | `--title-case` | `false` | Convert chart labels to space-separated title case, normalizing snake_case, kebab-case, PascalCase, camelCase, and SCREAMING_SNAKE (e.g. `belt_v2` → `Belt V2`, `BeltV2` → `Belt V2`). Applied after `--trim-prefix`; `--name` / `--names-file` overrides bypass it entirely |
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
 
-> **Label pipeline** — `--name`/`--names-file`, `--trim-prefix`, and `--title-case` are applied in order. If a `--name` match is found the custom label is used as-is and the remaining steps are skipped; otherwise `--trim-prefix` strips the leading prefix and then `--title-case` normalizes the result to space-separated title case.
+> **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
 > `--title-case` recognises snake_case (`_`), kebab-case (`-`), PascalCase, camelCase, and SCREAMING_SNAKE — all produce the same space-separated title case output:
 >
@@ -62,14 +63,15 @@ All commands share a common set of **base options**, plus command-specific optio
 > | `beltV2` | `Belt V2` |
 > | `BELT_V2` | `Belt V2` |
 >
-> Example with `--trim-prefix "my_map_" --title-case`:
+> Example with `--trim-prefix "my_map_" --trim-substring "clone_1" --title-case`:
 > ```
-> my_map_belt_v2_verbose_metrics.csv
->   → base name : my_map_belt_v2
->   → trim      : belt_v2
->   → title case: Belt V2
+> my_map_belt_v2_clone_1_verbose_metrics.csv
+>   → base name       : my_map_belt_v2_clone_1
+>   → trim prefix     : belt_v2_clone_1
+>   → trim substrings : belt_v2_
+>   → title case      : Belt V2
 > ```
-> Adding `--name "my_map_belt_v2=Belt Design v2"` bypasses both transforms and uses `Belt Design v2` directly.
+> Adding `--name "my_map_belt_v2_clone_1=Belt Design v2"` bypasses all transforms and uses `Belt Design v2` directly.
 
 ---
 
@@ -84,6 +86,7 @@ Stacked-bar chart aggregating all metrics across input files, with an optional i
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
 | `--title-override <string>` | *(auto)* | Override the chart title |
 | `--max-update <number>` | *(auto)* | Fix the maximum x-axis value (microseconds). Useful for comparing charts at a consistent scale |
+| `--group-by <keys>` | *(none)* | Comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its **original** file base name — matching happens before any label transforms, so `--trim-substring` and `--title-case` cannot break group assignment. Results that don't match any key are excluded. Matched results are clustered under bold group-header rows in the chart and table, sorted by key order |
 
 ```
 belt-charts summary "results/my_amazing_map*.csv"
@@ -99,6 +102,25 @@ belt-charts summary "results/my_amazing_map*.csv"
   --name "my_amazing_map_b=Design B"
   --min-percent 1
 ```
+
+**`--group-by` example** — benchmarks run across three clone counts, trim the clone tag from labels, cluster results by clone:
+
+```
+belt-charts summary "results/bm_*_clone_*.csv"
+  -w 1400 -h 900
+  --remove-first-ticks 3600
+  -o "charts/by_clone.png"
+  -a median
+  --trim-prefix "bm_"
+  --trim-substring "clone_0"
+  --trim-substring "clone_1"
+  --trim-substring "clone_18"
+  --title-case true
+  --group-by "clone_0,clone_1,clone_18"
+  --summary-table-file true
+```
+
+The `--group-by` keys are matched against the original file base name (before any trim or title-case transforms), so `clone_0`, `clone_1`, and `clone_18` are still found in the name even though `--trim-substring` will later strip them from the visible label. Longest-match means `clone_18` files are correctly assigned to the `clone_18` group, not the `clone_1` group. When `--summary-table-file` is active the exported `.md`/`.csv` gains a **Group** column as its first column.
 
 ---
 
@@ -204,6 +226,7 @@ Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions.
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
 | `--title-override <string>` | *(auto)* | Override the chart title |
+| `--group-by <keys>` | *(none)* | Same behaviour as in `summary` — see above |
 
 ```
 belt-charts entity-summary "results/my_amazing_map*.csv"

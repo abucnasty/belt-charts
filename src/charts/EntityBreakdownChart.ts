@@ -19,7 +19,8 @@ interface EntityBreakdownMetricValue {
 }
 
 interface EntityBreakdownChartData {
-  mapName: string;
+  displayName: string;
+  group?: string;
   entityUpdateTotal: number;
   metricValues: EntityBreakdownMetricValue[];
 }
@@ -33,6 +34,8 @@ export interface EntityBreakdownChartOptions {
   minPercent?: number;
   sortBy?: "total" | "preserve";
   isPerRun?: boolean;
+  /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
+  groupBy?: string[];
 }
 
 const mapEntityBreakdownData = (
@@ -55,7 +58,8 @@ const mapEntityBreakdownData = (
   });
 
   return {
-    mapName: result.fileName,
+    displayName: result.displayName,
+    group: result.group,
     entityUpdateTotal,
     metricValues: childValues,
   };
@@ -73,6 +77,21 @@ export const createEntityBreakdownChartConfiguration = (
 
   if (options.sortBy !== "preserve") {
     rawChartData.sort((a, b) => a.entityUpdateTotal - b.entityUpdateTotal);
+  }
+
+  const groupBy = options.groupBy ?? [];
+  const getGroup = (data: { group?: string }): string | null => data.group ?? null;
+
+  if (groupBy.length > 0) {
+    const filtered = rawChartData.filter(d => getGroup(d) !== null);
+    filtered.sort((a, b) => {
+      const ai = groupBy.indexOf(getGroup(a)!);
+      const bi = groupBy.indexOf(getGroup(b)!);
+      if (ai !== bi) return ai - bi;
+      return a.entityUpdateTotal - b.entityUpdateTotal;
+    });
+    rawChartData.length = 0;
+    rawChartData.push(...filtered);
   }
 
   // Determine which children to display: top-N by max-across-results.
@@ -111,7 +130,8 @@ export const createEntityBreakdownChartConfiguration = (
     const sumDisplayed = displayedValues.reduce((sum, mv) => sum + mv.average, 0);
     const otherAvg = Math.max(0, data.entityUpdateTotal - sumDisplayed);
     return {
-      mapName: data.mapName,
+      displayName: data.displayName,
+      group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
       metricValues: [
         ...displayedValues,
@@ -131,9 +151,30 @@ export const createEntityBreakdownChartConfiguration = (
     [OTHER_ENTITY_NAME, OTHER_ENTITY_DESCRIPTION],
   ]);
 
+  // Build interleaved row structure: group header spacers + data rows.
+  const SPACER_PREFIX = "\u200B";
+  type ChartRow = { kind: "data"; idx: number } | { kind: "spacer"; groupLabel: string };
+  const rows: ChartRow[] = [];
+  if (groupBy.length > 0) {
+    let lastGroup: string | null = null;
+    chartData.forEach((data, idx) => {
+      const group = getGroup(data)!;
+      if (group !== lastGroup) {
+        rows.push({ kind: "spacer", groupLabel: group });
+        lastGroup = group;
+      }
+      rows.push({ kind: "data", idx });
+    });
+  } else {
+    chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
+  }
+  const chartLabels = rows.map(row =>
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
+  );
+
   const datasets = datasetOrder.map(name => ({
     label: datasetDescriptions.get(name)!,
-    data: chartData.map(data => data.metricValues.find(mv => mv.metricName === name)?.average ?? 0),
+    data: rows.map(row => row.kind === "spacer" ? null : (chartData[row.idx].metricValues.find(mv => mv.metricName === name)?.average ?? 0)),
     backgroundColor: getMetricPattern(name),
   }));
 
@@ -180,9 +221,9 @@ export const createEntityBreakdownChartConfiguration = (
         return value ? parseFloat(value.average.toFixed(2)) : NaN;
       });
       return {
-        mapName: data.mapName,
+        displayName: data.displayName,
         values: [
-          data.mapName,
+          data.displayName,
           ...metricValues,
           parseFloat(data.entityUpdateTotal.toFixed(2)),
           stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
@@ -229,7 +270,7 @@ export const createEntityBreakdownChartConfiguration = (
       const rowHeight = ROW_HEIGHT;
 
       ctx.font = "bold 12px Arial";
-      const header = ["Category", ...chartData.map(d => d.mapName)];
+      const header = ["Category", ...chartData.map(d => d.displayName)];
 
       const columnMinWidths = header.map((text, colIdx) => {
         let maxWidth = ctx.measureText(text).width;
@@ -354,7 +395,7 @@ export const createEntityBreakdownChartConfiguration = (
   return {
     type: "bar",
     data: {
-      labels: chartData.map(d => d.mapName),
+      labels: chartLabels,
       datasets,
     },
     options: {
@@ -386,7 +427,19 @@ export const createEntityBreakdownChartConfiguration = (
         },
         y: {
           stacked: true,
-          ticks: { color: colors.white },
+          ticks: {
+            autoSkip: false,
+            color: (ctx: any) =>
+              chartLabels[ctx.index]?.startsWith(SPACER_PREFIX) ? colors.sky_blue : colors.white,
+            font: (ctx: any) =>
+              chartLabels[ctx.index]?.startsWith(SPACER_PREFIX)
+                ? { weight: "bold" as const, size: 13 }
+                : { size: 12 },
+            callback: (value: any) => {
+              const label = chartLabels[value] ?? "";
+              return label.startsWith(SPACER_PREFIX) ? `▸ ${label.slice(1)}` : label;
+            },
+          },
           grid: { color: colors.dark_grey },
         },
       },

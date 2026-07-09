@@ -181,7 +181,7 @@ export function renderEntityHeatmapChart(
   const leftMargin = Math.ceil(Math.max(...rows.map(r => ctx.measureText(r.description).width)) + 24);
 
   // Column header height: 45° rotation, so label length ≈ diagonal height
-  const maxColLabelChars = Math.max(...results.map(r => r.fileName.length));
+  const maxColLabelChars = Math.max(...results.map(r => r.displayName.length));
   const colLabelHeight = Math.min(140, maxColLabelChars * 6 + 16);
   const bottomMargin = colLabelHeight + 12;
 
@@ -288,7 +288,7 @@ export function renderEntityHeatmapChart(
     ctx.save();
     ctx.translate(cx, headerBaseY);
     ctx.rotate(-Math.PI / 4);
-    ctx.fillText(results[ci].fileName, 0, 0);
+    ctx.fillText(results[ci].displayName, 0, 0);
     ctx.restore();
   }
 

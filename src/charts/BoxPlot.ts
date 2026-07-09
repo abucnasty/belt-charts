@@ -20,10 +20,10 @@ export interface BoxChartOptions {
 
 export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], options: BoxChartOptions): ChartConfiguration<"boxplot"> => {
 
-    const dataSets: { fileName: string, stats: IBoxPlot }[] = []
+    const dataSets: { displayName: string, stats: IBoxPlot }[] = []
 
     results.forEach(result => {
-        const fileName = result.fileName
+        const displayName = result.displayName
 
         const valuesPerRun: number[] = []
 
@@ -50,7 +50,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
         }
 
         dataSets.push({
-            fileName: fileName,
+            displayName: displayName,
             stats
         })
     })
@@ -114,7 +114,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
             },
         },
         data: {
-            labels: dataSets.map(it => it.fileName),
+            labels: dataSets.map(it => it.displayName),
             datasets: [
                 {
                     label: 'Dataset 1',

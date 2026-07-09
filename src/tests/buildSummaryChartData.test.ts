@@ -17,7 +17,8 @@ const makeResult = (
   all: Partial<Record<MetricName, MetricAggregate>>,
   metrics: MetricEnum[],
 ): BenchmarkAggregateRunResult => ({
-  fileName: "test-map",
+  originalFileName: "test-map",
+  displayName: "test-map",
   metrics,
   runs: new Map(),
   all: new Map(Object.entries(all) as [MetricName, MetricAggregate][]),

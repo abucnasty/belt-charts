@@ -25,6 +25,7 @@ async function generateBoxPlot(
       options.trimPrefix,
       options.customNames,
       options.titleCase,
+      options.trimSubstrings,
     );
     aggregateResults.push(result);
   }
@@ -63,6 +64,7 @@ export function createBoxPlotCommand(): Command {
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
+        trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
         namesFile: opts.namesFile ?? "",
         aggregateFile: opts.aggregateFile,
@@ -72,6 +74,7 @@ export function createBoxPlotCommand(): Command {
         maxUpdate: opts.maxUpdate,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
+        groupBy: opts.groupBy ?? [],
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

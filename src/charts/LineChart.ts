@@ -197,7 +197,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
             plugins: {
                 title: {
                     display: true,
-                    text: result.fileName + " Timeseries Metrics",
+                    text: result.displayName + " Timeseries Metrics",
                     color: colors.white,
                 },
                 legend: {

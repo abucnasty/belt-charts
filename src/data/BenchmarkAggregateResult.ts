@@ -21,7 +21,12 @@ export type MetricRunAggregate = MetricAggregate & {
 }
 
 export interface BenchmarkAggregateRunResult {
-    fileName: string;
+    /** Immutable base name of the source CSV (filename minus `.csv` / `_verbose_metrics`). Set once at parse time and preserved through all label transforms. Used for lookups against `--name` / `--names-file` and `--group-by`. */
+    originalFileName: string;
+    /** Transformed label shown in charts and tables. Modified by the label pipeline (`--name`, `--trim-prefix`, `--trim-substring`, `--title-case`) and the per-run explosion (`(run N)` suffix). */
+    displayName: string;
+    /** Optional group key set by the command layer for chart clustering. Carried through label transforms via object spread. */
+    group?: string;
     metrics: MetricEnum[]
     runs: Map<MetricName, MetricRunAggregate[]>
     all: Map<MetricName, MetricAggregate>
@@ -135,7 +140,8 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     })
 
     return {
-        fileName: baseName,
+        originalFileName: baseName,
+        displayName: baseName,
         metrics,
         runs: runAggregates,
         all: all
@@ -189,7 +195,9 @@ export const saveBenchmarkAggregateRunResultsToCsv = async (results: BenchmarkAg
 
         for (const run of runs) {
             const record: Record<string, any> = {
-                fileName: result.fileName,
+                // External CSV schema keeps the `fileName` column header (backward-compatible with
+                // any downstream CSV consumers); the value is sourced from originalFileName.
+                fileName: result.originalFileName,
                 run: run
             };
             for (const metric of allMetricNames) {
@@ -291,10 +299,14 @@ export const explodeIntoPerRunResults = (
         });
 
         return {
-            fileName: `${result.fileName} (run ${run})`,
+            // Preserve originalFileName across explosion so per-run rows can still
+            // resolve customNames/runsToRemove lookups against the source CSV name.
+            originalFileName: result.originalFileName,
+            displayName: `${result.displayName} (run ${run})`,
             metrics: result.metrics,
             runs: new Map(), // Empty since chart only reads "all"
             all: all,
+            group: result.group,
             __singleRun: true,
         } as SingleRunAggregateResult;
     });
