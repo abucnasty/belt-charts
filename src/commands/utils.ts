@@ -292,6 +292,29 @@ export function addAggregateStrategyOption(command: Command): Command {
 }
 
 /**
+ * Adds the `--allow-unfiltered-metrics` opt-in flag. Charts that support it
+ * skip their internal MetricProfiles filter so any metric passed via
+ * `--metrics` is rendered. Layout/color/legend ordering may behave
+ * unexpectedly for metrics outside the default profile.
+ */
+export function addAllowUnfilteredMetricsOption(command: Command): Command {
+  return command.option(
+    "--allow-unfiltered-metrics",
+    "Bypass the built-in metric profile filter so any --metrics value is rendered. WARNING: metrics outside the default profile may render or lay out unexpectedly.",
+    false,
+  );
+}
+
+/** Emits a warning when --allow-unfiltered-metrics is enabled. */
+export function warnAllowUnfilteredMetrics(enabled: boolean): void {
+  if (enabled) {
+    console.warn(
+      "--allow-unfiltered-metrics: built-in metric filter bypassed. Unexpected rendering, ordering, or legend behavior may occur.",
+    );
+  }
+}
+
+/**
  * Resolves glob pattern to matched files, loads run outlier filters, and
  * ensures the output directory exists. Shared by all command action handlers.
  */

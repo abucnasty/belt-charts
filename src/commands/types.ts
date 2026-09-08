@@ -31,6 +31,8 @@ export type SummaryChartOptions = BaseChartOptions & {
   summaryTableFile: boolean;
   titleOverride: string | null;
   maxUpdate: number | null;
+  /** Bypass the MetricProfiles.SUMMARY_CHART filter and render any metric provided via --metrics. */
+  allowUnfilteredMetrics: boolean;
 };
 
 // Summary per-run chart specific options
@@ -44,6 +46,8 @@ export type LineBarChartOptions = BaseChartOptions & {
   tickWindowAggregation: number;
   maxUpdate: number | null;
   type: "line" | "bar";
+  /** Bypass any built-in metric filter and render any metric provided via --metrics. */
+  allowUnfilteredMetrics: boolean;
 };
 
 // Boxplot chart specific options

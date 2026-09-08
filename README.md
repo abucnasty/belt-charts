@@ -87,6 +87,9 @@ Stacked-bar chart aggregating all metrics across input files, with an optional i
 | `--title-override <string>` | *(auto)* | Override the chart title |
 | `--max-update <number>` | *(auto)* | Fix the maximum x-axis value (microseconds). Useful for comparing charts at a consistent scale |
 | `--group-by <keys>` | *(none)* | Comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its **original** file base name — matching happens before any label transforms, so `--trim-substring` and `--title-case` cannot break group assignment. Results that don't match any key are excluded. Matched results are clustered under bold group-header rows in the chart and table, sorted by key order |
+| `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Bypass the built-in `MetricProfiles.SUMMARY_CHART` filter so any metric passed via `--metrics` is rendered, even metrics outside the default profile. **Warning:** dataset ordering, legend ordering, and pattern/color assignment are tuned for the default profile; off-profile metrics may render or lay out unexpectedly. A warning is printed at run time |
+
+> **Why is there a metric profile in the first place?** The fixed profile is deliberate. belt-charts assigns a **stable, color-blind-friendly color to each metric** (e.g. `entityUpdate` is always the same blue everyone recognises at a glance), and non-color-blind-friendly hues are backed by distinguishing **pattern fills** so the chart still reads unambiguously in grayscale or for readers with color-vision deficiencies. Both the palette and the pattern set are only defined for metrics in the default profile — off-profile metrics fall back to whatever the underlying chart library picks, which may collide with other metrics' colors or lose their pattern. `--allow-unfiltered-metrics` intentionally opts out of that guarantee.
 
 ```
 belt-charts summary "results/my_amazing_map*.csv"
@@ -135,6 +138,7 @@ Same as `summary` but shows one bar per individual run instead of averaging acro
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
 | `--title-override <string>` | *(auto)* | Override the chart title |
 | `--sort-by <run\|total>` | `total` | Sort bars by run number or by total `wholeUpdate` time |
+| `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Same as on `summary` — bypass the built-in metric-profile filter so any `--metrics` value is rendered. Emits a warning at run time |
 
 ```
 belt-charts summary-per-run "results/my_amazing_map*.csv"
@@ -159,6 +163,7 @@ Timeseries charts — one output file per input CSV. `bar` renders stacked areas
 | `-a, --aggregate-strategy` | `average` | How to aggregate runs per tick |
 | `--tick-window-aggregation <n>` | `0` | Time-weighted average over a rolling window of N ticks. `0` = no windowing |
 | `--max-update <number>` | *(auto)* | Y-axis ceiling in µs. Auto-detected from data if omitted |
+| `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Bypass the built-in metric-profile filter so any `--metrics` value is rendered, even metrics outside the default line-chart profile. Emits a warning at run time |
 
 > When any PascalCase entity metric (e.g. `Inserter`, `AssemblingMachine`) is included in `--metrics`, `entityUpdate` is automatically excluded from the stacked areas and becomes the "Total Entity Update Average" reference line instead of "Whole Update Average".
 

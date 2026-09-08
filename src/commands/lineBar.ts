@@ -7,7 +7,7 @@ import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
 
 async function generateLineOrBarCharts(
   files: string[],
@@ -71,8 +71,10 @@ function createLineBarCommand(type: "line" | "bar"): Command {
       : "Generate bar charts showing metrics over time";
 
   return addAggregateStrategyOption(
-    addBaseOptions(
-      new Command(type).description(description),
+    addAllowUnfilteredMetricsOption(
+      addBaseOptions(
+        new Command(type).description(description),
+      ),
     ),
   )
     .option(
@@ -108,6 +110,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         groupBy: opts.groupBy ?? [],
+        allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
@@ -115,6 +118,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
       }
       warnUnmatchedNames(files, options.customNames);
+      warnAllowUnfilteredMetrics(options.allowUnfilteredMetrics);
 
       await generateLineOrBarCharts(files, runsToRemove, options);
     });

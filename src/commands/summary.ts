@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
 
 async function generateSummary(
   files: string[],
@@ -42,6 +42,7 @@ async function generateSummary(
     minPercent: options.minPercent,
     maxUpdate: options.maxUpdate,
     groupBy: options.groupBy,
+    allowUnfilteredMetrics: options.allowUnfilteredMetrics,
   });
 
   console.log("Chart configuration created.");
@@ -50,10 +51,10 @@ async function generateSummary(
 }
 
 export function createSummaryCommand(): Command {
-  return addBaseOptions(
+  return addAllowUnfilteredMetricsOption(addBaseOptions(
     new Command("summary")
       .description("Generate a summary chart with aggregate statistics table"),
-  )
+  ))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",
@@ -106,6 +107,7 @@ export function createSummaryCommand(): Command {
         titleCase: opts.titleCase,
         maxUpdate: opts.maxUpdate,
         groupBy: opts.groupBy ?? [],
+        allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
@@ -113,6 +115,7 @@ export function createSummaryCommand(): Command {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
       }
       warnUnmatchedNames(files, options.customNames);
+      warnAllowUnfilteredMetrics(options.allowUnfilteredMetrics);
 
       await generateSummary(files, runsToRemove, options);
     });

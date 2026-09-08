@@ -27,6 +27,8 @@ interface SummaryChartOptions {
   maxUpdate?: number | null;
   /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
+  /** When true, skip the MetricProfiles.SUMMARY_CHART filter and render any metric in `metrics`. */
+  allowUnfilteredMetrics?: boolean;
 }
 
 export interface SummaryChartResult {
@@ -39,9 +41,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   let configuredDisplayMetrics: Partial<Record<MetricName, MetricEnum>> = {}
   if (options.metrics) {
-    options.metrics
-      .filter(it => supportedMetrics[it.name] != undefined)
-      .forEach(metric => configuredDisplayMetrics[metric.name] = metric)
+    const source = options.allowUnfilteredMetrics
+      ? options.metrics
+      : options.metrics.filter(it => supportedMetrics[it.name] != undefined);
+    source.forEach(metric => configuredDisplayMetrics[metric.name] = metric)
   } else {
     configuredDisplayMetrics = { ...supportedMetrics }
   }
