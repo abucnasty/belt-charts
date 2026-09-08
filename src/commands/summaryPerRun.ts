@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
 
 async function generateSummaryPerRun(
   files: string[],
@@ -72,6 +72,7 @@ async function generateSummaryPerRun(
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
     minPercent: options.minPercent,
+    allowUnfilteredMetrics: options.allowUnfilteredMetrics,
   });
 
   console.log("Chart configuration created.");
@@ -80,10 +81,10 @@ async function generateSummaryPerRun(
 }
 
 export function createSummaryPerRunCommand(): Command {
-  return addBaseOptions(
+  return addAllowUnfilteredMetricsOption(addBaseOptions(
     new Command("summary-per-run")
       .description("Generate a summary chart showing metrics for each individual run (not averaged across runs)"),
-  )
+  ))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",
@@ -143,6 +144,7 @@ export function createSummaryPerRunCommand(): Command {
         titleCase: opts.titleCase,
         maxUpdate: null,
         groupBy: opts.groupBy ?? [],
+        allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
@@ -150,6 +152,7 @@ export function createSummaryPerRunCommand(): Command {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
       }
       warnUnmatchedNames(files, options.customNames);
+      warnAllowUnfilteredMetrics(options.allowUnfilteredMetrics);
 
       await generateSummaryPerRun(files, runsToRemove, options);
     });
