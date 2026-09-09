@@ -80,7 +80,7 @@ async function generateEntityBreakdown(
   });
 
   console.log("Chart configuration created.");
-  const canvas = new Canvas(options.width, Math.max(options.height, config.recommendedHeight));
+  const canvas = new Canvas(Math.max(options.width, config.recommendedWidth), Math.max(options.height, config.recommendedHeight));
   const chart = new Chart(canvas as any, config.config);
   const imageBuffer = await canvas.toBuffer("png");
 

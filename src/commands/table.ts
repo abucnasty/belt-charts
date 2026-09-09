@@ -59,7 +59,7 @@ export function createTableCommand(): Command {
       "-w, --width <px>",
       "Chart width in pixels",
       (it: string) => parseInt(it),
-      1400,
+      1000,
     )
     .option(
       "-h, --height <px>",

@@ -148,10 +148,18 @@ export const chartLayout = {
   TICKS_PER_SECOND: 60,
   /** Height of each row in the in-chart summary table (px). */
   TABLE_ROW_HEIGHT_PX: 20,
+  /** Height of a single wrapped header line in the summary table (px); headers reserve up to 2 of these before falling back to ellipsis-truncation. */
+  TABLE_HEADER_LINE_HEIGHT_PX: 14,
   /** Horizontal padding added to each column in the summary table (px). */
   TABLE_COLUMN_PADDING_PX: 16,
   /** Extra bottom margin below the summary table rows (px). */
   TABLE_BOTTOM_MARGIN_PX: 10,
+  /** Floor width for any summary-table column (px); prevents a column from fully collapsing when space is tight. */
+  TABLE_MIN_COLUMN_WIDTH_PX: 64,
+  /** Ceiling width a non-flex summary-table column's header text may claim (px); longer headers get ellipsis-truncated instead of squeezing the flex column. */
+  TABLE_MAX_HEADER_COLUMN_WIDTH_PX: 120,
+  /** Extra horizontal chrome (px) reserved outside the plot area (bar chart y-axis tick labels, margins) when estimating minimum canvas width for a chart with a table. */
+  TABLE_WIDTH_CHROME_PX: 100,
   /** Scale multiplier applied below the dataset minimum for Y-axis lower bound. */
   AXIS_SCALE_LOWER_PADDING: 0.9,
   /** Scale multiplier applied above the dataset maximum for Y-axis upper bound. */

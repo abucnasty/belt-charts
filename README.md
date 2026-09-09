@@ -6,7 +6,7 @@ A CLI tool for generating charts and visualizations from Belt benchmark verbose 
 
 ## Installation
 
-### From npm (once published)
+### From npm
 ```bash
 npm install -g belt-charts
 ```
@@ -53,7 +53,7 @@ All commands share a common set of **base options**, plus command-specific optio
 
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
-> **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled); `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.
+> **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled) and grow **width** to fit the in-chart table's columns; `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.
 >
 > `--title-case` recognises snake_case (`_`), kebab-case (`-`), PascalCase, camelCase, and SCREAMING_SNAKE — all produce the same space-separated title case output:
 >

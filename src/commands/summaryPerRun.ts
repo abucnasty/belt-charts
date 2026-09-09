@@ -61,7 +61,7 @@ async function generateSummaryPerRun(
     });
   }
 
-  const { config, exportTable, recommendedHeight } = createSummaryChartConfiguration(allPerRunResults, {
+  const { config, exportTable, recommendedHeight, recommendedWidth } = createSummaryChartConfiguration(allPerRunResults, {
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
@@ -76,7 +76,7 @@ async function generateSummaryPerRun(
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, options.width, Math.max(options.height, recommendedHeight), options.output);
+  await renderChartToFile(config, Math.max(options.width, recommendedWidth), Math.max(options.height, recommendedHeight), options.output);
   await exportTable?.();
 }
 

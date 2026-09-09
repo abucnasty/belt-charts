@@ -8,6 +8,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { nanoToMicro, percentDecrease } from "../utils";
 import { colors, chartLayout } from "./constants";
 import { getMetricPattern } from "./styles";
+import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
@@ -42,6 +43,8 @@ export interface EntityBreakdownChartResult {
   config: ChartConfiguration<"bar">;
   /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
   recommendedHeight: number;
+  /** Minimum canvas width (px) needed to fit the summary table's columns without squishing; use as a floor over the user-requested width. */
+  recommendedWidth: number;
 }
 
 const mapEntityBreakdownData = (
@@ -260,114 +263,23 @@ export const createEntityBreakdownChartConfiguration = (
     },
   };
 
-  // Rows drawn: header(0), N metric rows(1..N), Entity Update Total(N+1),
-  // % Decrease from Previous(N+2), % Decrease from Best(N+3). Total = N+4 rows.
-  const ROW_HEIGHT = 20;
-  const TABLE_BOTTOM_PADDING = 16;
-  const tableRowCount = tableHeaderMetrics.length + 4;
-  const tableReservedHeight = tableRowCount * ROW_HEIGHT + TABLE_BOTTOM_PADDING;
-  const tablePlugin = {
-    id: "valueTable",
-    afterDraw: (chart: any) => {
-      const { ctx, chartArea: { left, right }, height } = chart;
-      ctx.save();
+  // Table is drawn one row per save file (not one column per save file) so it stays readable
+  // no matter how many results are being compared or how long their names are.
+  const tableData = { header: tableStats.header, rows: tableStats.rows.map(row => ({ values: row.values })) };
+  const tableRenderOptions = { flexColumnHeader: "Save File" };
+  const tablePlugin = createTableChartPlugin(tableData, tableRenderOptions);
 
-      const tableTop = height - tableReservedHeight + ROW_HEIGHT;
-      const rowHeight = ROW_HEIGHT;
-
-      ctx.font = "bold 12px Arial";
-      const header = ["Category", ...chartData.map(d => d.displayName)];
-
-      const columnMinWidths = header.map((text, colIdx) => {
-        let maxWidth = ctx.measureText(text).width;
-        if (colIdx > 0) {
-          const dataIdx = colIdx - 1;
-          tableHeaderMetrics.forEach(m => {
-            const mv = chartData[dataIdx]?.metricValues.find(it => it.metricName === m.name);
-            const valueText = `${(mv?.average ?? 0).toFixed(2)}`;
-            maxWidth = Math.max(maxWidth, ctx.measureText(valueText).width);
-          });
-          maxWidth = Math.max(maxWidth, ctx.measureText(`${(chartData[dataIdx]?.entityUpdateTotal ?? 0).toFixed(2)}`).width);
-          const stats = tableStats.totalStats[dataIdx];
-          if (stats?.decreaseFromPrevious !== null && stats?.decreaseFromPrevious !== undefined) {
-            maxWidth = Math.max(maxWidth, ctx.measureText(`${stats.decreaseFromPrevious}%`).width);
-          }
-          if (stats?.decreaseFromBest !== null && stats?.decreaseFromBest !== undefined) {
-            maxWidth = Math.max(maxWidth, ctx.measureText(`${stats.decreaseFromBest}%`).width);
-          }
-        } else {
-          tableHeaderMetrics.forEach(m => {
-            maxWidth = Math.max(maxWidth, ctx.measureText(m.description).width);
-          });
-          maxWidth = Math.max(maxWidth, ctx.measureText("Entity Update Total").width);
-          maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Previous").width);
-          maxWidth = Math.max(maxWidth, ctx.measureText("% Decrease from Best").width);
-        }
-        return maxWidth + 16;
-      });
-
-      const totalMinWidth = columnMinWidths.reduce((sum, w) => sum + w, 0);
-      const availableWidth = right - left;
-      const scale = availableWidth / totalMinWidth;
-      const columnWidths = columnMinWidths.map(w => w * scale);
-
-      const columnPositions = [left];
-      for (let i = 0; i < columnWidths.length - 1; i++) {
-        columnPositions.push(columnPositions[i] + columnWidths[i]);
-      }
-
-      ctx.font = "bold 12px Arial";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "white";
-
-      header.forEach((category, i) => {
-        ctx.fillText(category, columnPositions[i] + columnWidths[i] / 2, tableTop);
-      });
-
-      ctx.font = "12px Arial";
-      tableHeaderMetrics.forEach((m, rowIdx) => {
-        const y = tableTop + (rowIdx + 1) * rowHeight;
-        ctx.fillText(m.description, columnPositions[0] + columnWidths[0] / 2, y);
-        chartData.forEach((res, colIdx) => {
-          const mv = res.metricValues.find(it => it.metricName === m.name);
-          const avg = (mv?.average ?? 0).toFixed(2);
-          ctx.fillText(`${avg}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, y);
-        });
-      });
-
-      let nextRow = tableTop + (tableHeaderMetrics.length + 1) * rowHeight;
-
-      ctx.font = "bold 12px Arial";
-      ctx.fillText("Entity Update Total", columnPositions[0] + columnWidths[0] / 2, nextRow);
-      chartData.forEach((data, colIdx) => {
-        ctx.fillText(`${data.entityUpdateTotal.toFixed(2)}`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, nextRow);
-      });
-
-      ctx.font = "12px Arial";
-      nextRow += rowHeight;
-      ctx.fillText("% Decrease from Previous", columnPositions[0] + columnWidths[0] / 2, nextRow);
-      tableStats.totalStats.forEach((stats, colIdx) => {
-        if (stats.decreaseFromPrevious !== null) {
-          ctx.fillText(`${stats.decreaseFromPrevious}%`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, nextRow);
-        }
-      });
-
-      nextRow += rowHeight;
-      ctx.fillText("% Decrease from Best", columnPositions[0] + columnWidths[0] / 2, nextRow);
-      tableStats.totalStats.forEach((stats, colIdx) => {
-        if (stats.decreaseFromBest !== null) {
-          ctx.fillText(`${stats.decreaseFromBest}%`, columnPositions[colIdx + 1] + columnWidths[colIdx + 1] / 2, nextRow);
-        }
-      });
-
-      ctx.restore();
-    },
-  };
-
-  const padding = options.includeTable ? { bottom: tableReservedHeight + 10 } : undefined;
+  const tableReservedHeightPx = tableReservedHeight(tableStats.rows.length);
+  const padding = options.includeTable ? { bottom: tableReservedHeightPx } : undefined;
   const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX
     + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX
-    + (options.includeTable ? tableReservedHeight + 10 : 0);
+    + (options.includeTable ? tableReservedHeightPx : 0);
+  // The y-axis tick labels (bar row names) sit outside the table's plot area, so a wide table
+  // also needs room reserved for the longest one alongside the table's own column widths.
+  const yAxisLabelWidth = Math.max(...chartLabels.map(label => estimateTextWidth(label.replace(SPACER_PREFIX, "▸ "))));
+  const recommendedWidth = options.includeTable
+    ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData)
+    : 0;
 
   let aggregationStrategyLabel = "";
   switch (options.aggregationStrategy) {
@@ -456,5 +368,5 @@ export const createEntityBreakdownChartConfiguration = (
     plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
   };
 
-  return { config, recommendedHeight };
+  return { config, recommendedHeight, recommendedWidth };
 };
