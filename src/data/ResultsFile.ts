@@ -1,6 +1,11 @@
 import fs from "fs"
 import csv from "csv-parser";
-import { average, median, standardDeviation } from "../utils";
+import { median, medianAbsoluteDeviation } from "../utils";
+
+// Scales MAD to be comparable to a standard deviation under a normal distribution, so
+// `standardDeviations` keeps its usual meaning even though the estimate is now robust.
+// https://en.wikipedia.org/wiki/Median_absolute_deviation#Relation_to_standard_deviation
+const MAD_TO_STD_SCALE = 1.4826;
 
 export interface RunResultRow {
     save_name: string;
@@ -62,13 +67,15 @@ export const filterRunResultsOutsideStdDeviations = (saveName: string, runResult
         remove: []
     }
 
-    const std = standardDeviation(runResults.map(r => r.avg_ms));
+    const values = runResults.map(r => r.avg_ms);
+    const med = median(values);
+    // Median/MAD instead of mean/std: a few slow runs can inflate the mean/std enough to hide
+    // themselves (masking effect), but they barely move the median or MAD. See sources above.
+    const robustStd = medianAbsoluteDeviation(values) * MAD_TO_STD_SCALE;
 
-    const avg = average(runResults.map(r => r.avg_ms));
-    const max = avg + std * standardDeviations;
+    const max = med + robustStd * standardDeviations;
+    const min = med - robustStd * standardDeviations;
 
-    const min = avg - std * standardDeviations;
-    
     runResults.forEach(row => {
         if(row.avg_ms > max || row.avg_ms < min) {
             filters.remove.push(row);

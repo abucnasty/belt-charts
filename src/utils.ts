@@ -52,6 +52,23 @@ export function median(array: number[]): number {
   }
 }
 
+/**
+ * Median Absolute Deviation: median of the absolute deviations from the median.
+ * A robust alternative to standard deviation for outlier detection — unlike the mean/std,
+ * a few extreme values barely move the median or MAD, so outliers can't mask themselves.
+ *
+ * Further reading:
+ * - Leys et al. (2013), "Detecting outliers: Do not use standard deviation around the mean,
+ *   use absolute deviation around the median", Journal of Experimental Social Psychology.
+ *   https://doi.org/10.1016/j.jesp.2013.03.013
+ * - Iglewicz & Hoaglin (1993), "How to Detect and Handle Outliers", ASQC Quality Press.
+ * - https://en.wikipedia.org/wiki/Median_absolute_deviation
+ */
+export function medianAbsoluteDeviation(array: number[]): number {
+  const med = median(array);
+  return median(array.map(x => Math.abs(x - med)));
+}
+
 export function percentDecrease(startingValue: number, endingValue: number): number {
   return (startingValue - endingValue) / Math.abs(startingValue) * 100
 }

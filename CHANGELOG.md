@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-09-09
+
+### Changed
+- `--stddev-filter` (and the underlying `filterRunResultsOutsideStdDeviations`/`filterResultsOutsideStdDeviations` helpers) now use a median/MAD (median absolute deviation)-based robust outlier filter instead of mean/standard deviation. With mean/std, a few extreme runs inflate the very std used to judge them and can mask themselves; median/MAD barely moves under the same conditions. The MAD is scaled by 1.4826 so `--stddev-filter <n>` keeps its existing meaning (comparable to a normal-distribution std dev) and requires no changes to existing scripts.
+
 ## [1.9.0] - 2026-09-07
 
 ### Added
