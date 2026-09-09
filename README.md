@@ -37,8 +37,8 @@ All commands share a common set of **base options**, plus command-specific optio
 |---|---|---|
 | `<glob-pattern>` | *(required)* | Glob pattern for input CSV files, e.g. `"results/*.csv"` |
 | `-o, --output <file>` | `verbose_metrics.png` | Output file path. Use `.svg` for vector output |
-| `-w, --width <px>` | `1400` | Chart width in pixels |
-| `-h, --height <px>` | `800` | Chart height in pixels |
+| `-w, --width <px>` | `1400` | Chart width in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
+| `-h, --height <px>` | `800` | Chart height in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `--remove-first-ticks <n>` | `1` | Skip the first N ticks (removes benchmark warm-up spikes) |
 | `--max-ticks <n>` | `0` | Only include ticks up to N. `0` = no limit |
 | `--trim-prefix <string>` | `""` | Strip a common prefix from all file names in chart labels |
@@ -52,6 +52,8 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
 
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
+>
+> **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled); `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.
 >
 > `--title-case` recognises snake_case (`_`), kebab-case (`-`), PascalCase, camelCase, and SCREAMING_SNAKE — all produce the same space-separated title case output:
 >

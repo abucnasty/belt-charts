@@ -34,6 +34,8 @@ interface SummaryChartOptions {
 export interface SummaryChartResult {
   config: ChartConfiguration<"bar">;
   exportTable: (() => Promise<void>) | null;
+  /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
+  recommendedHeight: number;
 }
 
 export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunResult[], options: SummaryChartOptions): SummaryChartResult => {
@@ -285,7 +287,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     },
   };
 
-  const padding = options.includeTable ? { bottom: (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX + chartLayout.TABLE_BOTTOM_MARGIN_PX } : undefined
+  const tableHeight = options.includeTable ? (metrics.length + 3) * chartLayout.TABLE_ROW_HEIGHT_PX + chartLayout.TABLE_BOTTOM_MARGIN_PX : 0;
+  const padding = options.includeTable ? { bottom: tableHeight } : undefined
+  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX + tableHeight;
 
   datasets.sort((a, b) => {
     return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)
@@ -398,6 +402,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       }
     : null;
 
-  return { config: configuration, exportTable };
+  return { config: configuration, exportTable, recommendedHeight };
 
 }

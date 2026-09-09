@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-09-09
+
+### Changed
+- `summary`, `summary-per-run`, `entity-summary`, `entity-summary-per-run`, and `boxplot` now auto-grow their canvas the same way the heatmap/matrix charts already did: `-h`/`-w` are treated as a floor rather than a hard size. Summary/entity-breakdown charts compute the minimum height needed for every bar row (plus the in-chart table, when enabled) and grow past the requested height if there are too many rows to fit legibly; `boxplot` does the same for width based on the number of categories. Charts with room to spare are unaffected. `line`/`bar` are unchanged since their x-axis is continuous time rather than a discrete, squishable category count.
+
 ## [1.11.0] - 2026-09-09
 
 ### Added

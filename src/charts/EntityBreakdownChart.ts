@@ -6,7 +6,7 @@ import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { nanoToMicro, percentDecrease } from "../utils";
-import { colors } from "./constants";
+import { colors, chartLayout } from "./constants";
 import { getMetricPattern } from "./styles";
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
@@ -36,6 +36,12 @@ export interface EntityBreakdownChartOptions {
   isPerRun?: boolean;
   /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
+}
+
+export interface EntityBreakdownChartResult {
+  config: ChartConfiguration<"bar">;
+  /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
+  recommendedHeight: number;
 }
 
 const mapEntityBreakdownData = (
@@ -68,7 +74,7 @@ const mapEntityBreakdownData = (
 export const createEntityBreakdownChartConfiguration = (
   results: BenchmarkAggregateRunResult[],
   options: EntityBreakdownChartOptions,
-): ChartConfiguration<"bar"> => {
+): EntityBreakdownChartResult => {
   const allEntityChildren = MetricRegistryInstance
     .getChildrenOf(MetricEnum.ENTITY_UPDATE.name)
     .map(m => m.name);
@@ -359,6 +365,9 @@ export const createEntityBreakdownChartConfiguration = (
   };
 
   const padding = options.includeTable ? { bottom: tableReservedHeight + 10 } : undefined;
+  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX
+    + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX
+    + (options.includeTable ? tableReservedHeight + 10 : 0);
 
   let aggregationStrategyLabel = "";
   switch (options.aggregationStrategy) {
@@ -392,7 +401,7 @@ export const createEntityBreakdownChartConfiguration = (
     return (datasetRankByName.get(aName) ?? 0) - (datasetRankByName.get(bName) ?? 0);
   });
 
-  return {
+  const config: ChartConfiguration<"bar"> = {
     type: "bar",
     data: {
       labels: chartLabels,
@@ -446,4 +455,6 @@ export const createEntityBreakdownChartConfiguration = (
     },
     plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
   };
+
+  return { config, recommendedHeight };
 };

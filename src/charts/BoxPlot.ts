@@ -18,7 +18,13 @@ export interface BoxChartOptions {
     minUpdateTime: number | null;
 }
 
-export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], options: BoxChartOptions): ChartConfiguration<"boxplot"> => {
+export interface BoxPlotChartResult {
+    config: ChartConfiguration<"boxplot">;
+    /** Minimum canvas width (px) needed to fit every category column without squishing; use as a floor over the user-requested width. */
+    recommendedWidth: number;
+}
+
+export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunResult[], options: BoxChartOptions): BoxPlotChartResult => {
 
     const dataSets: { displayName: string, stats: IBoxPlot }[] = []
 
@@ -64,7 +70,9 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
     const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * chartLayout.AXIS_SCALE_LOWER_PADDING
     const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * chartLayout.AXIS_SCALE_UPPER_PADDING
 
-    return {
+    const recommendedWidth = chartLayout.BOX_CHART_CHROME_WIDTH_PX + dataSets.length * chartLayout.MIN_BOX_COLUMN_WIDTH_PX
+
+    const config: ChartConfiguration<"boxplot"> = {
         type: "boxplot",
         options: {
             backgroundColor: colors.black,
@@ -129,4 +137,6 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
         },
         plugins: [backgroundPlugin]
     };
+
+    return { config, recommendedWidth };
 }

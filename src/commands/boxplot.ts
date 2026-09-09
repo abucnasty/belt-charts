@@ -30,13 +30,13 @@ async function generateBoxPlot(
     aggregateResults.push(result);
   }
 
-  const config = createBoxPlotChartConfiguration(aggregateResults, {
+  const { config, recommendedWidth } = createBoxPlotChartConfiguration(aggregateResults, {
     minUpdateTime: options.minUpdate,
     maxUpdateTime: options.maxUpdate,
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, options.width, options.height, options.output);
+  await renderChartToFile(config, Math.max(options.width, recommendedWidth), options.height, options.output);
 }
 
 export function createBoxPlotCommand(): Command {
