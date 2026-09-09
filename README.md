@@ -327,6 +327,30 @@ belt-charts entity-heatmap "results/my_amazing_map*.csv"
 
 ---
 
+### `core-freq-heatmap`
+
+2-D heatmap of per-core CPU frequency samples from a `cpu_freq.csv` sidecar file (columns: `save_name, run_index, core_index, cpu_frequency, timestamp`). Rows = one per run (grouped by benchmark, since a single `cpu_freq.csv` can bundle multiple `save_name`s), columns = core index. Useful for spotting whether a run got assigned a relatively "hot" or "cold" core, without needing to pin cores.
+
+| Option | Default | Description |
+|---|---|---|
+| `-a, --aggregate-strategy <average\|minimum\|maximum\|median\|standard_deviation>` | `average` | Which per-core statistic to display/color |
+| `--normalize <global\|column\|row>` | `column` | Color scale normalization. `global` = single scale for all cells; `column` = per-core scale (best for spotting systematic hardware differences between cores); `row` = per-run scale (best for spotting which core stood out within a single run) |
+| `--show-values <bool>` | `true` | Render MHz values inside each cell |
+| `--title-override <string>` | *(auto)* | Override the chart title |
+| `--save-name-filter <glob>` | *(none)* | Glob pattern to filter which `save_name` values are included (repeatable, OR-matched). Matches against the `save_name` column value itself, not a file path — e.g. `--save-name-filter "foo*"`. Unmatched patterns are unfiltered (all save_names included) by default |
+
+```
+belt-charts core-freq-heatmap "results/cpu_freq.csv"
+  -w 1600 -h 1000
+  -o "charts/core_freq_heatmap.png"
+  -a average
+  --normalize column
+  --show-values true
+  --save-name-filter "ship_benchmark_50_*"
+```
+
+---
+
 ## SVG Export
 
 All chart commands support SVG output in addition to PNG. The format is inferred from the `--output` file extension — simply use `.svg` instead of `.png`:

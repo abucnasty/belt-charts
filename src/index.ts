@@ -17,6 +17,7 @@ import {
   createEntitySummaryPerRunCommand,
   createEntityMatrixCommand,
   createEntityHeatmapCommand,
+  createCoreFrequencyHeatmapCommand,
 } from "./commands";
 
 Chart.register(
@@ -44,5 +45,6 @@ program.addCommand(createEntitySummaryCommand());
 program.addCommand(createEntitySummaryPerRunCommand());
 program.addCommand(createEntityMatrixCommand());
 program.addCommand(createEntityHeatmapCommand());
+program.addCommand(createCoreFrequencyHeatmapCommand());
 
 program.parse();

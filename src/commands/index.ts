@@ -6,3 +6,4 @@ export { createTableCommand } from "./table";
 export { createEntitySummaryCommand, createEntitySummaryPerRunCommand } from "./entityBreakdown";
 export { createEntityMatrixCommand } from "./entityMatrix";
 export { createEntityHeatmapCommand } from "./entityHeatmap";
+export { createCoreFrequencyHeatmapCommand } from "./coreFrequencyHeatmap";

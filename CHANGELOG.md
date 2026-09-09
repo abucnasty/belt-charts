@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-09-09
+
+### Added
+- `core-freq-heatmap` command: renders a heatmap of per-core CPU frequency from a `cpu_freq.csv` sidecar file (`save_name, run_index, core_index, cpu_frequency, timestamp`), rows = runs, columns = cores. A single `cpu_freq.csv` can bundle multiple `save_name`s (benchmark designs); each is parsed and labeled independently, and can be restricted with the new `--save-name-filter <glob>` option (repeatable, OR-matched, matched against the `save_name` column value itself rather than a file path). `-a, --aggregate-strategy <average|minimum|maximum|median|standard_deviation>` selects which per-core statistic is displayed/colored (default `average`). Other new options: `--normalize`, `--show-values`, `--title-override`.
+
 ## [1.10.0] - 2026-09-09
 
 ### Changed
