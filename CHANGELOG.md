@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-09
+
+### Added
+- `ups` and `ups-per-run` commands: render a summary-chart-style bar per save file showing updates per second (UPS), computed as `1,000,000 / wholeUpdate` (microseconds). `ups` mirrors `summary` (aggregated across runs); `ups-per-run` mirrors `summary-per-run` (one bar per individual run). Both support the same in-chart table (`--summary-table`/`--summary-table-file`), grouping (`--group-by`), and labeling options as the time-based charts.
+
 ## [1.13.0] - 2026-09-09
 
 ### Changed

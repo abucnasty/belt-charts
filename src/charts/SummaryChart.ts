@@ -30,6 +30,8 @@ interface SummaryChartOptions {
   groupBy?: string[];
   /** When true, skip the MetricProfiles.SUMMARY_CHART filter and render any metric in `metrics`. */
   allowUnfilteredMetrics?: boolean;
+  /** "ups" renders a single bar of 1e6/wholeUpdate (updates per second) instead of the stacked per-component time breakdown. */
+  valueMode?: "time" | "ups";
 }
 
 export interface SummaryChartResult {
@@ -81,9 +83,15 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     !!options.metrics?.length &&
     options.metrics.every(m => m.name === MetricEnum.WHOLE_UPDATE.name);
 
+  const valueMode = options.valueMode ?? "time";
+  // UPS is always rendered as a single bar since a rate can't be stacked into components.
+  const isSingleBar = isWholeUpdateOnly || valueMode === "ups";
+  const toDisplayValue = (microseconds: number): number =>
+    valueMode === "ups" ? (microseconds > 0 ? 1_000_000 / microseconds : 0) : microseconds;
+
   // Apply minPercent filter: hide metrics whose max average never exceeds minPercent% of wholeUpdate.
   const minPercent = options.minPercent ?? 0;
-  const metrics = isWholeUpdateOnly
+  const metrics = isSingleBar
     ? [MetricEnum.WHOLE_UPDATE]
     : minPercent > 0
       ? allMetrics.filter(metric => {
@@ -116,11 +124,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
   );
 
-  const datasets = isWholeUpdateOnly
+  const datasets = isSingleBar
     ? [{
-        label: MetricEnum.WHOLE_UPDATE.description,
-        data: rows.map(row => row.kind === "spacer" ? null : chartData[row.idx].totalAverage),
-        backgroundColor: colors.white,
+        label: valueMode === "ups" ? "Updates Per Second" : MetricEnum.WHOLE_UPDATE.description,
+        data: rows.map(row => row.kind === "spacer" ? null : toDisplayValue(chartData[row.idx].totalAverage)),
+        // UPS reuses the entityUpdate blue since it isn't part of the stacked time breakdown.
+        backgroundColor: valueMode === "ups" ? colors.blue : colors.white,
       }]
     : metrics
         .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
@@ -132,23 +141,28 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
+    // UPS shows a raw +/- delta instead of a percent decrease, since "percent decrease" reads
+    // oddly for a rate that can also increase.
+    const useSignedDelta = valueMode === "ups";
     const header = [
       ...(groupBy.length > 0 ? ["Group"] : []),
       "Save File",
-      ...metrics.map(it => it.description),
-      '% Decrease from Previous',
-      '% Decrease from Best'
+      ...metrics.map(it => it.name === MetricEnum.WHOLE_UPDATE.name && valueMode === "ups" ? "UPS" : it.description),
+      useSignedDelta ? "+/- vs Previous" : '% Decrease from Previous',
+      useSignedDelta ? "+/- vs Best" : '% Decrease from Best'
     ];
 
     // Pre-compute whole update values and stats
     const wholeUpdateStats = chartData.map((data, idx) => {
 
-      const currentValue = data.totalAverage;
-      const previousValue = idx > 0 ? chartData[idx - 1].totalAverage : null;
-      const bestValue = chartData[0].totalAverage;
+      const currentValue = toDisplayValue(data.totalAverage);
+      const previousValue = idx > 0 ? toDisplayValue(chartData[idx - 1].totalAverage) : null;
+      const bestValue = toDisplayValue(chartData[0].totalAverage);
 
       return {
         currentValue,
+        deltaFromPrevious: previousValue !== null ? Math.round(currentValue - previousValue) : null,
+        deltaFromBest: Math.round(currentValue - bestValue),
         decreaseFromPrevious: previousValue ? Math.round(percentDecrease(previousValue, currentValue) * 100) / 100 : null,
         decreaseFromBest: bestValue ? Math.round(percentDecrease(bestValue, currentValue) * 100) / 100 : null
       };
@@ -158,18 +172,19 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     const rows = chartData.map((data, idx) => {
       const metricValues = metrics.map(metric => {
         const value = data.metricValues.find(mv => mv.metricName === metric.name);
-        return Math.round(value?.average ?? NaN);
+        return value === undefined ? NaN : Math.round(toDisplayValue(value.average));
       });
 
       const stats = wholeUpdateStats[idx];
+      const formatSigned = (n: number | null): string => n === null ? "" : (n > 0 ? `+${n}` : `${n}`);
       return {
         displayName: data.displayName,
         values: [
           ...(groupBy.length > 0 ? [data.group ?? ""] : []),
           data.displayName,
           ...metricValues,
-          stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
-          stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`
+          useSignedDelta ? formatSigned(stats.deltaFromPrevious) : (stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`),
+          useSignedDelta ? formatSigned(stats.deltaFromBest) : (stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`)
         ]
       };
     });
@@ -217,11 +232,15 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       aggregationStrategyLabel = "Standard Deviation"
   }
 
-  const xAxisLabel = `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
+  const xAxisLabel = valueMode === "ups"
+    ? `Updates per second using ${aggregationStrategyLabel.toLowerCase()} per tick (higher is better)`
+    : `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
 
-  const title = options.titleOverride ?? (options.isPerRun 
-    ? `${aggregationStrategyLabel} Per Tick Metrics (Per Run)` 
-    : `${aggregationStrategyLabel} Per Tick Metrics`)
+  const title = options.titleOverride ?? (valueMode === "ups"
+    ? `${aggregationStrategyLabel} Updates Per Second${options.isPerRun ? " (Per Run)" : ""}`
+    : (options.isPerRun
+      ? `${aggregationStrategyLabel} Per Tick Metrics (Per Run)`
+      : `${aggregationStrategyLabel} Per Tick Metrics`))
 
 
   const configuration: ChartConfiguration<"bar"> = {
