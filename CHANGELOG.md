@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-09-09
+
+### Changed
+- Reworked the in-chart summary table (`summary`, `summary-per-run`, `entity-summary`, `entity-summary-per-run`) to draw one row per save file instead of one column per save file. Previously every additional result added a table *column*, so comparing several save files — especially ones with long names — squeezed all column headers until they overlapped and became unreadable.
+- Table columns now stay a fixed, bounded set (one per metric) regardless of how many save files are compared, since row count (not column count) grows with the number of results.
+- Column headers are shown in full whenever the chart is wide enough to fit them; canvas width now auto-grows for the table (in addition to the existing height auto-grow).
+- A header that still doesn't fit its column wraps onto a second line at a word boundary, falling back to ellipsis-truncation on that second line only as a last resort.
+
 ## [1.12.0] - 2026-09-09
 
 ### Changed

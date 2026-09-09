@@ -1,63 +1,63 @@
 export const MetricEnum = {
     WHOLE_UPDATE: {
         name: "wholeUpdate",
-        description: "Whole Update"
+        description: "Whole"
     },
     LATENCY_UPDATE: {
         name: "latencyUpdate",
-        description: "Latency Update"
+        description: "Latency"
     },
     GAME_UPDATE: {
         name: "gameUpdate",
-        description: "Game Update"
+        description: "Game"
     },
     PLANETS_UPDATE: {
         name: "planetsUpdate",
-        description: "Planets Update"
+        description: "Planets"
     },
     CONTROL_BEHAVIOR_UPDATE: {
         name: "controlBehaviorUpdate",
-        description: "Control Behavior Update"
+        description: "Control Behaviors"
     },
     TRANSPORT_LINES_UPDATE: {
         name: "transportLinesUpdate",
-        description: "Transport Lines Update"
+        description: "Transport Lines"
     },
     ELECTRIC_HEAT_FLUID_CIRCUIT_UPDATE: {
         name: "electricHeatFluidCircuitUpdate",
-        description: "Electric/Heat/Fluid Circuit Update"
+        description: "Electric / Heat / Fluid / Circuit"
     },
     ELECTRIC_NETWORK_UPDATE: {
         name: "electricNetworkUpdate",
-        description: "Electric Network Update"
+        description: "Electric Network"
     },
     HEAT_NETWORK_UPDATE: {
         name: "heatNetworkUpdate",
-        description: "Heat Network Update"
+        description: "Heat Network"
     },
     FLUID_FLOW_UPDATE: {
         name: "fluidFlowUpdate",
-        description: "Fluid Flow Update"
+        description: "Fluid Flow"
     },
     ENTITY_UPDATE: {
         name: "entityUpdate",
-        description: "Entity Update"
+        description: "Entity"
     },
     LIGHTNING_UPDATE: {
         name: "lightningUpdate",
-        description: "Lightning Update"
+        description: "Lightning"
     },
     TILE_HEATING_UPDATE: {
         name: "tileHeatingUpdate",
-        description: "Tile Heating Update"
+        description: "Tile Heating"
     },
     PARTICLE_UPDATE: {
         name: "particleUpdate",
-        description: "Particle Update"
+        description: "Particle"
     },
     POLLUTION_UPDATE: {
         name: "pollutionUpdate",
-        description: "Pollution Update"
+        description: "Pollution"
     },
     MAP_GENERATOR: {
         name: "mapGenerator",
@@ -125,11 +125,11 @@ export const MetricEnum = {
     },
     LOGISTIC_MANAGER_UPDATE: {
         name: "logisticManagerUpdate",
-        description: "Logistic Manager Update"
+        description: "Logistic Manager"
     },
     CONSTRUCTION_MANAGER_UPDATE: {
         name: "constructionManagerUpdate",
-        description: "Construction Manager Update"
+        description: "Construction Manager"
     },
     PATH_FINDER: {
         name: "pathFinder",
@@ -161,11 +161,11 @@ export const MetricEnum = {
     },
     CHART_UPDATE: {
         name: "chartUpdate",
-        description: "Chart Update"
+        description: "Chart"
     },
     SCRIPT_UPDATE: {
         name: "scriptUpdate",
-        description: "Script Update"
+        description: "Script"
     },
     OTHER: {
         name: "other",
