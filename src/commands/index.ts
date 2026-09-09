@@ -1,5 +1,7 @@
 export { createSummaryCommand } from "./summary";
 export { createSummaryPerRunCommand } from "./summaryPerRun";
+export { createUpsCommand } from "./ups";
+export { createUpsPerRunCommand } from "./upsPerRun";
 export { createLineCommand, createBarCommand } from "./lineBar";
 export { createBoxPlotCommand } from "./boxplot";
 export { createTableCommand } from "./table";

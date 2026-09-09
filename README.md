@@ -156,6 +156,50 @@ belt-charts summary-per-run "results/my_amazing_map*.csv"
 
 ---
 
+### `ups`
+
+Same as `summary`, but renders a single bar per save file showing updates per second (UPS) — computed as `1,000,000 / wholeUpdate` (microseconds) — instead of the stacked per-component time breakdown.
+
+| Option | Default | Description |
+|---|---|---|
+| `-a, --aggregate-strategy` | `average` | How to aggregate ticks per run: `average`, `minimum`, `maximum`, `median`, `standard_deviation` |
+| `--summary-table <bool>` | `true` | Render a stats table inside the chart |
+| `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
+| `--title-override <string>` | *(auto)* | Override the chart title |
+| `--group-by <keys>` | *(none)* | Same as `summary`'s `--group-by` |
+
+```
+belt-charts ups "results/my_amazing_map*.csv"
+  -w 1200 -h 600
+  --remove-first-ticks 30
+  -o "charts/ups.png"
+  --trim-prefix "my_amazing_map_"
+```
+
+---
+
+### `ups-per-run`
+
+Same as `ups` but shows one bar per individual run instead of averaging across runs.
+
+| Option | Default | Description |
+|---|---|---|
+| `-a, --aggregate-strategy` | `average` | Per-run statistic to display (`average`, `minimum`, `maximum`, `median`, `standard_deviation`) |
+| `--summary-table <bool>` | `true` | Render a stats table inside the chart |
+| `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
+| `--title-override <string>` | *(auto)* | Override the chart title |
+| `--sort-by <run\|total>` | `total` | Sort bars by run number or by UPS |
+
+```
+belt-charts ups-per-run "results/my_amazing_map*.csv"
+  -w 1200 -h 800
+  --remove-first-ticks 30
+  -o "charts/ups_per_run.png"
+  --sort-by total
+```
+
+---
+
 ### `bar` / `line`
 
 Timeseries charts — one output file per input CSV. `bar` renders stacked areas; `line` renders lines.
