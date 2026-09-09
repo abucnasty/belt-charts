@@ -31,7 +31,7 @@ async function generateSummary(
     aggregateResults.push(result);
   }
 
-  const { config, exportTable } = createSummaryChartConfiguration(aggregateResults, {
+  const { config, exportTable, recommendedHeight } = createSummaryChartConfiguration(aggregateResults, {
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
@@ -46,7 +46,7 @@ async function generateSummary(
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, options.width, options.height, options.output);
+  await renderChartToFile(config, options.width, Math.max(options.height, recommendedHeight), options.output);
   await exportTable?.();
 }
 

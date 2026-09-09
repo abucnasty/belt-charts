@@ -156,4 +156,12 @@ export const chartLayout = {
   AXIS_SCALE_LOWER_PADDING: 0.9,
   /** Scale multiplier applied above the dataset maximum for Y-axis upper bound. */
   AXIS_SCALE_UPPER_PADDING: 1.1,
+  /** Minimum height of a single bar/spacer row in horizontal bar charts (px); used to auto-grow canvas height for many rows. */
+  MIN_BAR_ROW_HEIGHT_PX: 26,
+  /** Fixed vertical space reserved for title/legend/x-axis chrome in horizontal bar charts (px). */
+  BAR_CHART_CHROME_HEIGHT_PX: 140,
+  /** Minimum width of a single category column in box-plot charts (px); used to auto-grow canvas width for many categories. */
+  MIN_BOX_COLUMN_WIDTH_PX: 70,
+  /** Fixed horizontal space reserved for title/y-axis-label chrome in box-plot charts (px). */
+  BOX_CHART_CHROME_WIDTH_PX: 140,
 } as const;
