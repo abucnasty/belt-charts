@@ -75,7 +75,7 @@ export const transformMetricTickStatToMetricValue = (metricTickStat: MetricTickS
     }
 }
 
-export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string, runResultsToRemove: Set<number>): Promise<BenchmarkTickResult> => {
+export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string, runResultsToRemove: Set<number>, maxTicks?: number): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
     const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
@@ -86,6 +86,9 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                     return
                 }
                 const tick = Number(row.tick);
+                if (maxTicks !== undefined && tick > maxTicks) {
+                    return
+                }
 
                 if (metrics.length === 0) {
                     metrics = Object.keys(row)
@@ -133,4 +136,34 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
         metrics,
         metricTickStats: metricStats
     };
+}
+
+/**
+ * Scans a CSV for the max raw value of a metric without retaining per-tick data,
+ * so multiple files can be pre-scanned for a shared chart max without holding them all in memory.
+ */
+export const computeMaxMetricValueFromCsv = async (
+    filePath: string,
+    runResultsToRemove: Set<number>,
+    metricName: MetricName,
+    ticksToIgnore: number,
+): Promise<number> => {
+    let maxValue = -Infinity;
+
+    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
+        const run = Number(row.run);
+        if (runResultsToRemove.has(run)) {
+            return
+        }
+        const tick = Number(row.tick);
+        if (ticksToIgnore > 0 && tick <= ticksToIgnore) {
+            return
+        }
+        const value = Number(row[metricName]);
+        if (value > maxValue) {
+            maxValue = value;
+        }
+    });
+
+    return maxValue;
 }

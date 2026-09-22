@@ -2,7 +2,7 @@ import path from "path";
 import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createLineChartForMetrics } from "../charts/LineChart";
-import { BenchmarkTickResult, parseBenchmarkAveragePerTickResultFromCsv } from "../data/BenchmarkTickResult";
+import { computeMaxMetricValueFromCsv, parseBenchmarkAveragePerTickResultFromCsv } from "../data/BenchmarkTickResult";
 import { ignoreFirstTicksFromResult } from "../data/tickUtils";
 import { MetricEnum } from "../data/MetricEnum";
 import { nanoToMicro } from "../utils";
@@ -14,7 +14,30 @@ async function generateLineOrBarCharts(
   runsToRemove: Map<string, Set<number>>,
   options: LineBarChartOptions,
 ): Promise<void> {
-  const benchmarkResults: Array<{ result: BenchmarkTickResult; baseNameForOutput: string }> = [];
+  // Pre-scan for the shared Y-axis max without holding any file's full tick data in memory.
+  let maxWholeUpdate = options.maxUpdate;
+  if (maxWholeUpdate == null) {
+    console.log("--max-update not provided, auto-detecting max value across all files...");
+    let rawMax = -Infinity;
+    for (const file of files) {
+      const baseName = getBaseName(file);
+      const fileMax = await computeMaxMetricValueFromCsv(
+        file,
+        runsToRemove.get(baseName) ?? new Set(),
+        MetricEnum.WHOLE_UPDATE.name,
+        options.removeFirstTicks,
+      );
+      if (fileMax > rawMax) {
+        rawMax = fileMax;
+      }
+      console.log(`${baseName}: current max value ${nanoToMicro(rawMax)}`);
+    }
+    maxWholeUpdate = nanoToMicro(rawMax);
+    console.log(`Auto-detected max value: ${maxWholeUpdate}`);
+  }
+
+  const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
+  const ext = path.extname(options.output) || ".png";
 
   for (const file of files) {
     console.log(`Processing file: ${file}`);
@@ -22,47 +45,28 @@ async function generateLineOrBarCharts(
     let result = await parseBenchmarkAveragePerTickResultFromCsv(
       file,
       runsToRemove.get(baseName) ?? new Set(),
+      options.maxTicks,
     );
 
     if (options.removeFirstTicks > 0) {
       result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
     }
     result = applyLabel(result, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
-    benchmarkResults.push({ result, baseNameForOutput: baseName });
-  }
 
-  const maxWholeUpdate =
-    options.maxUpdate ??
-    benchmarkResults
-      .flatMap((r) =>
-        r.result.metricTickStats
-          .get(MetricEnum.WHOLE_UPDATE.name)!
-          .map((v) => nanoToMicro(v.maximum)),
-      )
-      .reduce((max, v) => (v > max ? v : max), -Infinity);
-
-  const configurations = benchmarkResults.map(({ result, baseNameForOutput }) => ({
-    result,
-    baseNameForOutput,
-    config: createLineChartForMetrics(result, {
+    const config = createLineChartForMetrics(result, {
       maxTicks: options.maxTicks,
       maxUpdateValue: maxWholeUpdate,
       type: options.type,
       aggregationStrategy: options.aggregateStrategy,
       tickWindow: options.tickWindowAggregation,
       metrics: options.metrics,
-    }),
-  }));
+    });
 
-  console.log("Chart configurations created.");
-  const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
-  const ext = path.extname(options.output) || ".png";
-
-  for (const { baseNameForOutput, config } of configurations) {
-    const fileName = `${fileNameWithoutExt}_${baseNameForOutput}${ext}`;
+    const fileName = `${fileNameWithoutExt}_${baseName}${ext}`;
     await renderChartToFile(config, options.width, options.height, fileName);
   }
 }
+
 
 function createLineBarCommand(type: "line" | "bar"): Command {
   const description =
