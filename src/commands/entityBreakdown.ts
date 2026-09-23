@@ -7,7 +7,7 @@ import fsp from "node:fs/promises";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createEntityBreakdownChartConfiguration } from "../charts/EntityBreakdownChart";
 import {
-  parseBenchmarkAggregatesPerRunResultFromCsv,
+  type BenchmarkAggregateRunResult,
   explodeIntoPerRunResults,
 } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
@@ -16,6 +16,8 @@ import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
@@ -25,24 +27,30 @@ async function generateEntityBreakdown(
   runsToRemove: Map<string, Set<number>>,
   options: EntityBreakdownChartOptions,
 ): Promise<void> {
-  const aggregateResults = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const rawResult = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
-    );
-    // Group matching runs against the raw source filename (originalFileName).
-    const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
-    const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
-    const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
-    aggregateResults.push(result);
-  }
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, rawResult) => {
+      const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
+      const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
+      aggregateResults[task.fileIndex] = applyLabel(
+        rawWithGroup,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+    },
+  });
 
   let chartInput = aggregateResults;
   let sortBy: "total" | "preserve" = "total";
