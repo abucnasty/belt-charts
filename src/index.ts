@@ -23,6 +23,7 @@ import {
   createCoreFrequencyHeatmapCommand,
 } from "./commands";
 import { runLineBarWorkerTask, type LineBarWorkerTask } from "./commands/lineBarWorkerTask";
+import { runAggregateParseWorkerTask, type AggregateParseTask } from "./commands/aggregateParseWorkerTask";
 
 Chart.register(
   BoxPlotController,
@@ -32,8 +33,12 @@ Chart.register(
   ...registerables,
 );
 
+// This bundled file also acts as the worker-thread entry point (self-spawned via `new Worker(__filename, ...)`), dispatching by `taskType`.
 if (!isMainThread) {
-  runLineBarWorkerTask(workerData as LineBarWorkerTask).then(
+  const task = workerData as LineBarWorkerTask | AggregateParseTask;
+  const resultPromise =
+    task.taskType === "aggregateParse" ? runAggregateParseWorkerTask(task) : runLineBarWorkerTask(task);
+  resultPromise.then(
     (result) => parentPort!.postMessage({ ok: true, result }),
     (error: unknown) => parentPort!.postMessage({ ok: false, error: error instanceof Error ? error.message : String(error) }),
   );
