@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-09-22
+
+### Changed
+- `table`, `boxplot`, `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`, `entity-matrix`, and `entity-heatmap` now parse input CSVs in parallel across a worker pool (same approach as `line`/`bar`), cutting wall-clock time by roughly 4-5x on multi-file batches with no change in output.
+
 ## [1.15.0] - 2026-09-22
 
 ### Fixed
