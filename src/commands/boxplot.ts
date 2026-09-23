@@ -1,34 +1,38 @@
 import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
-import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
+import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 async function generateBoxPlot(
   files: string[],
   runsToRemove: Map<string, Set<number>>,
   options: BoxPlotChartOptions,
 ): Promise<void> {
-  const aggregateResults = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        options.metrics,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
-      options.trimSubstrings,
-    );
-    aggregateResults.push(result);
-  }
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, result) => {
+      aggregateResults[task.fileIndex] = applyLabel(
+        result,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+    },
+  });
 
   const { config, recommendedWidth } = createBoxPlotChartConfiguration(aggregateResults, {
     minUpdateTime: options.minUpdate,

@@ -2,40 +2,45 @@ import { Command } from "commander";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import {
-  parseBenchmarkAggregatesPerRunResultFromCsv,
+  type BenchmarkAggregateRunResult,
   explodeIntoPerRunResults,
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryPerRunChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, resolveChartInputs, renderChartToFile } from "./utils";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 async function generateUpsPerRun(
   files: string[],
   runsToRemove: Map<string, Set<number>>,
   options: SummaryPerRunChartOptions,
 ): Promise<void> {
-  const allPerRunResults: SingleRunAggregateResult[] = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        options.metrics,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
-      options.trimSubstrings,
-    );
-    const perRunResults = explodeIntoPerRunResults(result, options.aggregateStrategy);
-    allPerRunResults.push(...perRunResults);
-  }
+  const perFileResults: SingleRunAggregateResult[][] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, rawResult) => {
+      const result = applyLabel(
+        rawResult,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+      perFileResults[task.fileIndex] = explodeIntoPerRunResults(result, options.aggregateStrategy);
+    },
+  });
+  const allPerRunResults: SingleRunAggregateResult[] = perFileResults.flat();
 
   if (options.sortBy === "run") {
     // Sort by displayName then run number (extract run number from "displayName (run N)")

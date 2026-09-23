@@ -1,33 +1,42 @@
 import { Command } from "commander";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createSummaryChartConfiguration } from "../charts/SummaryChart";
-import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
+import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 async function generateUps(
   files: string[],
   runsToRemove: Map<string, Set<number>>,
   options: SummaryChartOptions,
 ): Promise<void> {
-  const aggregateResults = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const rawResult = await parseBenchmarkAggregatesPerRunResultFromCsv(
-      file,
-      options.removeFirstTicks,
-      options.maxTicks,
-      options.metrics,
-      runsToRemove.get(baseName) ?? new Set(),
-    );
-    const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
-    const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
-    const result = applyLabel(rawWithGroup, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
-    aggregateResults.push(result);
-  }
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, rawResult) => {
+      const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
+      const rawWithGroup = group !== null ? { ...rawResult, group } : rawResult;
+      aggregateResults[task.fileIndex] = applyLabel(
+        rawWithGroup,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+    },
+  });
 
   const { config, exportTable, recommendedHeight, recommendedWidth } = createSummaryChartConfiguration(aggregateResults, {
     metrics: options.metrics,
