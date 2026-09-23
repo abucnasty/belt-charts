@@ -158,8 +158,10 @@ export const chartLayout = {
   TABLE_MIN_COLUMN_WIDTH_PX: 64,
   /** Ceiling width a non-flex summary-table column's header text may claim (px); longer headers get ellipsis-truncated instead of squeezing the flex column. */
   TABLE_MAX_HEADER_COLUMN_WIDTH_PX: 120,
+  /** Left inset (px) for the flex column when it's drawn in the blank strip under the y-axis tick labels, instead of inside the plot area. */
+  TABLE_LEFT_MARGIN_PX: 8,
   /** Extra horizontal chrome (px) reserved outside the plot area (bar chart y-axis tick labels, margins) when estimating minimum canvas width for a chart with a table. */
-  TABLE_WIDTH_CHROME_PX: 100,
+  TABLE_WIDTH_CHROME_PX: 60,
   /** Scale multiplier applied below the dataset minimum for Y-axis lower bound. */
   AXIS_SCALE_LOWER_PADDING: 0.9,
   /** Scale multiplier applied above the dataset maximum for Y-axis upper bound. */

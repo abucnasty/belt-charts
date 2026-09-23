@@ -274,11 +274,12 @@ export const createEntityBreakdownChartConfiguration = (
   const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX
     + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX
     + (options.includeTable ? tableReservedHeightPx : 0);
-  // The y-axis tick labels (bar row names) sit outside the table's plot area, so a wide table
-  // also needs room reserved for the longest one alongside the table's own column widths.
+  // The y-axis tick labels (bar row names) sit outside the table's plot area, but the table's
+  // flex "Save File" column is drawn in that same blank strip (not inside the plot area), so
+  // only the wider of the two needs to be reserved once, not both added together.
   const yAxisLabelWidth = Math.max(...chartLabels.map(label => estimateTextWidth(label.replace(SPACER_PREFIX, "▸ "))));
   const recommendedWidth = options.includeTable
-    ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData)
+    ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData, tableRenderOptions.flexColumnHeader)
     : 0;
 
   let aggregationStrategyLabel = "";

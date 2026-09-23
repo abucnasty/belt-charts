@@ -43,9 +43,13 @@ export const estimateTextWidth = (text: string): number => text.length * AVG_CHA
  * truncation) — uses a character-count heuristic since no canvas context exists yet at layout
  * time. Use as a floor over the user-requested chart width; `createTableChartPlugin` only caps
  * header width and truncates at draw time if the actual canvas still ends up narrower than this.
+ * `excludeColumn` skips a column entirely — use this for a `flexColumnHeader` column that's
+ * drawn in the blank y-axis label strip rather than sized into the plot area, so callers don't
+ * double-count its width alongside the y-axis label width.
  */
-export const estimateTableWidth = (data: TableData): number =>
+export const estimateTableWidth = (data: TableData, excludeColumn?: string): number =>
   data.header.reduce((sum, header, colIdx) => {
+    if (header === excludeColumn) return sum;
     const headerLen = header.length * AVG_CHAR_WIDTH_PX;
     const maxDataLen = data.rows.reduce((max, row) => Math.max(max, String(row.values[colIdx] ?? "").length * AVG_CHAR_WIDTH_PX), 0);
     return sum + Math.max(Math.max(headerLen, maxDataLen) + COLUMN_PADDING, MIN_COLUMN_WIDTH_PX);
@@ -96,7 +100,9 @@ const wrapHeaderLines = (ctx: any, text: string, maxWidth: number): string[] => 
  * Chart.js plugin that draws `data` as a table anchored to the bottom of the canvas, one row per
  * entry (rather than one column per entry) so the table stays readable regardless of how many
  * save files are being compared — only the row count grows, and the canvas already auto-grows
- * vertically to fit.
+ * vertically to fit. The flex column (if any) is drawn in the blank strip left of the plot area
+ * (where the y-axis tick labels already show the same save-file names) rather than competing
+ * with the other columns for space inside the plot area.
  */
 export const createTableChartPlugin = (data: TableData, options: TableRenderOptions = {}) => ({
   id: "valueTable",
@@ -108,6 +114,7 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     const tableTop = height - tableReservedHeight(data.rows.length) + HEADER_BLOCK_HEIGHT_PX;
     const availableWidth = right - left;
     const flexIdx = options.flexColumnHeader ? data.header.indexOf(options.flexColumnHeader) : -1;
+    const otherIndices = data.header.map((_, colIdx) => colIdx).filter(colIdx => colIdx !== flexIdx);
 
     ctx.font = HEADER_FONT;
     // Full (uncapped) width each column needs to show its header and data in full.
@@ -120,41 +127,51 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     };
 
     const naturalWidths = data.header.map((_, colIdx) => Math.max(measureNatural(colIdx), MIN_COLUMN_WIDTH_PX));
-    const totalNatural = naturalWidths.reduce((sum, w) => sum + w, 0);
+    const otherNaturalWidths = otherIndices.map(colIdx => naturalWidths[colIdx]);
+    const totalOtherNatural = otherNaturalWidths.reduce((sum, w) => sum + w, 0);
 
-    let columnWidths: number[];
-    if (totalNatural <= availableWidth) {
-      // Plenty of room: show every header/value in full and hand the leftover to the flex
-      // column (or the last column, if there isn't one) instead of truncating anything.
-      columnWidths = naturalWidths.slice();
-      const growIdx = flexIdx >= 0 ? flexIdx : columnWidths.length - 1;
-      columnWidths[growIdx] += availableWidth - totalNatural;
-    } else if (flexIdx >= 0) {
-      // Not enough room: a long metric-name header shouldn't be able to steal space from the
-      // flex column — cap its contribution and let it ellipsis-truncate instead (data cells,
-      // which are short numbers/percentages, are never capped).
-      const cappedWidths = naturalWidths.map((w, i) => (i === flexIdx ? w : Math.min(w, MAX_HEADER_COLUMN_WIDTH_PX)));
-      const fixedTotal = cappedWidths.reduce((sum, w, i) => sum + (i === flexIdx ? 0 : w), 0);
-      const flexWidth = Math.max(availableWidth - fixedTotal, MIN_COLUMN_WIDTH_PX);
-      const totalWidth = fixedTotal + flexWidth;
-      const scale = totalWidth > availableWidth ? availableWidth / totalWidth : 1;
-      columnWidths = cappedWidths.map((w, i) => (i === flexIdx ? flexWidth : w) * scale);
+    let otherWidths: number[];
+    if (totalOtherNatural <= availableWidth) {
+      // Plenty of room: show every header/value in full and spread the leftover proportionally
+      // across every column (rather than dumping it all into one, e.g. the last column) so no
+      // single short numeric column balloons far past its actual content width.
+      const scale = totalOtherNatural > 0 ? availableWidth / totalOtherNatural : 1;
+      otherWidths = otherNaturalWidths.map(w => w * scale);
     } else {
-      const scale = availableWidth / totalNatural;
-      columnWidths = naturalWidths.map(w => w * scale);
+      // Not enough room: cap header-driven width and let it ellipsis-truncate instead (data
+      // cells, which are short numbers/percentages, are never capped).
+      const cappedWidths = otherNaturalWidths.map(w => Math.min(w, MAX_HEADER_COLUMN_WIDTH_PX));
+      const totalCapped = cappedWidths.reduce((sum, w) => sum + w, 0);
+      const scale = totalCapped > availableWidth ? availableWidth / totalCapped : 1;
+      otherWidths = cappedWidths.map(w => w * scale);
     }
 
-    const columnPositions = [left];
-    for (let i = 0; i < columnWidths.length - 1; i++) {
-      columnPositions.push(columnPositions[i] + columnWidths[i]);
-    }
+    // The flex column lives in the blank strip left of the plot area (under the y-axis tick
+    // labels) rather than inside `otherWidths`, reclaiming space instead of stealing it.
+    const flexAreaLeft = chartLayout.TABLE_LEFT_MARGIN_PX;
+    const flexWidth = Math.max(left - flexAreaLeft, MIN_COLUMN_WIDTH_PX);
 
-    // Zebra striping so rows stay distinguishable once there are many save files.
+    const columnWidths = new Array(data.header.length).fill(0);
+    const columnPositions = new Array(data.header.length).fill(0);
+    if (flexIdx >= 0) {
+      columnWidths[flexIdx] = flexWidth;
+      columnPositions[flexIdx] = flexAreaLeft;
+    }
+    let cursor = left;
+    otherIndices.forEach((colIdx, i) => {
+      columnWidths[colIdx] = otherWidths[i];
+      columnPositions[colIdx] = cursor;
+      cursor += otherWidths[i];
+    });
+
+    // Zebra striping so rows stay distinguishable once there are many save files; spans the
+    // flex column's strip too so a row's stripe is visually contiguous.
+    const stripeLeft = flexIdx >= 0 ? flexAreaLeft : left;
     ctx.fillStyle = colors.dark_grey;
     ctx.globalAlpha = 0.2;
     data.rows.forEach((_, rowIdx) => {
       if (rowIdx % 2 === 1) {
-        ctx.fillRect(left, tableTop + rowIdx * ROW_HEIGHT + ROW_HEIGHT * 0.3, availableWidth, ROW_HEIGHT);
+        ctx.fillRect(stripeLeft, tableTop + rowIdx * ROW_HEIGHT + ROW_HEIGHT * 0.3, right - stripeLeft, ROW_HEIGHT);
       }
     });
     ctx.globalAlpha = 1;
