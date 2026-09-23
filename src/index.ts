@@ -32,9 +32,6 @@ Chart.register(
   ...registerables,
 );
 
-// This bundled file also acts as the worker-thread entry point: `runInWorkerPool`
-// re-spawns it via `new Worker(__filename, { workerData })`, landing here instead
-// of the CLI bootstrap below.
 if (!isMainThread) {
   runLineBarWorkerTask(workerData as LineBarWorkerTask).then(
     (result) => parentPort!.postMessage({ ok: true, result }),

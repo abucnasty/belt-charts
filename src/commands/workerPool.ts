@@ -3,21 +3,8 @@ import os from "os";
 
 type WorkerResult<R> = { ok: true; result: R } | { ok: false; error: string };
 
-// Each worker independently defaults to a heap limit sized off total system RAM (not divided
-// across workers), so uncapped concurrency can let N workers collectively claim N times that
-// much memory. Capping parallelism keeps the aggregate footprint bounded regardless of core count.
 const DEFAULT_MAX_CONCURRENCY = 8;
 
-/**
- * Runs `tasks` across a bounded pool of worker threads that re-invoke this same bundled
- * entry file (`__filename`), since the CLI is shipped as a single bundled dist/index.js.
- * Each task is handled by the entry point's `isMainThread` worker-dispatch branch.
- * `onTaskComplete` fires (in completion order, not input order) as each task finishes, and is
- * awaited before that worker slot is given its next task — this lets a slow downstream
- * consumer (e.g. serial rendering) throttle how far ahead of it the pool is allowed to parse.
- * Results are not retained here; consume them via `onTaskComplete` instead of a return value,
- * so a caller processing large per-task results doesn't need every one held in memory at once.
- */
 export async function runInWorkerPool<T, R>(
   tasks: T[],
   options: { concurrency?: number; onTaskComplete?: (task: T, result: R) => void | Promise<void> } = {},
