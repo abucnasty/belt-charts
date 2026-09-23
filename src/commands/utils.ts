@@ -1,7 +1,6 @@
 import path from "path";
 import fs from "node:fs";
 import { globSync } from "glob";
-import { Canvas } from "skia-canvas";
 import { Chart, type ChartConfiguration } from "chart.js";
 import fsp from "node:fs/promises";
 import { Command } from "commander";
@@ -344,6 +343,8 @@ function formatFromExtension(filePath: string): SupportedFormat {
  * Renders a Chart.js config to a file. Supports PNG and SVG output;
  * format is inferred from the output file extension.
  * Handles Canvas construction, rendering, and cleanup.
+ * Imports skia-canvas lazily so modules that only need other utils in this
+ * file (e.g. worker-thread task code) never load its native addon.
  */
 export async function renderChartToFile(
   config: ChartConfiguration,
@@ -351,6 +352,7 @@ export async function renderChartToFile(
   height: number,
   outputPath: string,
 ): Promise<void> {
+  const { Canvas } = await import("skia-canvas");
   const resolvedPath = path.resolve(process.cwd(), outputPath);
   const format = formatFromExtension(resolvedPath);
   const canvas = new Canvas(width, height);

@@ -75,7 +75,12 @@ export const transformMetricTickStatToMetricValue = (metricTickStat: MetricTickS
     }
 }
 
-export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string, runResultsToRemove: Set<number>): Promise<BenchmarkTickResult> => {
+export const parseBenchmarkAveragePerTickResultFromCsv = async (
+    filePath: string,
+    runResultsToRemove: Set<number>,
+    maxTicks?: number,
+    metricNames?: Set<MetricName>,
+): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
     const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
@@ -86,11 +91,18 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                     return
                 }
                 const tick = Number(row.tick);
+                if (maxTicks !== undefined && tick > maxTicks) {
+                    return
+                }
 
                 if (metrics.length === 0) {
                     metrics = Object.keys(row)
                         .filter(it => it !== "tick" && it !== "run")
                         .filter(it => `${it}`.length > 0)
+                        // Only keep columns actually needed for this chart - CSVs can have 100+
+                        // metric columns, and building/serializing stats for all of them across
+                        // a worker-thread boundary can exhaust the main thread's heap.
+                        .filter(it => metricNames === undefined || metricNames.has(it as MetricName) || it === MetricEnum.WHOLE_UPDATE.name)
                         .flatMap(metricName => {
                             const metric = MetricRegistryInstance.get(metricName as MetricName);
                             if (!metric) {
@@ -133,4 +145,34 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
         metrics,
         metricTickStats: metricStats
     };
+}
+
+/**
+ * Scans a CSV for the max raw value of a metric without retaining per-tick data,
+ * so multiple files can be pre-scanned for a shared chart max without holding them all in memory.
+ */
+export const computeMaxMetricValueFromCsv = async (
+    filePath: string,
+    runResultsToRemove: Set<number>,
+    metricName: MetricName,
+    ticksToIgnore: number,
+): Promise<number> => {
+    let maxValue = -Infinity;
+
+    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
+        const run = Number(row.run);
+        if (runResultsToRemove.has(run)) {
+            return
+        }
+        const tick = Number(row.tick);
+        if (ticksToIgnore > 0 && tick <= ticksToIgnore) {
+            return
+        }
+        const value = Number(row[metricName]);
+        if (value > maxValue) {
+            maxValue = value;
+        }
+    });
+
+    return maxValue;
 }

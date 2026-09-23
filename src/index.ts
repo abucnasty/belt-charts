@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMainThread, parentPort, workerData } from "worker_threads";
 import { Command } from "commander";
 import { version } from "../package.json";
 import {
@@ -21,6 +22,7 @@ import {
   createEntityHeatmapCommand,
   createCoreFrequencyHeatmapCommand,
 } from "./commands";
+import { runLineBarWorkerTask, type LineBarWorkerTask } from "./commands/lineBarWorkerTask";
 
 Chart.register(
   BoxPlotController,
@@ -30,25 +32,33 @@ Chart.register(
   ...registerables,
 );
 
-const program = new Command();
+if (!isMainThread) {
+  runLineBarWorkerTask(workerData as LineBarWorkerTask).then(
+    (result) => parentPort!.postMessage({ ok: true, result }),
+    (error: unknown) => parentPort!.postMessage({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+  );
+} else {
+  const program = new Command();
 
-program
-  .name("belt-charts")
-  .description("Extension of Belt's verbose_metrics to generate charts")
-  .version(version, "-v, --version", "Output the current version");
+  program
+    .name("belt-charts")
+    .description("Extension of Belt's verbose_metrics to generate charts")
+    .version(version, "-v, --version", "Output the current version");
 
-program.addCommand(createUpsCommand());
-program.addCommand(createUpsPerRunCommand());
-program.addCommand(createSummaryCommand());
-program.addCommand(createSummaryPerRunCommand());
-program.addCommand(createLineCommand());
-program.addCommand(createBarCommand());
-program.addCommand(createBoxPlotCommand());
-program.addCommand(createTableCommand());
-program.addCommand(createEntitySummaryCommand());
-program.addCommand(createEntitySummaryPerRunCommand());
-program.addCommand(createEntityMatrixCommand());
-program.addCommand(createEntityHeatmapCommand());
-program.addCommand(createCoreFrequencyHeatmapCommand());
+  program.addCommand(createUpsCommand());
+  program.addCommand(createUpsPerRunCommand());
+  program.addCommand(createSummaryCommand());
+  program.addCommand(createSummaryPerRunCommand());
+  program.addCommand(createLineCommand());
+  program.addCommand(createBarCommand());
+  program.addCommand(createBoxPlotCommand());
+  program.addCommand(createTableCommand());
+  program.addCommand(createEntitySummaryCommand());
+  program.addCommand(createEntitySummaryPerRunCommand());
+  program.addCommand(createEntityMatrixCommand());
+  program.addCommand(createEntityHeatmapCommand());
+  program.addCommand(createCoreFrequencyHeatmapCommand());
 
-program.parse();
+  program.parse();
+}
+
