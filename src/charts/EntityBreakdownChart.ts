@@ -5,7 +5,7 @@ import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkA
 import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { nanoToMicro, percentDecrease } from "../utils";
+import { formatSlowdown, nanoToMicro } from "../utils";
 import { colors, chartLayout } from "./constants";
 import { getMetricPattern } from "./styles";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
@@ -208,8 +208,8 @@ export const createEntityBreakdownChartConfiguration = (
       "Save File",
       ...tableHeaderMetrics.map(m => m.description),
       "Entity Update Total",
-      "% Decrease from Previous",
-      "% Decrease from Best",
+      "vs Prev",
+      "vs Best",
     ];
 
     const totalStats = chartData.map((data, idx) => {
@@ -218,8 +218,8 @@ export const createEntityBreakdownChartConfiguration = (
       const bestValue = chartData[0].entityUpdateTotal;
       return {
         currentValue,
-        decreaseFromPrevious: previousValue ? Math.round(percentDecrease(previousValue, currentValue) * 100) / 100 : null,
-        decreaseFromBest: bestValue ? Math.round(percentDecrease(bestValue, currentValue) * 100) / 100 : null,
+        slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
+        slowdownFromBest: idx === 0 ? "" : formatSlowdown(bestValue, currentValue),
       };
     });
 
@@ -235,8 +235,8 @@ export const createEntityBreakdownChartConfiguration = (
           data.displayName,
           ...metricValues,
           parseFloat(data.entityUpdateTotal.toFixed(2)),
-          stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`,
-          stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`,
+          stats.slowdownFromPrevious,
+          stats.slowdownFromBest,
         ],
       };
     });
