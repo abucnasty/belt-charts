@@ -1,38 +1,42 @@
 import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import {
-  parseBenchmarkAggregatesPerRunResultFromCsv,
+  type BenchmarkAggregateRunResult,
   saveBenchmarkAggregateRunResultsToCsv,
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
 import { getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 async function generateTable(
   files: string[],
   runsToRemove: Map<string, Set<number>>,
   options: TableChartOptions,
 ): Promise<void> {
-  const aggregateResults = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        options.metrics,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
-      options.trimSubstrings,
-    );
-    aggregateResults.push(result);
-  }
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, result) => {
+      aggregateResults[task.fileIndex] = applyLabel(
+        result,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+    },
+  });
 
   const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
   await saveBenchmarkAggregateRunResultsToCsv(
