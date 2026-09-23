@@ -1,3 +1,4 @@
+import { Canvas } from "skia-canvas";
 import { colors, chartLayout } from "./constants";
 
 export interface TableRow {
@@ -32,28 +33,55 @@ const ROW_FONT = "12px Arial";
 export const tableReservedHeight = (rowCount: number): number =>
   HEADER_BLOCK_HEIGHT_PX + rowCount * ROW_HEIGHT + chartLayout.TABLE_BOTTOM_MARGIN_PX;
 
-/** Rough average glyph width (px) for the 12px Arial table font; used only for pre-render width estimates. */
-const AVG_CHAR_WIDTH_PX = 7;
+// 1×1 throwaway canvas used only for `measureText` at pre-render layout time (before the real
+// chart canvas exists) — cached since constructing it isn't free and every estimate call needs one.
+let measureCtxCache: any = null;
+const getMeasureContext = (): any => {
+  if (!measureCtxCache) {
+    measureCtxCache = new Canvas(1, 1).getContext("2d");
+  }
+  return measureCtxCache;
+};
 
-/** Rough pre-render width estimate (px) for `text` at the table's font size; use for layout sizing before a canvas context exists. */
-export const estimateTextWidth = (text: string): number => text.length * AVG_CHAR_WIDTH_PX;
+/** Real (not heuristic) canvas text width (px) for `text` at the table's font size; use for layout sizing before the real chart canvas exists. */
+export const estimateTextWidth = (text: string, font: string = ROW_FONT): number => {
+  const ctx = getMeasureContext();
+  ctx.font = font;
+  return ctx.measureText(text).width;
+};
+
+/**
+ * Full (uncapped) width (px) a column needs to show its header and every row's value in full,
+ * measured with real canvas text metrics (both header and data measured in `HEADER_FONT` — a
+ * bold font is never narrower than the row font, so this stays a safe upper bound even though
+ * data cells render in `ROW_FONT`). Shared by `estimateTableWidth` (pre-render estimate) and
+ * `createTableChartPlugin` (actual draw-time layout) so the two can't drift apart.
+ */
+const measureNaturalColumnWidth = (ctx: any, data: TableData, colIdx: number): number => {
+  ctx.font = HEADER_FONT;
+  let maxWidth = ctx.measureText(data.header[colIdx]).width;
+  data.rows.forEach(row => {
+    maxWidth = Math.max(maxWidth, ctx.measureText(String(row.values[colIdx] ?? "")).width);
+  });
+  return maxWidth + COLUMN_PADDING;
+};
 
 /**
  * Estimates the canvas width (px) needed to show every column's header and data in full (no
- * truncation) — uses a character-count heuristic since no canvas context exists yet at layout
- * time. Use as a floor over the user-requested chart width; `createTableChartPlugin` only caps
- * header width and truncates at draw time if the actual canvas still ends up narrower than this.
- * `excludeColumn` skips a column entirely — use this for a `flexColumnHeader` column that's
- * drawn in the blank y-axis label strip rather than sized into the plot area, so callers don't
- * double-count its width alongside the y-axis label width.
+ * truncation), using real canvas text metrics. Use as a floor over the user-requested chart
+ * width; `createTableChartPlugin` only caps header width and truncates at draw time if the
+ * actual canvas still ends up narrower than this. `excludeColumn` skips a column entirely — use
+ * this for a `flexColumnHeader` column that's drawn in the blank y-axis label strip rather than
+ * sized into the plot area, so callers don't double-count its width alongside the y-axis label
+ * width.
  */
-export const estimateTableWidth = (data: TableData, excludeColumn?: string): number =>
-  data.header.reduce((sum, header, colIdx) => {
+export const estimateTableWidth = (data: TableData, excludeColumn?: string): number => {
+  const ctx = getMeasureContext();
+  return data.header.reduce((sum, header, colIdx) => {
     if (header === excludeColumn) return sum;
-    const headerLen = header.length * AVG_CHAR_WIDTH_PX;
-    const maxDataLen = data.rows.reduce((max, row) => Math.max(max, String(row.values[colIdx] ?? "").length * AVG_CHAR_WIDTH_PX), 0);
-    return sum + Math.max(Math.max(headerLen, maxDataLen) + COLUMN_PADDING, MIN_COLUMN_WIDTH_PX);
+    return sum + Math.max(measureNaturalColumnWidth(ctx, data, colIdx), MIN_COLUMN_WIDTH_PX);
   }, 0);
+};
 
 const truncateToWidth = (ctx: any, text: string, maxWidth: number): string => {
   // Small epsilon so a column sized exactly to its header/content (zero slack) doesn't get
@@ -116,17 +144,7 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     const flexIdx = options.flexColumnHeader ? data.header.indexOf(options.flexColumnHeader) : -1;
     const otherIndices = data.header.map((_, colIdx) => colIdx).filter(colIdx => colIdx !== flexIdx);
 
-    ctx.font = HEADER_FONT;
-    // Full (uncapped) width each column needs to show its header and data in full.
-    const measureNatural = (colIdx: number): number => {
-      let maxWidth = ctx.measureText(data.header[colIdx]).width;
-      data.rows.forEach(row => {
-        maxWidth = Math.max(maxWidth, ctx.measureText(String(row.values[colIdx] ?? "")).width);
-      });
-      return maxWidth + COLUMN_PADDING;
-    };
-
-    const naturalWidths = data.header.map((_, colIdx) => Math.max(measureNatural(colIdx), MIN_COLUMN_WIDTH_PX));
+    const naturalWidths = data.header.map((_, colIdx) => Math.max(measureNaturalColumnWidth(ctx, data, colIdx), MIN_COLUMN_WIDTH_PX));
     const otherNaturalWidths = otherIndices.map(colIdx => naturalWidths[colIdx]);
     const totalOtherNatural = otherNaturalWidths.reduce((sum, w) => sum + w, 0);
 
