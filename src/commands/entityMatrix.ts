@@ -5,13 +5,15 @@ import { Canvas } from "skia-canvas";
 import fsp from "node:fs/promises";
 import { AggregationStrategy, aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { renderEntityMatrixChart } from "../charts/EntityMatrixChart";
-import { parseBenchmarkAggregatesPerRunResultFromCsv } from "../data/BenchmarkAggregateResult";
+import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityMatrixChartOptions } from "./types";
 import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
 import { enableInserterEasterEgg } from "../charts/styles";
+import { runInWorkerPool } from "./workerPool";
+import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
@@ -21,26 +23,28 @@ async function generateEntityMatrix(
   runsToRemove: Map<string, Set<number>>,
   options: EntityMatrixChartOptions,
 ): Promise<void> {
-  const results = [];
+  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
+    taskType: "aggregateParse",
+    file,
+    fileIndex,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: DEFAULT_ENTITY_METRICS.map((m) => m.name),
+  }));
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    const result = applyLabel(
-      await parseBenchmarkAggregatesPerRunResultFromCsv(
-        file,
-        options.removeFirstTicks,
-        options.maxTicks,
-        DEFAULT_ENTITY_METRICS,
-        runsToRemove.get(baseName) ?? new Set(),
-      ),
-      options.trimPrefix,
-      options.customNames,
-      options.titleCase,
-      options.trimSubstrings,
-    );
-    results.push(result);
-  }
+  const results: BenchmarkAggregateRunResult[] = new Array(files.length);
+  await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
+    onTaskComplete: (task, result) => {
+      results[task.fileIndex] = applyLabel(
+        result,
+        options.trimPrefix,
+        options.customNames,
+        options.titleCase,
+        options.trimSubstrings,
+      );
+    },
+  });
 
   const canvas = new Canvas(options.width, options.height);
   renderEntityMatrixChart(results, {
