@@ -2,12 +2,12 @@ import path from "path";
 import { Command } from "commander";
 import { aggregationStrategyFromString } from "../data/AggregationStrategy";
 import { createLineChartForMetrics } from "../charts/LineChart";
-import { computeMaxMetricValueFromCsv, parseBenchmarkAveragePerTickResultFromCsv } from "../data/BenchmarkTickResult";
-import { ignoreFirstTicksFromResult } from "../data/tickUtils";
-import { MetricEnum } from "../data/MetricEnum";
+import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
+import { runInWorkerPool } from "./workerPool";
+import { LineBarParseTask, LineBarScanTask } from "./lineBarWorkerTask";
 
 async function generateLineOrBarCharts(
   files: string[],
@@ -18,54 +18,77 @@ async function generateLineOrBarCharts(
   let maxWholeUpdate = options.maxUpdate;
   if (maxWholeUpdate == null) {
     console.log("--max-update not provided, auto-detecting max value across all files...");
+    const scanTasks: LineBarScanTask[] = files.map((file) => ({
+      taskType: "lineBarScan",
+      file,
+      runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+      removeFirstTicks: options.removeFirstTicks,
+    }));
+
     let rawMax = -Infinity;
-    for (const file of files) {
-      const baseName = getBaseName(file);
-      const fileMax = await computeMaxMetricValueFromCsv(
-        file,
-        runsToRemove.get(baseName) ?? new Set(),
-        MetricEnum.WHOLE_UPDATE.name,
-        options.removeFirstTicks,
-      );
-      if (fileMax > rawMax) {
-        rawMax = fileMax;
-      }
-      console.log(`${baseName}: current max value ${nanoToMicro(rawMax)}`);
-    }
+    await runInWorkerPool<LineBarScanTask, number>(scanTasks, {
+      onTaskComplete: (task, fileMax) => {
+        if (fileMax > rawMax) {
+          rawMax = fileMax;
+        }
+        console.log(`${getBaseName(task.file)}: max value ${nanoToMicro(fileMax)} (running max ${nanoToMicro(rawMax)})`);
+      },
+    });
     maxWholeUpdate = nanoToMicro(rawMax);
     console.log(`Auto-detected max value: ${maxWholeUpdate}`);
   }
 
   const fileNameWithoutExt = options.output.replace(/\.[^/.]+$/, "");
   const ext = path.extname(options.output) || ".png";
+  const maxUpdateValue = maxWholeUpdate;
 
-  for (const file of files) {
-    console.log(`Processing file: ${file}`);
-    const baseName = getBaseName(file);
-    let result = await parseBenchmarkAveragePerTickResultFromCsv(
-      file,
-      runsToRemove.get(baseName) ?? new Set(),
-      options.maxTicks,
-    );
+  const parseTasks: LineBarParseTask[] = files.map((file) => ({
+    taskType: "lineBarParse",
+    file,
+    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
+    maxTicks: options.maxTicks,
+    removeFirstTicks: options.removeFirstTicks,
+    metricNames: options.metrics.map((m) => m.name),
+    trimPrefix: options.trimPrefix,
+    customNames: [...options.customNames],
+    titleCase: options.titleCase,
+    trimSubstrings: options.trimSubstrings,
+  }));
 
-    if (options.removeFirstTicks > 0) {
-      result = ignoreFirstTicksFromResult(result, options.removeFirstTicks);
-    }
-    result = applyLabel(result, options.trimPrefix, options.customNames, options.titleCase, options.trimSubstrings);
-
+  // Parsing runs across the worker pool (parallel, safe), but chart rendering (skia-canvas)
+  // stays single-threaded on the main thread: concurrent skia-canvas rendering across worker
+  // threads caused intermittent native crashes. Renders are chained so each still overlaps
+  // with the next file's parsing instead of waiting for every file to finish parsing first.
+  // onTaskComplete is awaited by the pool before dispatching more parse work, so parsing can't
+  // race arbitrarily far ahead of rendering and pile up every file's parsed data in memory.
+  let renderChain: Promise<void> = Promise.resolve();
+  const renderOne = (result: BenchmarkTickResult): Promise<void> => {
     const config = createLineChartForMetrics(result, {
       maxTicks: options.maxTicks,
-      maxUpdateValue: maxWholeUpdate,
+      maxUpdateValue,
       type: options.type,
       aggregationStrategy: options.aggregateStrategy,
       tickWindow: options.tickWindowAggregation,
       metrics: options.metrics,
     });
+    const outputPath = `${fileNameWithoutExt}_${result.originalFileName}${ext}`;
+    return renderChartToFile(config, options.width, options.height, outputPath);
+  };
 
-    const fileName = `${fileNameWithoutExt}_${baseName}${ext}`;
-    await renderChartToFile(config, options.width, options.height, fileName);
-  }
+  await runInWorkerPool<LineBarParseTask, BenchmarkTickResult>(parseTasks, {
+    onTaskComplete: (_task, result) => {
+      renderChain = renderChain.then(() => renderOne(result));
+      return renderChain;
+    },
+  });
+  await renderChain;
+
+  // Exit immediately rather than letting Node drain the event loop naturally: tearing down
+  // many worker threads after native addon (skia-canvas) usage can segfault on process exit.
+  process.exit(0);
 }
+
+
 
 
 function createLineBarCommand(type: "line" | "bar"): Command {

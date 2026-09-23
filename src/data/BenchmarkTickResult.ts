@@ -75,7 +75,12 @@ export const transformMetricTickStatToMetricValue = (metricTickStat: MetricTickS
     }
 }
 
-export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string, runResultsToRemove: Set<number>, maxTicks?: number): Promise<BenchmarkTickResult> => {
+export const parseBenchmarkAveragePerTickResultFromCsv = async (
+    filePath: string,
+    runResultsToRemove: Set<number>,
+    maxTicks?: number,
+    metricNames?: Set<MetricName>,
+): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
     const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
@@ -94,6 +99,10 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (filePath: string
                     metrics = Object.keys(row)
                         .filter(it => it !== "tick" && it !== "run")
                         .filter(it => `${it}`.length > 0)
+                        // Only keep columns actually needed for this chart - CSVs can have 100+
+                        // metric columns, and building/serializing stats for all of them across
+                        // a worker-thread boundary can exhaust the main thread's heap.
+                        .filter(it => metricNames === undefined || metricNames.has(it as MetricName) || it === MetricEnum.WHOLE_UPDATE.name)
                         .flatMap(metricName => {
                             const metric = MetricRegistryInstance.get(metricName as MetricName);
                             if (!metric) {
