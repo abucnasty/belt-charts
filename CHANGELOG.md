@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-09-23
+
+### Changed
+- In-chart summary tables (`summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`) render noticeably narrower: the "Save File" column now reuses the blank space under the y-axis labels instead of duplicating them in the plot area, leftover column width is distributed proportionally instead of piling onto one column, and column width estimates use real text measurements instead of a rough heuristic.
+
 ## [1.17.0] - 2026-09-23
 
 ### Changed
