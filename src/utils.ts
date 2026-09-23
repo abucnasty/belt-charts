@@ -78,6 +78,19 @@ export function percentDifference(startingValue: number, endingValue: number): n
 }
 
 /**
+ * Formats how much slower `current` is than `reference` as a signed percent, switching to an
+ * `Nx` multiplier once the increase crosses +100% (i.e. current is at least double reference).
+ * Returns "" when there is no reference to compare against (e.g. the first/fastest row).
+ */
+export function formatSlowdown(reference: number | null, current: number): string {
+  if (reference === null || reference === 0) return "";
+  const ratio = current / reference;
+  if (ratio >= 2) return `${ratio.toFixed(2)}x`;
+  const pct = (ratio - 1) * 100;
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+/**
  * Computes a time-weighted average over a tick-based window.
  * 
  * @param data - Array of { tick, value } points. Assumed sorted by tick ascending.

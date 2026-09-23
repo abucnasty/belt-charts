@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-09-23
+
+### Changed
+- `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` table columns `% Decrease from Previous`/`% Decrease from Best` are now `vs Prev`/`vs Best`. Since these are time metrics (higher = slower), the old "% decrease" framing showed a confusing pile of negative numbers for every run slower than the first. The new columns show a signed slowdown percent (e.g. `+4.8%`) relative to the previous row and to the fastest run, switching to an `Nx` multiplier once the increase crosses +100% (e.g. `2.61x`). `ups`/`ups-per-run` are unaffected (still `+/- vs Previous`/`+/- vs Best` signed deltas, since higher is better for UPS).
+
 ## [1.16.0] - 2026-09-22
 
 ### Changed

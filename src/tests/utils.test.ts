@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { average, standardDeviation, median, min, max, percentDecrease } from "../utils";
+import { average, standardDeviation, median, min, max, percentDecrease, formatSlowdown } from "../utils";
 
 describe("average", () => {
   it("returns the arithmetic mean of an array", () => {
@@ -82,5 +82,27 @@ describe("percentDecrease", () => {
 
   it("returns 100 for a total decrease to zero", () => {
     expect(percentDecrease(100, 0)).toBe(100);
+  });
+});
+
+describe("formatSlowdown", () => {
+  it("returns a signed percent for an increase under +100%", () => {
+    expect(formatSlowdown(188, 197)).toBe("+4.8%");
+    expect(formatSlowdown(188, 208)).toBe("+10.6%");
+    expect(formatSlowdown(188, 292)).toBe("+55.3%");
+  });
+
+  it("switches to an Nx multiplier at the +100% boundary", () => {
+    expect(formatSlowdown(188, 491)).toBe("2.61x");
+    expect(formatSlowdown(100, 200)).toBe("2.00x");
+  });
+
+  it("returns a signed percent for a decrease (faster than reference)", () => {
+    expect(formatSlowdown(197, 188)).toBe("-4.6%");
+  });
+
+  it("returns an empty string when there is no reference", () => {
+    expect(formatSlowdown(null, 100)).toBe("");
+    expect(formatSlowdown(0, 100)).toBe("");
   });
 });

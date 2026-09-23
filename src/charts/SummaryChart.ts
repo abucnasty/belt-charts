@@ -2,7 +2,7 @@ import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
 import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
-import { percentDecrease } from "../utils"
+import { formatSlowdown } from "../utils"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
@@ -141,15 +141,15 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   // Compute shared statistics for both plugins
   const computeTableStats = () => {
-    // UPS shows a raw +/- delta instead of a percent decrease, since "percent decrease" reads
-    // oddly for a rate that can also increase.
+    // UPS shows a raw +/- delta instead of a slowdown percent, since "slower" reads oddly for
+    // a rate that can also increase.
     const useSignedDelta = valueMode === "ups";
     const header = [
       ...(groupBy.length > 0 ? ["Group"] : []),
       "Save File",
       ...metrics.map(it => it.name === MetricEnum.WHOLE_UPDATE.name && valueMode === "ups" ? "UPS" : it.description),
-      useSignedDelta ? "+/- vs Previous" : '% Decrease from Previous',
-      useSignedDelta ? "+/- vs Best" : '% Decrease from Best'
+      useSignedDelta ? "+/- vs Previous" : "vs Prev",
+      useSignedDelta ? "+/- vs Best" : "vs Best"
     ];
 
     // Pre-compute whole update values and stats
@@ -163,8 +163,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         currentValue,
         deltaFromPrevious: previousValue !== null ? Math.round(currentValue - previousValue) : null,
         deltaFromBest: Math.round(currentValue - bestValue),
-        decreaseFromPrevious: previousValue ? Math.round(percentDecrease(previousValue, currentValue) * 100) / 100 : null,
-        decreaseFromBest: bestValue ? Math.round(percentDecrease(bestValue, currentValue) * 100) / 100 : null
+        slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
+        slowdownFromBest: idx === 0 ? "" : formatSlowdown(bestValue, currentValue)
       };
     });
 
@@ -183,8 +183,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           ...(groupBy.length > 0 ? [data.group ?? ""] : []),
           data.displayName,
           ...metricValues,
-          useSignedDelta ? formatSigned(stats.deltaFromPrevious) : (stats.decreaseFromPrevious === null ? "" : `${stats.decreaseFromPrevious}%`),
-          useSignedDelta ? formatSigned(stats.deltaFromBest) : (stats.decreaseFromBest === null ? "" : `${stats.decreaseFromBest}%`)
+          useSignedDelta ? formatSigned(stats.deltaFromPrevious) : stats.slowdownFromPrevious,
+          useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest
         ]
       };
     });
