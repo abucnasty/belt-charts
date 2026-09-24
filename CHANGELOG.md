@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.1] - 2026-09-24
+
+### Added
+- `--title-override <string>` is now a base option available on every chart command (previously only `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`, `entity-matrix`, `entity-heatmap`, and `core-freq-heatmap` supported it). `boxplot` now also supports `--title-override`.
+
 ## [1.18.0] - 2026-09-23
 
 ### Changed
