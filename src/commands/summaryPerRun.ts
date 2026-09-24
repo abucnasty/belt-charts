@@ -108,12 +108,6 @@ export function createSummaryPerRunCommand(): Command {
       (it: string) => aggregationStrategyFromString(it),
       AggregationStrategy.AVERAGE,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the title of the chart",
-      (it: string) => it,
-      null,
-    )
     .option<"run" | "total">(
       "--sort-by <run | total>",
       "Sort bars by run number (preserving file order) or by total wholeUpdate time (default: total)",

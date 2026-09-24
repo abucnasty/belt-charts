@@ -78,12 +78,6 @@ export function createUpsCommand(): Command {
       (it: string) => aggregationStrategyFromString(it),
       AggregationStrategy.AVERAGE,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the title of the chart",
-      (it: string) => it,
-      null,
-    )
     .action(async (pattern, opts) => {
       const options: SummaryChartOptions = {
         width: opts.width,

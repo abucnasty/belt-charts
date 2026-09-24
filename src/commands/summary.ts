@@ -82,12 +82,6 @@ export function createSummaryCommand(): Command {
       (it: string) => aggregationStrategyFromString(it),
       AggregationStrategy.AVERAGE,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the title of the chart",
-      (it: string) => it,
-      null,
-    )
     .option<number | null>(
       "--max-update <number>",
       "Set the maximum x-axis value (microseconds)",

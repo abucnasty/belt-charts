@@ -77,12 +77,6 @@ export function createEntityMatrixCommand(): Command {
       (it: string) => parseInt(it),
       15,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the title of the chart",
-      (it: string) => it,
-      null,
-    )
     .addOption(new Option("--fish").hideHelp())
     .action(async (pattern, opts) => {
       const options: EntityMatrixChartOptions = {

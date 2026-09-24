@@ -16,6 +16,8 @@ export interface BoxChartOptions {
      * time in milliseconds
      */
     minUpdateTime: number | null;
+    /** Override the chart's auto-generated title. */
+    titleOverride?: string;
 }
 
 export interface BoxPlotChartResult {
@@ -63,7 +65,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     const axisLabel = `Whole Update Time [microseconds] (lower is better)`
 
-    const title = `Whole Update Time Run Variance`
+    const title = options.titleOverride ?? `Whole Update Time Run Variance`
 
     dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
 
