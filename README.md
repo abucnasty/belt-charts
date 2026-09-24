@@ -50,6 +50,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--title-case` | `false` | Convert chart labels to space-separated title case, normalizing snake_case, kebab-case, PascalCase, camelCase, and SCREAMING_SNAKE (e.g. `belt_v2` → `Belt V2`, `BeltV2` → `Belt V2`). Applied after `--trim-prefix`; `--name` / `--names-file` overrides bypass it entirely |
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
+| `--title-override <string>` | *(auto)* | Override the chart's auto-generated title |
 
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
@@ -86,7 +87,6 @@ Stacked-bar chart aggregating all metrics across input files, with an optional i
 | `-a, --aggregate-strategy` | `average` | How to aggregate ticks per run: `average`, `minimum`, `maximum`, `median`, `standard_deviation` |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--max-update <number>` | *(auto)* | Fix the maximum x-axis value (microseconds). Useful for comparing charts at a consistent scale |
 | `--group-by <keys>` | *(none)* | Comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its **original** file base name — matching happens before any label transforms, so `--trim-substring` and `--title-case` cannot break group assignment. Results that don't match any key are excluded. Matched results are clustered under bold group-header rows in the chart and table, sorted by key order |
 | `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Bypass the built-in `MetricProfiles.SUMMARY_CHART` filter so any metric passed via `--metrics` is rendered, even metrics outside the default profile. **Warning:** dataset ordering, legend ordering, and pattern/color assignment are tuned for the default profile; off-profile metrics may render or lay out unexpectedly. A warning is printed at run time |
@@ -138,7 +138,6 @@ Same as `summary` but shows one bar per individual run instead of averaging acro
 | `-a, --aggregate-strategy` | `average` | Per-run statistic to display (`average`, `minimum`, `maximum`, `median`, `standard_deviation`) |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--sort-by <run\|total>` | `total` | Sort bars by run number or by total `wholeUpdate` time |
 | `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Same as on `summary` — bypass the built-in metric-profile filter so any `--metrics` value is rendered. Emits a warning at run time |
 
@@ -165,7 +164,6 @@ Same as `summary`, but renders a single bar per save file showing updates per se
 | `-a, --aggregate-strategy` | `average` | How to aggregate ticks per run: `average`, `minimum`, `maximum`, `median`, `standard_deviation` |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--group-by <keys>` | *(none)* | Same as `summary`'s `--group-by` |
 
 ```
@@ -187,7 +185,6 @@ Same as `ups` but shows one bar per individual run instead of averaging across r
 | `-a, --aggregate-strategy` | `average` | Per-run statistic to display (`average`, `minimum`, `maximum`, `median`, `standard_deviation`) |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--sort-by <run\|total>` | `total` | Sort bars by run number or by UPS |
 
 ```
@@ -276,7 +273,6 @@ Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions.
 | `--sort-by <run\|total>` | `total` | (`entity-summary-per-run` only) Sort bars by run number or by entityUpdate total |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--group-by <keys>` | *(none)* | Same behaviour as in `summary` — see above |
 
 ```
@@ -305,7 +301,6 @@ Same as `entity-summary` but shows one bar per individual run (no averaging acro
 | `--sort-by <run\|total>` | `total` | Sort bars by run number or entityUpdate total |
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 
 ```
 belt-charts entity-summary-per-run "results/my_amazing_map*.csv"
@@ -331,7 +326,6 @@ Panel chart — rows = entity types, columns = benchmark files, cells = horizont
 |---|---|---|
 | `-a, --aggregate-strategy` | `average` | How to aggregate runs |
 | `--top-n <n>` | `15` | Show only the top N entity types |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 
 ```
 belt-charts entity-matrix "results/my_amazing_map*.csv"
@@ -356,7 +350,6 @@ belt-charts entity-matrix "results/my_amazing_map*.csv"
 | `--top-n <n>` | `20` | Show only the top N entity types |
 | `--normalize <global\|column\|row>` | `global` | Color scale normalization. `global` = single scale for all cells (best for spotting the absolute hottest cell); `column` = per-design scale (best for comparing entity profiles within one design); `row` = per-entity scale (best for spotting which design stresses a particular entity the most) |
 | `--show-values <bool>` | `true` | Render µs values inside each cell |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 
 ```
 belt-charts entity-heatmap "results/my_amazing_map*.csv"
@@ -382,7 +375,6 @@ belt-charts entity-heatmap "results/my_amazing_map*.csv"
 | `-a, --aggregate-strategy <average\|minimum\|maximum\|median\|standard_deviation>` | `average` | Which per-core statistic to display/color |
 | `--normalize <global\|column\|row>` | `column` | Color scale normalization. `global` = single scale for all cells; `column` = per-core scale (best for spotting systematic hardware differences between cores); `row` = per-run scale (best for spotting which core stood out within a single run) |
 | `--show-values <bool>` | `true` | Render MHz values inside each cell |
-| `--title-override <string>` | *(auto)* | Override the chart title |
 | `--save-name-filter <glob>` | *(none)* | Glob pattern to filter which `save_name` values are included (repeatable, OR-matched). Matches against the `save_name` column value itself, not a file path — e.g. `--save-name-filter "foo*"`. Unmatched patterns are unfiltered (all save_names included) by default |
 
 ```
