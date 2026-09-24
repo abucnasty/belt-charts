@@ -37,6 +37,7 @@ async function generateBoxPlot(
   const { config, recommendedWidth } = createBoxPlotChartConfiguration(aggregateResults, {
     minUpdateTime: options.minUpdate,
     maxUpdateTime: options.maxUpdate,
+    titleOverride: options.titleOverride ?? undefined,
   });
 
   console.log("Chart configuration created.");
@@ -79,6 +80,7 @@ export function createBoxPlotCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         groupBy: opts.groupBy ?? [],
+        titleOverride: opts.titleOverride,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

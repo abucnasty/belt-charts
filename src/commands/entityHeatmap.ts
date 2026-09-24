@@ -95,12 +95,6 @@ export function createEntityHeatmapCommand(): Command {
       (it) => it.toLowerCase() === "true",
       true,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the chart title",
-      (it: string) => it,
-      null,
-    )
     .addOption(new Option("--fish").hideHelp())
     .action(async (pattern, opts) => {
       const options: EntityHeatmapChartOptions = {

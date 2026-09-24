@@ -22,6 +22,8 @@ export type BaseChartOptions = {
   trimSubstrings: string[];
   /** Comma-separated group keys. Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
   groupBy: string[];
+  /** Override the chart's auto-generated title. Null = use the chart's default title. */
+  titleOverride: string | null;
 };
 
 // Summary chart specific options
@@ -29,7 +31,6 @@ export type SummaryChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
-  titleOverride: string | null;
   maxUpdate: number | null;
   /** Bypass the MetricProfiles.SUMMARY_CHART filter and render any metric provided via --metrics. */
   allowUnfilteredMetrics: boolean;
@@ -66,7 +67,6 @@ export type EntityBreakdownChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
-  titleOverride: string | null;
   topN: number;
   perRun: boolean;
   sortBy: "run" | "total";
@@ -76,7 +76,6 @@ export type EntityBreakdownChartOptions = BaseChartOptions & {
 export type EntityMatrixChartOptions = BaseChartOptions & {
   aggregateStrategy: AggregationStrategy;
   topN: number;
-  titleOverride: string | null;
 };
 
 // Entity heatmap chart specific options
@@ -85,19 +84,17 @@ export type EntityHeatmapChartOptions = BaseChartOptions & {
   topN: number;
   normalize: "global" | "column" | "row";
   showValues: boolean;
-  titleOverride: string | null;
 };
 
 // Core frequency heatmap chart specific options
 export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
   "width" | "height" | "output" | "trimPrefix" | "customNames" | "namesFile" |
-  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy"
+  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride"
 > & {
   aggregateStrategy: AggregationStrategy;
   normalize: "global" | "column" | "row";
   showValues: boolean;
-  titleOverride: string | null;
   /** Glob patterns (repeatable, OR-matched) filtering which save_name values are included. Empty = all. */
   saveNameFilters: string[];
 };

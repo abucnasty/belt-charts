@@ -137,6 +137,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         groupBy: opts.groupBy ?? [],
+        titleOverride: opts.titleOverride,
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
       };
 

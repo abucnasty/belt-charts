@@ -118,12 +118,6 @@ function buildEntitySummaryOptions(command: Command): Command {
       (it: string) => aggregationStrategyFromString(it),
       AggregationStrategy.AVERAGE,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the title of the chart",
-      (it: string) => it,
-      null,
-    )
     .option<number>(
       "--top-n <number>",
       "Keep only the top N entity types by max average (others fold into 'Other Entity Update'). 0 = show all.",

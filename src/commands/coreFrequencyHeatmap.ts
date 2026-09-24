@@ -90,12 +90,6 @@ export function createCoreFrequencyHeatmapCommand(): Command {
       (it) => it.toLowerCase() === "true",
       true,
     )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the chart title",
-      (it: string) => it,
-      null,
-    )
     .option<string[]>(
       "--save-name-filter <glob>",
       "Glob pattern to filter which save_name values are included (repeatable, OR-matched). Matches against the save_name column, not a file path, e.g. --save-name-filter \"ship_benchmark_50_non*\"",

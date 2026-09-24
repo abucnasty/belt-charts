@@ -163,6 +163,8 @@ export function createTableCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase ?? false,
         groupBy: opts.groupBy ?? [],
+        // table has no rendered chart title; this command exports CSV data only.
+        titleOverride: null,
       };
 
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);

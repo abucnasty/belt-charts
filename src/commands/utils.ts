@@ -276,6 +276,12 @@ export function addBaseOptions(command: Command): Command {
       "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its label. Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
       (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
       [],
+    )
+    .option<string | null>(
+      "--title-override <string>",
+      "Override the chart's auto-generated title",
+      (it: string) => it,
+      null,
     );
 }
 
