@@ -143,56 +143,46 @@ describe("revealTimeseriesForAnimation", () => {
     options: {},
   } as unknown as ChartConfiguration<"line">;
 
-  it("truncates data and labels to a progress-scaled prefix", () => {
+  it("replaces not-yet-revealed points with a null-y gap instead of truncating", () => {
     const result = revealTimeseriesForAnimation(baseConfig, 0.5);
-    expect(result.data.labels).toEqual([0, 1]);
-    expect(result.data.datasets[0].data).toEqual([{ x: 0, y: 1 }, { x: 1, y: 2 }]);
+    expect(result.data.datasets[0].data).toEqual([
+      { x: 0, y: 1 }, { x: 1, y: 2 }, { x: 2, y: null }, { x: 3, y: null },
+    ]);
   });
 
-  it("keeps at least one point at progress 0", () => {
+  it("keeps labels and data arrays at their full original length so the x-axis never shrinks", () => {
+    for (const progress of [0, 0.25, 0.5, 1]) {
+      const result = revealTimeseriesForAnimation(baseConfig, progress);
+      expect(result.data.labels).toEqual([0, 1, 2, 3]);
+      expect(result.data.datasets[0].data).toHaveLength(4);
+    }
+  });
+
+  it("reveals at least one point at progress 0", () => {
     const result = revealTimeseriesForAnimation(baseConfig, 0);
-    expect(result.data.datasets[0].data).toEqual([{ x: 0, y: 1 }]);
+    expect(result.data.datasets[0].data).toEqual([
+      { x: 0, y: 1 }, { x: 1, y: null }, { x: 2, y: null }, { x: 3, y: null },
+    ]);
   });
 
-  it("keeps every point at progress 1", () => {
+  it("masks non-object points with a bare null gap", () => {
+    const numericConfig = {
+      type: "line",
+      data: { labels: [0, 1, 2], datasets: [{ label: "d1", data: [1, 2, 3] }] },
+      options: {},
+    } as unknown as ChartConfiguration<"line">;
+
+    const result = revealTimeseriesForAnimation(numericConfig, 0.34);
+    expect(result.data.datasets[0].data).toEqual([1, 2, null]);
+  });
+
+  it("reveals every point at progress 1", () => {
     const result = revealTimeseriesForAnimation(baseConfig, 1);
-    expect(result.data.datasets[0].data).toHaveLength(4);
+    expect(result.data.datasets[0].data).toEqual([{ x: 0, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 4 }]);
   });
 
   it("does not mutate the input config", () => {
     revealTimeseriesForAnimation(baseConfig, 0.5);
-    expect(baseConfig.data.datasets[0].data).toHaveLength(4);
-  });
-
-  it("pins the x-axis to the full data's domain regardless of progress", () => {
-    for (const progress of [0, 0.25, 0.5, 1]) {
-      const result = revealTimeseriesForAnimation(baseConfig, progress);
-      expect(result.options?.scales?.x).toMatchObject({ min: 0, max: 3 });
-    }
-  });
-
-  it("derives the x domain from {x,y} points when labels aren't numeric", () => {
-    const pointOnlyConfig = {
-      type: "line",
-      data: {
-        labels: ["a", "b", "c"],
-        datasets: [{ label: "d1", data: [{ x: 10, y: 1 }, { x: 20, y: 2 }, { x: 30, y: 3 }] }],
-      },
-      options: {},
-    } as unknown as ChartConfiguration<"line">;
-
-    const result = revealTimeseriesForAnimation(pointOnlyConfig, 0.5);
-    expect(result.options?.scales?.x).toMatchObject({ min: 10, max: 30 });
-  });
-
-  it("leaves an already-fixed x-axis domain untouched", () => {
-    const fixedConfig = {
-      type: "line",
-      data: baseConfig.data,
-      options: { scales: { x: { min: -5, max: 5 } } },
-    } as unknown as ChartConfiguration<"line">;
-
-    const result = revealTimeseriesForAnimation(fixedConfig, 0.5);
-    expect(result.options?.scales?.x).toMatchObject({ min: -5, max: 5 });
+    expect(baseConfig.data.datasets[0].data).toEqual([{ x: 0, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 4 }]);
   });
 });
