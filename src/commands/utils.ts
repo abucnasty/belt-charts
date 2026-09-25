@@ -13,6 +13,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { ensureOutputDir } from "../utils";
 import { assignToGroup } from "../utils";
 import { BaseChartOptions } from "./types";
+import { Easing } from "../charts/animation";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
@@ -316,6 +317,48 @@ export function warnAllowUnfilteredMetrics(enabled: boolean): void {
     console.warn(
       "--allow-unfiltered-metrics: built-in metric filter bypassed. Unexpected rendering, ordering, or legend behavior may occur.",
     );
+  }
+}
+
+const VALID_EASINGS: Easing[] = ["linear", "ease-out", "ease-in-out"];
+
+/**
+ * Adds the opt-in `--animate` flag plus its `--duration`/`--fps`/`--easing` controls.
+ * Only applied to commands whose chart is built from a Chart.js config (see
+ * `renderChartAnimationToFile`) — not every command supports animation.
+ */
+export function addAnimationOptions(command: Command): Command {
+  return command
+    .option("--animate", "Render an animated MP4 instead of a static image. Requires -o/--output to end in .mp4", false)
+    .option<number>(
+      "--duration <seconds>",
+      "Animation duration in seconds",
+      (it: string) => parseFloat(it),
+      3,
+    )
+    .option<number>(
+      "--fps <number>",
+      "Animation frame rate",
+      (it: string) => parseInt(it),
+      30,
+    )
+    .option<Easing>(
+      "--easing <linear|ease-out|ease-in-out>",
+      "Animation easing curve",
+      (it: string) => {
+        if (VALID_EASINGS.includes(it as Easing)) return it as Easing;
+        console.error(`Invalid --easing value: ${it}. Must be one of ${VALID_EASINGS.join(", ")}. Defaulting to "ease-out".`);
+        return "ease-out";
+      },
+      "ease-out",
+    );
+}
+
+/** Exits with an error if --animate is set but the output path isn't a .mp4 file. */
+export function validateAnimateOutput(output: string, animate: boolean): void {
+  if (animate && path.extname(output).toLowerCase() !== ".mp4") {
+    console.error(`--animate requires -o/--output to end in .mp4, got: ${output}`);
+    process.exit(1);
   }
 }
 
