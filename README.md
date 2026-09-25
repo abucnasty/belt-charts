@@ -86,7 +86,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--duration <seconds>` | `3` | Animation duration in seconds |
 | `--fps <number>` | `30` | Animation frame rate |
 | `--easing <linear\|ease-out\|ease-in-out>` | `ease-out` | Animation easing curve |
-| `--hold <seconds>` | `0` | Extra seconds to hold the final frame at the end of the animation |
+| `--hold <seconds>` | `1` | Extra seconds to hold the final frame at the end of the animation |
 
 ```
 belt-charts summary "results/my_amazing_map*.csv"
