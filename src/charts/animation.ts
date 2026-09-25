@@ -20,22 +20,50 @@ export function frameCount(durationSeconds: number, fps: number): number {
   return Math.max(1, Math.round(durationSeconds * fps));
 }
 
-/** Grows every numeric value in every dataset's `data` array from 0 to its final value. Used for bar/stacked-bar charts. */
+/**
+ * Grows every numeric value in every dataset's `data` array from 0 to its final value. Used
+ * for bar/stacked-bar charts. Chart.js auto-scales an unfixed value axis to the CURRENT
+ * (shrunken) data every frame, which would hide the growth entirely — so when the config
+ * doesn't already pin the value axis to a fixed max (e.g. via --max-update), this computes
+ * the final stacked total up front and pins it for every frame.
+ */
 export function scaleCategoricalForAnimation(
   config: ChartConfiguration<"bar">,
   progress: number,
 ): ChartConfiguration<"bar"> {
+  const valueAxisKey = config.options?.indexAxis === "y" ? "x" : "y";
+  const scales = (config.options?.scales ?? {}) as Record<string, { max?: number } | undefined>;
+  const existingMax = scales[valueAxisKey]?.max;
+
+  const datasets = config.data.datasets.map((dataset) => ({
+    ...dataset,
+    data: (dataset.data as unknown as number[]).map((value) =>
+      typeof value === "number" ? value * progress : value,
+    ),
+  }));
+
+  if (existingMax != null) {
+    return { ...config, data: { ...config.data, datasets } };
+  }
+
+  const categoryCount = Math.max(0, ...config.data.datasets.map((d) => (d.data as unknown[]).length));
+  let fixedMax = 0;
+  for (let i = 0; i < categoryCount; i++) {
+    let total = 0;
+    for (const dataset of config.data.datasets) {
+      const value = (dataset.data as unknown as number[])[i];
+      if (typeof value === "number") total += value;
+    }
+    if (total > fixedMax) fixedMax = total;
+  }
+
   return {
     ...config,
-    data: {
-      ...config.data,
-      datasets: config.data.datasets.map((dataset) => ({
-        ...dataset,
-        data: (dataset.data as unknown as number[]).map((value) =>
-          typeof value === "number" ? value * progress : value,
-        ),
-      })),
+    options: {
+      ...config.options,
+      scales: { ...scales, [valueAxisKey]: { ...scales[valueAxisKey], max: fixedMax } },
     },
+    data: { ...config.data, datasets },
   };
 }
 

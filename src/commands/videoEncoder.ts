@@ -43,6 +43,8 @@ export async function renderChartAnimationToFile(
     "-vcodec", "png",
     "-r", String(options.fps),
     "-i", "-",
+    // libx264 requires even width/height; chart auto-sizing can produce odd dimensions.
+    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
     "-r", String(options.fps),

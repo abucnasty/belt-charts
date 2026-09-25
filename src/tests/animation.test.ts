@@ -71,6 +71,36 @@ describe("scaleCategoricalForAnimation", () => {
     const result = scaleCategoricalForAnimation(baseConfig, 1);
     expect(result.data.datasets[0].data).toEqual([10, 20]);
   });
+
+  it("pins the unfixed value axis to the final stacked total so growth is visible", () => {
+    const stackedConfig = {
+      type: "bar",
+      options: { indexAxis: "y" },
+      data: {
+        labels: ["a", "b"],
+        datasets: [
+          { label: "d1", data: [10, 20] },
+          { label: "d2", data: [5, 30] },
+        ],
+      },
+    } as unknown as ChartConfiguration<"bar">;
+
+    const result = scaleCategoricalForAnimation(stackedConfig, 0.5);
+    expect(result.options?.scales?.x).toMatchObject({ max: 50 });
+    expect(result.data.datasets[0].data).toEqual([5, 10]);
+    expect(result.data.datasets[1].data).toEqual([2.5, 15]);
+  });
+
+  it("leaves an already-fixed value axis max untouched", () => {
+    const fixedConfig = {
+      type: "bar",
+      options: { indexAxis: "y", scales: { x: { max: 999 } } },
+      data: { labels: ["a"], datasets: [{ label: "d1", data: [10] }] },
+    } as unknown as ChartConfiguration<"bar">;
+
+    const result = scaleCategoricalForAnimation(fixedConfig, 0.5);
+    expect(result.options?.scales?.x).toMatchObject({ max: 999 });
+  });
 });
 
 describe("scaleBoxplotForAnimation", () => {
