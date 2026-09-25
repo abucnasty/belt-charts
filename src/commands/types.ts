@@ -12,6 +12,12 @@ export type AnimationOptions = {
   hold: number;
 };
 
+// Staggers each category row's grow-in instead of animating them all in lockstep.
+// Only meaningful for categorical (one-row-per-save-file) bar charts.
+export type StaggerOption = {
+  stagger: boolean;
+};
+
 // Base options shared by all chart types
 export type BaseChartOptions = {
   width: number;
@@ -38,7 +44,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -74,7 +80,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

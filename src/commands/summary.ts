@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -61,7 +61,7 @@ async function generateSummary(
   const height = Math.max(options.height, recommendedHeight);
   if (options.animate) {
     await renderChartAnimationToFile(
-      (progress) => scaleCategoricalForAnimation(config, progress),
+      (progress) => scaleCategoricalForAnimation(config, progress, options.stagger),
       width, height, options.output,
       { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
     );
@@ -72,10 +72,10 @@ async function generateSummary(
 }
 
 export function createSummaryCommand(): Command {
-  return addAnimationOptions(addAllowUnfilteredMetricsOption(addBaseOptions(
+  return addStaggerOption(addAnimationOptions(addAllowUnfilteredMetricsOption(addBaseOptions(
     new Command("summary")
       .description("Generate a summary chart with aggregate statistics table"),
-  )))
+  ))))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",
@@ -128,6 +128,7 @@ export function createSummaryCommand(): Command {
         fps: opts.fps,
         easing: opts.easing,
         hold: opts.hold,
+        stagger: opts.stagger ?? false,
       };
 
       validateAnimateOutput(options.output, options.animate);

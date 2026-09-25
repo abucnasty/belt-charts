@@ -8,7 +8,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -84,7 +84,7 @@ async function generateUpsPerRun(
   const height = Math.max(options.height, recommendedHeight);
   if (options.animate) {
     await renderChartAnimationToFile(
-      (progress) => scaleCategoricalForAnimation(config, progress),
+      (progress) => scaleCategoricalForAnimation(config, progress, options.stagger),
       width, height, options.output,
       { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
     );
@@ -95,10 +95,10 @@ async function generateUpsPerRun(
 }
 
 export function createUpsPerRunCommand(): Command {
-  return addAnimationOptions(addBaseOptions(
+  return addStaggerOption(addAnimationOptions(addBaseOptions(
     new Command("ups-per-run")
       .description("Generate a chart showing updates per second (UPS) for each individual run (not averaged across runs)"),
-  ))
+  )))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in the chart (default true)",
@@ -158,6 +158,7 @@ export function createUpsPerRunCommand(): Command {
         fps: opts.fps,
         easing: opts.easing,
         hold: opts.hold,
+        stagger: opts.stagger ?? false,
       };
 
       validateAnimateOutput(options.output, options.animate);

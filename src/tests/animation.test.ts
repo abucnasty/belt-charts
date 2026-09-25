@@ -101,6 +101,40 @@ describe("scaleCategoricalForAnimation", () => {
     const result = scaleCategoricalForAnimation(fixedConfig, 0.5);
     expect(result.options?.scales?.x).toMatchObject({ max: 999 });
   });
+
+  it("without stagger, every row shares the same progress", () => {
+    const rowsConfig = {
+      type: "bar",
+      options: {},
+      data: { labels: ["a", "b", "c"], datasets: [{ label: "d1", data: [10, 10, 10] }] },
+    } as unknown as ChartConfiguration<"bar">;
+
+    const result = scaleCategoricalForAnimation(rowsConfig, 0.5);
+    expect(result.data.datasets[0].data).toEqual([5, 5, 5]);
+  });
+
+  it("with stagger, earlier rows finish growing before later rows", () => {
+    const rowsConfig = {
+      type: "bar",
+      options: {},
+      data: { labels: ["a", "b", "c"], datasets: [{ label: "d1", data: [10, 10, 10] }] },
+    } as unknown as ChartConfiguration<"bar">;
+
+    expect(scaleCategoricalForAnimation(rowsConfig, 0.5, true).data.datasets[0].data).toEqual([10, 5, 0]);
+    expect(scaleCategoricalForAnimation(rowsConfig, 1, true).data.datasets[0].data).toEqual([10, 10, 10]);
+    expect(scaleCategoricalForAnimation(rowsConfig, 0, true).data.datasets[0].data).toEqual([0, 0, 0]);
+  });
+
+  it("with stagger, spacer rows (null in every dataset) are skipped from the stagger order", () => {
+    const spacerConfig = {
+      type: "bar",
+      options: {},
+      data: { labels: ["a", "spacer", "b"], datasets: [{ label: "d1", data: [10, null, 20] }] },
+    } as unknown as ChartConfiguration<"bar">;
+
+    const result = scaleCategoricalForAnimation(spacerConfig, 0.5, true);
+    expect(result.data.datasets[0].data).toEqual([10, null, 0]);
+  });
 });
 
 describe("scaleBoxplotForAnimation", () => {

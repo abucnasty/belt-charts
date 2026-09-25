@@ -360,6 +360,19 @@ export function addAnimationOptions(command: Command): Command {
     );
 }
 
+/**
+ * Adds the opt-in `--stagger` flag for categorical (one-row-per-save-file) bar charts —
+ * `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`.
+ * Not applicable to `boxplot`/`line`/`bar`, which use a different animation family.
+ */
+export function addStaggerOption(command: Command): Command {
+  return command.option(
+    "--stagger",
+    "Animate each bar's grow-in staggered by row (one save file/run at a time) instead of all bars growing together",
+    false,
+  );
+}
+
 /** Exits with an error if --animate is set but the output path isn't a .mp4 file. */
 export function validateAnimateOutput(output: string, animate: boolean): void {
   if (animate && path.extname(output).toLowerCase() !== ".mp4") {

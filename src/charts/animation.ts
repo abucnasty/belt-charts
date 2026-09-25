@@ -20,25 +20,59 @@ export function frameCount(durationSeconds: number, fps: number): number {
   return Math.max(1, Math.round(durationSeconds * fps));
 }
 
+const STAGGER_WINDOW_FRACTION = 0.5;
+
+/** Computes each category row's own local progress (0-1) so rows grow in a staggered wave instead of all together. */
+function computeRowProgress(config: ChartConfiguration<"bar">, globalProgress: number): number[] {
+  const categoryCount = Math.max(0, ...config.data.datasets.map((d) => (d.data as unknown[]).length));
+  const isRealRow: boolean[] = [];
+  let realRowCount = 0;
+  for (let i = 0; i < categoryCount; i++) {
+    const real = config.data.datasets.some((d) => typeof (d.data as unknown[])[i] === "number");
+    isRealRow.push(real);
+    if (real) realRowCount++;
+  }
+
+  const rowProgress: number[] = new Array(categoryCount).fill(globalProgress);
+  if (realRowCount <= 1) return rowProgress;
+
+  let order = 0;
+  for (let i = 0; i < categoryCount; i++) {
+    if (!isRealRow[i]) continue;
+    const start = (order / (realRowCount - 1)) * (1 - STAGGER_WINDOW_FRACTION);
+    rowProgress[i] = Math.min(1, Math.max(0, (globalProgress - start) / STAGGER_WINDOW_FRACTION));
+    order++;
+  }
+  return rowProgress;
+}
+
 /**
  * Grows every numeric value in every dataset's `data` array from 0 to its final value. Used
  * for bar/stacked-bar charts. Chart.js auto-scales an unfixed value axis to the CURRENT
  * (shrunken) data every frame, which would hide the growth entirely — so when the config
  * doesn't already pin the value axis to a fixed max (e.g. via --max-update), this computes
  * the final stacked total up front and pins it for every frame.
+ *
+ * When `stagger` is true, each category row (save file) grows in its own overlapping window
+ * spread across the timeline instead of every row growing in lockstep — a "waterfall" reveal.
+ * Rows where every dataset is `null` (group-header spacer rows) are skipped when computing the
+ * stagger order so they don't consume a slot or affect other rows' timing.
  */
 export function scaleCategoricalForAnimation(
   config: ChartConfiguration<"bar">,
   progress: number,
+  stagger = false,
 ): ChartConfiguration<"bar"> {
   const valueAxisKey = config.options?.indexAxis === "y" ? "x" : "y";
   const scales = (config.options?.scales ?? {}) as Record<string, { max?: number } | undefined>;
   const existingMax = scales[valueAxisKey]?.max;
 
+  const rowProgress = stagger ? computeRowProgress(config, progress) : undefined;
+
   const datasets = config.data.datasets.map((dataset) => ({
     ...dataset,
-    data: (dataset.data as unknown as number[]).map((value) =>
-      typeof value === "number" ? value * progress : value,
+    data: (dataset.data as unknown as number[]).map((value, i) =>
+      typeof value === "number" ? value * (rowProgress ? rowProgress[i] : progress) : value,
     ),
   }));
 

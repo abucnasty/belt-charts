@@ -87,6 +87,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--fps <number>` | `30` | Animation frame rate |
 | `--easing <linear\|ease-out\|ease-in-out>` | `ease-out` | Animation easing curve |
 | `--hold <seconds>` | `1` | Extra seconds to hold the final frame at the end of the animation |
+| `--stagger` | `false` | `summary`/`summary-per-run`/`ups`/`ups-per-run`/`entity-summary`/`entity-summary-per-run` only. Animate each bar's grow-in staggered by row (one save file/run at a time) instead of all bars growing together |
 
 ```
 belt-charts summary "results/my_amazing_map*.csv"
@@ -96,6 +97,7 @@ belt-charts summary "results/my_amazing_map*.csv"
   --fps 30
   --easing ease-out
   --hold 1.5
+  --stagger
 ```
 
 ---
