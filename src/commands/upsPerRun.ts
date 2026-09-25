@@ -70,7 +70,8 @@ async function generateUpsPerRun(
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
-    csvTableExportName: options.summaryTableFile
+    // Animations don't export the table CSV/MD files.
+    csvTableExportName: options.summaryTableFile && !options.animate
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,

@@ -78,7 +78,9 @@ async function generateEntityBreakdown(
   const config = createEntityBreakdownChartConfiguration(chartInput, {
     aggregationStrategy: options.aggregateStrategy,
     includeTable: options.summaryTable,
-    csvTableExportName: options.summaryTableFile
+    // The CSV/MD export is wired as a chart.js afterDraw hook, which would otherwise fire once
+    // per animation frame; animations never export the table export files.
+    csvTableExportName: options.summaryTableFile && !options.animate
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
