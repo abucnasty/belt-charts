@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.19.0] - 2026-09-25
 
 ### Added
-- `--animate` flag on `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`, `boxplot`, `line`, and `bar`: renders an animated MP4 instead of a static image (bars/boxplots grow in from 0, `line`/`bar` time-series draw on progressively left-to-right). Controlled by `--duration <seconds>` (default `3`), `--fps <number>` (default `30`), and `--easing <linear|ease-out|ease-in-out>` (default `ease-out`). Requires `-o/--output` to end in `.mp4`. Encoding uses a bundled `ffmpeg-static` binary, no separate ffmpeg install required.
+- `--animate` flag on `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`, `boxplot`, `line`, and `bar`: renders an animated MP4 instead of a static image (bars/boxplots grow in from 0, `line`/`bar` time-series draw on progressively left-to-right). Controlled by `--duration <seconds>` (default `3`), `--fps <number>` (default `30`), `--easing <linear|ease-out|ease-in-out>` (default `ease-out`), and `--hold <seconds>` (default `0`, extra time to hold the final frame). Requires `-o/--output` to end in `.mp4`. Encoding uses a bundled `ffmpeg-static` binary, no separate ffmpeg install required.
 
 ## [1.18.1] - 2026-09-24
 
