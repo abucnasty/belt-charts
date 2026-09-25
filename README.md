@@ -76,6 +76,26 @@ All commands share a common set of **base options**, plus command-specific optio
 > ```
 > Adding `--name "my_map_belt_v2_clone_1=Belt Design v2"` bypasses all transforms and uses `Belt Design v2` directly.
 
+### Animated Video Output
+
+`summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`, `boxplot`, `line`, and `bar` support rendering an animated MP4 instead of a static image, useful for presentations. Bars/boxplots grow in from 0; `line`/`bar` time-series draw on progressively left-to-right. Encoding uses a bundled ffmpeg binary — no separate ffmpeg install required.
+
+| Option | Default | Description |
+|---|---|---|
+| `--animate` | `false` | Render an animated MP4 instead of a static image. Requires `-o/--output` to end in `.mp4` |
+| `--duration <seconds>` | `3` | Animation duration in seconds |
+| `--fps <number>` | `30` | Animation frame rate |
+| `--easing <linear\|ease-out\|ease-in-out>` | `ease-out` | Animation easing curve |
+
+```
+belt-charts summary "results/my_amazing_map*.csv"
+  --animate
+  -o "charts/all_metrics.mp4"
+  --duration 4
+  --fps 30
+  --easing ease-out
+```
+
 ---
 
 ### `summary`
