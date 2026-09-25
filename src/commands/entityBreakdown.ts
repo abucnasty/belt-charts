@@ -14,7 +14,9 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { scaleCategoricalForAnimation } from "../charts/animation";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
@@ -88,7 +90,19 @@ async function generateEntityBreakdown(
   });
 
   console.log("Chart configuration created.");
-  const canvas = new Canvas(Math.max(options.width, config.recommendedWidth), Math.max(options.height, config.recommendedHeight));
+  const width = Math.max(options.width, config.recommendedWidth);
+  const height = Math.max(options.height, config.recommendedHeight);
+
+  if (options.animate) {
+    await renderChartAnimationToFile(
+      (progress) => scaleCategoricalForAnimation(config.config, progress),
+      width, height, options.output,
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+    );
+    return;
+  }
+
+  const canvas = new Canvas(width, height);
   const chart = new Chart(canvas as any, config.config);
   const imageBuffer = await canvas.toBuffer("png");
 
@@ -163,8 +177,13 @@ function makeEntitySummaryAction(perRun: boolean) {
       minPercent: opts.minPercent,
       titleCase: opts.titleCase,
       groupBy: opts.groupBy ?? [],
+      animate: opts.animate ?? false,
+      duration: opts.duration,
+      fps: opts.fps,
+      easing: opts.easing,
     };
 
+    validateAnimateOutput(options.output, options.animate);
     const files = globSync(pattern);
     if (files.length === 0) {
       console.error(`No files matched the given pattern ${pattern}`);
@@ -187,21 +206,21 @@ function makeEntitySummaryAction(perRun: boolean) {
 }
 
 export function createEntitySummaryCommand(): Command {
-  return buildEntitySummaryOptions(
+  return addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary")
         .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ).action(makeEntitySummaryAction(false));
+  )).action(makeEntitySummaryAction(false));
 }
 
 export function createEntitySummaryPerRunCommand(): Command {
-  return buildEntitySummaryOptions(
+  return addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary-per-run")
         .description("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ).action(makeEntitySummaryAction(true));
+  )).action(makeEntitySummaryAction(true));
 }
 
 
