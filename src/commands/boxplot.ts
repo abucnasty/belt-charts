@@ -2,7 +2,9 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { scaleBoxplotForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
@@ -41,14 +43,23 @@ async function generateBoxPlot(
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, Math.max(options.width, recommendedWidth), options.height, options.output);
+  const width = Math.max(options.width, recommendedWidth);
+  if (options.animate) {
+    await renderChartAnimationToFile(
+      (progress) => scaleBoxplotForAnimation(config, progress),
+      width, options.height, options.output,
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+    );
+  } else {
+    await renderChartToFile(config, width, options.height, options.output);
+  }
 }
 
 export function createBoxPlotCommand(): Command {
-  return addBaseOptions(
+  return addAnimationOptions(addBaseOptions(
     new Command("boxplot")
       .description("Generate boxplot charts showing distribution statistics"),
-  )
+  ))
     .option(
       "--min-update <number>",
       "Min ms value to plot",
@@ -81,8 +92,13 @@ export function createBoxPlotCommand(): Command {
         titleCase: opts.titleCase,
         groupBy: opts.groupBy ?? [],
         titleOverride: opts.titleOverride,
+        animate: opts.animate ?? false,
+        duration: opts.duration,
+        fps: opts.fps,
+        easing: opts.easing,
       };
 
+      validateAnimateOutput(options.output, options.animate);
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
       if (options.namesFile) {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
