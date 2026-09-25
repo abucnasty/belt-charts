@@ -63,6 +63,9 @@ export async function renderChartAnimationToFile(
   });
 
   const totalFrames = frameCount(options.durationSeconds, options.fps);
+  const logInterval = Math.max(1, Math.round(totalFrames / 10));
+  const label = path.basename(resolvedPath);
+  console.log(`${label}: rendering ${totalFrames} frames...`);
   for (let i = 0; i < totalFrames; i++) {
     const t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
     const progress = applyEasing(t, options.easing);
@@ -74,6 +77,11 @@ export async function renderChartAnimationToFile(
     chart.destroy();
 
     await writeToStdin(ffmpeg.stdin, frameBuffer);
+
+    if (i === 0 || (i + 1) % logInterval === 0 || i === totalFrames - 1) {
+      const percent = Math.round(((i + 1) / totalFrames) * 100);
+      console.log(`${label}: rendered frame ${i + 1}/${totalFrames} (${percent}%)`);
+    }
   }
   ffmpeg.stdin.end();
 
