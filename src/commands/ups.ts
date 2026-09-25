@@ -4,7 +4,9 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
@@ -51,15 +53,25 @@ async function generateUps(
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, Math.max(options.width, recommendedWidth), Math.max(options.height, recommendedHeight), options.output);
+  const width = Math.max(options.width, recommendedWidth);
+  const height = Math.max(options.height, recommendedHeight);
+  if (options.animate) {
+    await renderChartAnimationToFile(
+      (progress) => scaleCategoricalForAnimation(config, progress),
+      width, height, options.output,
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+    );
+  } else {
+    await renderChartToFile(config, width, height, options.output);
+  }
   await exportTable?.();
 }
 
 export function createUpsCommand(): Command {
-  return addBaseOptions(
+  return addAnimationOptions(addBaseOptions(
     new Command("ups")
       .description("Generate a chart showing updates per second (UPS), derived from wholeUpdate, similar to the summary chart"),
-  )
+  ))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in the chart (default true)",
@@ -101,8 +113,13 @@ export function createUpsCommand(): Command {
         maxUpdate: null,
         groupBy: opts.groupBy ?? [],
         allowUnfilteredMetrics: false,
+        animate: opts.animate ?? false,
+        duration: opts.duration,
+        fps: opts.fps,
+        easing: opts.easing,
       };
 
+      validateAnimateOutput(options.output, options.animate);
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
       if (options.namesFile) {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
