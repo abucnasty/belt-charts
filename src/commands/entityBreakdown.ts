@@ -78,8 +78,7 @@ async function generateEntityBreakdown(
   const config = createEntityBreakdownChartConfiguration(chartInput, {
     aggregationStrategy: options.aggregateStrategy,
     includeTable: options.summaryTable,
-    // The CSV/MD export is wired as a chart.js afterDraw hook, which would otherwise fire once
-    // per animation frame; animations never export the table export files.
+    // Animations don't export the table CSV/MD files.
     csvTableExportName: options.summaryTableFile && !options.animate
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
@@ -101,17 +100,17 @@ async function generateEntityBreakdown(
       width, height, options.output,
       { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
     );
-    return;
+  } else {
+    const canvas = new Canvas(width, height);
+    const chart = new Chart(canvas as any, config.config);
+    const imageBuffer = await canvas.toBuffer("png");
+
+    const outputFile = path.resolve(process.cwd(), options.output);
+    await fsp.writeFile(outputFile, imageBuffer);
+    console.log(`Entity summary chart saved to ${outputFile}`);
+    chart.destroy();
   }
-
-  const canvas = new Canvas(width, height);
-  const chart = new Chart(canvas as any, config.config);
-  const imageBuffer = await canvas.toBuffer("png");
-
-  const outputFile = path.resolve(process.cwd(), options.output);
-  await fsp.writeFile(outputFile, imageBuffer);
-  console.log(`Entity summary chart saved to ${outputFile}`);
-  chart.destroy();
+  await config.exportTable?.();
 }
 
 function buildEntitySummaryOptions(command: Command): Command {
