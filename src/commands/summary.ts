@@ -3,7 +3,9 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
 
@@ -44,7 +46,8 @@ async function generateSummary(
     metrics: options.metrics,
     includeTable: options.summaryTable,
     aggregationStrategy: options.aggregateStrategy,
-    csvTableExportName: options.summaryTableFile
+    // Animations don't export the table CSV/MD files.
+    csvTableExportName: options.summaryTableFile && !options.animate
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
@@ -55,15 +58,25 @@ async function generateSummary(
   });
 
   console.log("Chart configuration created.");
-  await renderChartToFile(config, Math.max(options.width, recommendedWidth), Math.max(options.height, recommendedHeight), options.output);
+  const width = Math.max(options.width, recommendedWidth);
+  const height = Math.max(options.height, recommendedHeight);
+  if (options.animate) {
+    await renderChartAnimationToFile(
+      (progress) => scaleCategoricalForAnimation(config, progress, options.stagger),
+      width, height, options.output,
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+    );
+  } else {
+    await renderChartToFile(config, width, height, options.output);
+  }
   await exportTable?.();
 }
 
 export function createSummaryCommand(): Command {
-  return addAllowUnfilteredMetricsOption(addBaseOptions(
+  return addStaggerOption(addAnimationOptions(addAllowUnfilteredMetricsOption(addBaseOptions(
     new Command("summary")
       .description("Generate a summary chart with aggregate statistics table"),
-  ))
+  ))))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",
@@ -111,8 +124,15 @@ export function createSummaryCommand(): Command {
         maxUpdate: opts.maxUpdate,
         groupBy: opts.groupBy ?? [],
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
+        animate: opts.animate ?? false,
+        duration: opts.duration,
+        fps: opts.fps,
+        easing: opts.easing,
+        hold: opts.hold,
+        stagger: opts.stagger ?? false,
       };
 
+      validateAnimateOutput(options.output, options.animate);
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
       if (options.namesFile) {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);

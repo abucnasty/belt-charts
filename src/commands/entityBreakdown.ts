@@ -14,7 +14,9 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { scaleCategoricalForAnimation } from "../charts/animation";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
@@ -76,7 +78,8 @@ async function generateEntityBreakdown(
   const config = createEntityBreakdownChartConfiguration(chartInput, {
     aggregationStrategy: options.aggregateStrategy,
     includeTable: options.summaryTable,
-    csvTableExportName: options.summaryTableFile
+    // Animations don't export the table CSV/MD files.
+    csvTableExportName: options.summaryTableFile && !options.animate
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
@@ -88,14 +91,26 @@ async function generateEntityBreakdown(
   });
 
   console.log("Chart configuration created.");
-  const canvas = new Canvas(Math.max(options.width, config.recommendedWidth), Math.max(options.height, config.recommendedHeight));
-  const chart = new Chart(canvas as any, config.config);
-  const imageBuffer = await canvas.toBuffer("png");
+  const width = Math.max(options.width, config.recommendedWidth);
+  const height = Math.max(options.height, config.recommendedHeight);
 
-  const outputFile = path.resolve(process.cwd(), options.output);
-  await fsp.writeFile(outputFile, imageBuffer);
-  console.log(`Entity summary chart saved to ${outputFile}`);
-  chart.destroy();
+  if (options.animate) {
+    await renderChartAnimationToFile(
+      (progress) => scaleCategoricalForAnimation(config.config, progress, options.stagger),
+      width, height, options.output,
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+    );
+  } else {
+    const canvas = new Canvas(width, height);
+    const chart = new Chart(canvas as any, config.config);
+    const imageBuffer = await canvas.toBuffer("png");
+
+    const outputFile = path.resolve(process.cwd(), options.output);
+    await fsp.writeFile(outputFile, imageBuffer);
+    console.log(`Entity summary chart saved to ${outputFile}`);
+    chart.destroy();
+  }
+  await config.exportTable?.();
 }
 
 function buildEntitySummaryOptions(command: Command): Command {
@@ -163,8 +178,15 @@ function makeEntitySummaryAction(perRun: boolean) {
       minPercent: opts.minPercent,
       titleCase: opts.titleCase,
       groupBy: opts.groupBy ?? [],
+      animate: opts.animate ?? false,
+      duration: opts.duration,
+      fps: opts.fps,
+      easing: opts.easing,
+      hold: opts.hold,
+      stagger: opts.stagger ?? false,
     };
 
+    validateAnimateOutput(options.output, options.animate);
     const files = globSync(pattern);
     if (files.length === 0) {
       console.error(`No files matched the given pattern ${pattern}`);
@@ -187,21 +209,21 @@ function makeEntitySummaryAction(perRun: boolean) {
 }
 
 export function createEntitySummaryCommand(): Command {
-  return buildEntitySummaryOptions(
+  return addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary")
         .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ).action(makeEntitySummaryAction(false));
+  ))).action(makeEntitySummaryAction(false));
 }
 
 export function createEntitySummaryPerRunCommand(): Command {
-  return buildEntitySummaryOptions(
+  return addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary-per-run")
         .description("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ).action(makeEntitySummaryAction(true));
+  ))).action(makeEntitySummaryAction(true));
 }
 
 

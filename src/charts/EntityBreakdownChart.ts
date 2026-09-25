@@ -1,5 +1,5 @@
 import type { ChartConfiguration } from "chart.js";
-import fs from "fs";
+import fsp from "node:fs/promises";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkAggregateResult";
 import { MetricName } from "../data/Metric";
@@ -41,6 +41,7 @@ export interface EntityBreakdownChartOptions {
 
 export interface EntityBreakdownChartResult {
   config: ChartConfiguration<"bar">;
+  exportTable: (() => Promise<void>) | null;
   /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
   recommendedHeight: number;
   /** Minimum canvas width (px) needed to fit the summary table's columns without squishing; use as a floor over the user-requested width. */
@@ -246,23 +247,6 @@ export const createEntityBreakdownChartConfiguration = (
 
   const tableStats = computeTableStats();
 
-  const csvExportPlugin = {
-    afterDraw: () => {
-      if (!options.csvTableExportName) return;
-      const csvContent = [
-        tableStats.header.flat().join(","),
-        ...tableStats.rows.map(row => row.values.join(",")),
-      ].join("\n");
-      const markdownTable = [
-        `|${tableStats.header.join("|")}|`,
-        `|${tableStats.header.map(() => "---").join("|")}|`,
-        ...tableStats.rows.map(row => `|${row.values.join("|")}|`),
-      ].join("\n");
-      fs.writeFileSync(`${options.csvTableExportName}.csv`, csvContent);
-      fs.writeFileSync(`${options.csvTableExportName}.md`, markdownTable);
-    },
-  };
-
   // Table is drawn one row per save file (not one column per save file) so it stays readable
   // no matter how many results are being compared or how long their names are.
   const tableData = { header: tableStats.header, rows: tableStats.rows.map(row => ({ values: row.values })) };
@@ -366,8 +350,25 @@ export const createEntityBreakdownChartConfiguration = (
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.csvTableExportName && csvExportPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin].filter(Boolean) as any[],
   };
 
-  return { config, recommendedHeight, recommendedWidth };
+  const exportTable = options.csvTableExportName
+    ? async () => {
+        const exportName = options.csvTableExportName!;
+        const csvContent = [
+          tableStats.header.flat().join(","),
+          ...tableStats.rows.map(row => row.values.join(",")),
+        ].join("\n");
+        const markdownTable = [
+          `|${tableStats.header.join("|")}|`,
+          `|${tableStats.header.map(() => "---").join("|")}|`,
+          ...tableStats.rows.map(row => `|${row.values.join("|")}|`),
+        ].join("\n");
+        await fsp.writeFile(`${exportName}.csv`, csvContent);
+        await fsp.writeFile(`${exportName}.md`, markdownTable);
+      }
+    : null;
+
+  return { config, exportTable, recommendedHeight, recommendedWidth };
 };

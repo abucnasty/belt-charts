@@ -1,5 +1,22 @@
 import { MetricEnum } from "../data/MetricEnum";
 import { AggregationStrategy } from "../data/AggregationStrategy";
+import { Easing } from "../charts/animation";
+
+// Options for rendering a chart as an animated MP4 instead of a static image
+export type AnimationOptions = {
+  animate: boolean;
+  duration: number;
+  fps: number;
+  easing: Easing;
+  /** Extra seconds to hold the final frame at the end of the animation. */
+  hold: number;
+};
+
+// Staggers each category row's grow-in instead of animating them all in lockstep.
+// Only meaningful for categorical (one-row-per-save-file) bar charts.
+export type StaggerOption = {
+  stagger: boolean;
+};
 
 // Base options shared by all chart types
 export type BaseChartOptions = {
@@ -27,7 +44,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -42,7 +59,7 @@ export type SummaryPerRunChartOptions = SummaryChartOptions & {
 };
 
 // Line/Bar chart specific options
-export type LineBarChartOptions = BaseChartOptions & {
+export type LineBarChartOptions = BaseChartOptions & AnimationOptions & {
   aggregateStrategy: AggregationStrategy;
   tickWindowAggregation: number;
   maxUpdate: number | null;
@@ -52,7 +69,7 @@ export type LineBarChartOptions = BaseChartOptions & {
 };
 
 // Boxplot chart specific options
-export type BoxPlotChartOptions = BaseChartOptions & {
+export type BoxPlotChartOptions = BaseChartOptions & AnimationOptions & {
   minUpdate: number | null;
   maxUpdate: number | null;
 };
@@ -63,7 +80,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

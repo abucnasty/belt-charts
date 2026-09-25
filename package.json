@@ -1,12 +1,12 @@
 {
   "name": "belt-charts",
-  "version": "1.18.1",
+  "version": "1.19.0",
   "description": "A CLI tool for generating charts from verbose data from belt",
   "main": "dist/index.js",
   "scripts": {
-    "build": "rm -rf dist && ncc build ./src/index.ts -o dist --no-cache --external skia-canvas && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({}, null, 2))\"",
+    "build": "rm -rf dist && ncc build ./src/index.ts -o dist --no-cache --external skia-canvas --external ffmpeg-static && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({}, null, 2))\"",
     "start": "node dist/index.js",
-    "dev": "rm -rf dist && ncc build ./src/index.ts -w -o dist/ --external skia-canvas",
+    "dev": "rm -rf dist && ncc build ./src/index.ts -w -o dist/ --external skia-canvas --external ffmpeg-static",
     "prepublishOnly": "npm run build",
     "test:install": "npm pack && npm install -g belt-charts-*.tgz",
     "prepack": "npm run build",
@@ -48,6 +48,7 @@
     "commander": "^14.0.0",
     "csv-parser": "^3.2.0",
     "csv-writer": "^1.6.0",
+    "ffmpeg-static": "^5.3.0",
     "glob": "^11.0.3",
     "minimatch": "^10.2.6",
     "skia-canvas": "^3.0.6"

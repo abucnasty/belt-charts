@@ -5,7 +5,9 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics } from "./utils";
+import { addBaseOptions, addAggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { renderChartAnimationToFile } from "./videoEncoder";
+import { revealTimeseriesForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
 import { LineBarParseTask, LineBarScanTask } from "./lineBarWorkerTask";
 
@@ -72,6 +74,13 @@ async function generateLineOrBarCharts(
       metrics: options.metrics,
     });
     const outputPath = `${fileNameWithoutExt}_${result.originalFileName}${ext}`;
+    if (options.animate) {
+      return renderChartAnimationToFile(
+        (progress) => revealTimeseriesForAnimation(config, progress),
+        options.width, options.height, outputPath,
+        { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+      );
+    }
     return renderChartToFile(config, options.width, options.height, outputPath);
   };
 
@@ -99,8 +108,10 @@ function createLineBarCommand(type: "line" | "bar"): Command {
 
   return addAggregateStrategyOption(
     addAllowUnfilteredMetricsOption(
-      addBaseOptions(
-        new Command(type).description(description),
+      addAnimationOptions(
+        addBaseOptions(
+          new Command(type).description(description),
+        ),
       ),
     ),
   )
@@ -139,8 +150,14 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         groupBy: opts.groupBy ?? [],
         titleOverride: opts.titleOverride,
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
+        animate: opts.animate ?? false,
+        duration: opts.duration,
+        fps: opts.fps,
+        easing: opts.easing,
+        hold: opts.hold,
       };
 
+      validateAnimateOutput(options.output, options.animate);
       const { files, runsToRemove } = await resolveChartInputs(pattern, options);
       if (options.namesFile) {
         options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
