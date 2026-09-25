@@ -163,4 +163,36 @@ describe("revealTimeseriesForAnimation", () => {
     revealTimeseriesForAnimation(baseConfig, 0.5);
     expect(baseConfig.data.datasets[0].data).toHaveLength(4);
   });
+
+  it("pins the x-axis to the full data's domain regardless of progress", () => {
+    for (const progress of [0, 0.25, 0.5, 1]) {
+      const result = revealTimeseriesForAnimation(baseConfig, progress);
+      expect(result.options?.scales?.x).toMatchObject({ min: 0, max: 3 });
+    }
+  });
+
+  it("derives the x domain from {x,y} points when labels aren't numeric", () => {
+    const pointOnlyConfig = {
+      type: "line",
+      data: {
+        labels: ["a", "b", "c"],
+        datasets: [{ label: "d1", data: [{ x: 10, y: 1 }, { x: 20, y: 2 }, { x: 30, y: 3 }] }],
+      },
+      options: {},
+    } as unknown as ChartConfiguration<"line">;
+
+    const result = revealTimeseriesForAnimation(pointOnlyConfig, 0.5);
+    expect(result.options?.scales?.x).toMatchObject({ min: 10, max: 30 });
+  });
+
+  it("leaves an already-fixed x-axis domain untouched", () => {
+    const fixedConfig = {
+      type: "line",
+      data: baseConfig.data,
+      options: { scales: { x: { min: -5, max: 5 } } },
+    } as unknown as ChartConfiguration<"line">;
+
+    const result = revealTimeseriesForAnimation(fixedConfig, 0.5);
+    expect(result.options?.scales?.x).toMatchObject({ min: -5, max: 5 });
+  });
 });

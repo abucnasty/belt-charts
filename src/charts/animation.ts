@@ -100,7 +100,35 @@ export function scaleBoxplotForAnimation(
   };
 }
 
-/** Reveals time-series datasets left-to-right by truncating each dataset's `data` (and shared `labels`) to a progress-scaled prefix. */
+/** Finds the fixed x-axis domain the full (unsliced) time-series data spans. */
+function computeXDomain(config: ChartConfiguration<"bar" | "line">): { min: number; max: number } | undefined {
+  const labels = config.data.labels as unknown[] | undefined;
+  if (labels && labels.length > 0 && typeof labels[0] === "number") {
+    const numericLabels = labels as number[];
+    return { min: numericLabels[0], max: numericLabels[numericLabels.length - 1] };
+  }
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const dataset of config.data.datasets) {
+    for (const point of dataset.data as unknown[]) {
+      const x = (point as { x?: unknown } | undefined)?.x;
+      if (typeof x === "number") {
+        if (x < min) min = x;
+        if (x > max) max = x;
+      }
+    }
+  }
+  return Number.isFinite(min) && Number.isFinite(max) ? { min, max } : undefined;
+}
+
+/**
+ * Reveals time-series datasets left-to-right by truncating each dataset's `data` (and shared
+ * `labels`) to a progress-scaled prefix. The x-axis (tick/time) is an index axis chart.js would
+ * otherwise auto-scale to the CURRENT (truncated) data every frame, making it grow over the
+ * course of the animation instead of staying fixed — so this pins it to the full data's domain
+ * up front, unless the config already fixes both `min` and `max` itself.
+ */
 export function revealTimeseriesForAnimation(
   config: ChartConfiguration<"bar" | "line">,
   progress: number,
@@ -110,8 +138,15 @@ export function revealTimeseriesForAnimation(
   const maxLength = Math.max(labels?.length ?? 0, ...datasetLengths, 1);
   const sliceLength = Math.max(1, Math.ceil(progress * maxLength));
 
+  const scales = (config.options?.scales ?? {}) as Record<string, { min?: number; max?: number } | undefined>;
+  const xScale = scales.x;
+  const xDomain = xScale?.min != null && xScale?.max != null ? undefined : computeXDomain(config);
+
   return {
     ...config,
+    options: xDomain
+      ? { ...config.options, scales: { ...scales, x: { ...xScale, min: xDomain.min, max: xDomain.max } } }
+      : config.options,
     data: {
       ...config.data,
       labels: labels ? labels.slice(0, sliceLength) : labels,
