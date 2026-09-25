@@ -8,6 +8,8 @@ export type AnimationOptions = {
   duration: number;
   fps: number;
   easing: Easing;
+  /** Extra seconds to hold the final frame at the end of the animation. */
+  hold: number;
 };
 
 // Base options shared by all chart types

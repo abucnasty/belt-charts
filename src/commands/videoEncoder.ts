@@ -8,6 +8,8 @@ export interface AnimationRenderOptions {
   durationSeconds: number;
   fps: number;
   easing: Easing;
+  /** Extra seconds to hold the final frame at the end of the animation. 0 = no hold. */
+  holdSeconds: number;
 }
 
 async function writeToStdin(stdin: NodeJS.WritableStream, buffer: Buffer): Promise<void> {
@@ -63,9 +65,11 @@ export async function renderChartAnimationToFile(
   });
 
   const totalFrames = frameCount(options.durationSeconds, options.fps);
+  const holdFrames = options.holdSeconds > 0 ? Math.max(1, Math.round(options.holdSeconds * options.fps)) : 0;
   const logInterval = Math.max(1, Math.round(totalFrames / 10));
   const label = path.basename(resolvedPath);
-  console.log(`${label}: rendering ${totalFrames} frames...`);
+  console.log(`${label}: rendering ${totalFrames} frames${holdFrames > 0 ? ` (+${holdFrames} hold frames)` : ""}...`);
+  let lastFrameBuffer: Buffer | undefined;
   for (let i = 0; i < totalFrames; i++) {
     const t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
     const progress = applyEasing(t, options.easing);
@@ -77,11 +81,21 @@ export async function renderChartAnimationToFile(
     chart.destroy();
 
     await writeToStdin(ffmpeg.stdin, frameBuffer);
+    lastFrameBuffer = frameBuffer;
 
     if (i === 0 || (i + 1) % logInterval === 0 || i === totalFrames - 1) {
       const percent = Math.round(((i + 1) / totalFrames) * 100);
       console.log(`${label}: rendered frame ${i + 1}/${totalFrames} (${percent}%)`);
     }
+  }
+
+  // Repeat the last rendered frame's PNG buffer rather than re-rendering, guaranteeing an
+  // identical hold and avoiding redundant Chart.js/skia-canvas work.
+  for (let i = 0; i < holdFrames; i++) {
+    await writeToStdin(ffmpeg.stdin, lastFrameBuffer!);
+  }
+  if (holdFrames > 0) {
+    console.log(`${label}: held final frame for ${options.holdSeconds}s (${holdFrames} frames)`);
   }
   ffmpeg.stdin.end();
 

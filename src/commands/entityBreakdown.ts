@@ -97,7 +97,7 @@ async function generateEntityBreakdown(
     await renderChartAnimationToFile(
       (progress) => scaleCategoricalForAnimation(config.config, progress),
       width, height, options.output,
-      { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
     );
     return;
   }
@@ -181,6 +181,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       duration: opts.duration,
       fps: opts.fps,
       easing: opts.easing,
+      hold: opts.hold,
     };
 
     validateAnimateOutput(options.output, options.animate);

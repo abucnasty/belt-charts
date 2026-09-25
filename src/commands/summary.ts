@@ -63,7 +63,7 @@ async function generateSummary(
     await renderChartAnimationToFile(
       (progress) => scaleCategoricalForAnimation(config, progress),
       width, height, options.output,
-      { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
     );
   } else {
     await renderChartToFile(config, width, height, options.output);
@@ -127,6 +127,7 @@ export function createSummaryCommand(): Command {
         duration: opts.duration,
         fps: opts.fps,
         easing: opts.easing,
+        hold: opts.hold,
       };
 
       validateAnimateOutput(options.output, options.animate);

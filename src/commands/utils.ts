@@ -351,6 +351,12 @@ export function addAnimationOptions(command: Command): Command {
         return "ease-out";
       },
       "ease-out",
+    )
+    .option<number>(
+      "--hold <seconds>",
+      "Extra seconds to hold the final frame at the end of the animation",
+      (it: string) => parseFloat(it),
+      0,
     );
 }
 

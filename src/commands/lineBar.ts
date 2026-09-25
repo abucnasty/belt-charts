@@ -78,7 +78,7 @@ async function generateLineOrBarCharts(
       return renderChartAnimationToFile(
         (progress) => revealTimeseriesForAnimation(config, progress),
         options.width, options.height, outputPath,
-        { durationSeconds: options.duration, fps: options.fps, easing: options.easing },
+        { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
       );
     }
     return renderChartToFile(config, options.width, options.height, outputPath);
@@ -154,6 +154,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         duration: opts.duration,
         fps: opts.fps,
         easing: opts.easing,
+        hold: opts.hold,
       };
 
       validateAnimateOutput(options.output, options.animate);
