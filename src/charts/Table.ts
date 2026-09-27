@@ -28,6 +28,7 @@ const MAX_HEADER_LINES = 2;
 const HEADER_BLOCK_HEIGHT_PX = MAX_HEADER_LINES * HEADER_LINE_HEIGHT_PX;
 const HEADER_FONT = "bold 12px Arial";
 const ROW_FONT = "12px Arial";
+const FLEX_COLUMN_LEADING_INSET_PX = 4;
 
 /** Canvas height (px) needed to draw a table with `rowCount` data rows (plus its up-to-2-line header). */
 export const tableReservedHeight = (rowCount: number): number =>
@@ -197,11 +198,12 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     const drawLine = (text: string, colIdx: number, y: number, bold: boolean) => {
       ctx.font = bold ? HEADER_FONT : ROW_FONT;
       ctx.fillStyle = colors.white;
-      const cellWidth = columnWidths[colIdx] - COLUMN_PADDING;
       if (colIdx === flexIdx) {
+        const cellWidth = columnWidths[colIdx] - FLEX_COLUMN_LEADING_INSET_PX;
         ctx.textAlign = "left";
-        ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + COLUMN_PADDING / 2, y);
+        ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + FLEX_COLUMN_LEADING_INSET_PX, y);
       } else {
+        const cellWidth = columnWidths[colIdx] - COLUMN_PADDING;
         ctx.textAlign = "center";
         ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + columnWidths[colIdx] / 2, y);
       }
