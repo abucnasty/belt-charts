@@ -51,6 +51,8 @@ export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerO
   maxUpdate: number | null;
   /** Bypass the MetricProfiles.SUMMARY_CHART filter and render any metric provided via --metrics. */
   allowUnfilteredMetrics: boolean;
+  /** Print each stacked segment's value on the bar. */
+  valueLabels: boolean;
 };
 
 // Summary per-run chart specific options
@@ -87,6 +89,8 @@ export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & 
   topN: number;
   perRun: boolean;
   sortBy: "run" | "total";
+  /** Print each stacked segment's value on the bar. */
+  valueLabels: boolean;
 };
 
 // Entity matrix chart specific options

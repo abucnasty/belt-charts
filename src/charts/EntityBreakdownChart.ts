@@ -8,6 +8,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { formatSlowdown, nanoToMicro } from "../utils";
 import { colors, chartLayout } from "./constants";
 import { getMetricPattern } from "./styles";
+import { valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
@@ -35,8 +36,8 @@ export interface EntityBreakdownChartOptions {
   minPercent?: number;
   sortBy?: "total" | "preserve";
   isPerRun?: boolean;
-  /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
+  valueLabels?: boolean;
 }
 
 export interface EntityBreakdownChartResult {
@@ -350,7 +351,7 @@ export const createEntityBreakdownChartConfiguration = (
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

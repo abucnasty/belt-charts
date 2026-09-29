@@ -14,7 +14,7 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { enableInserterEasterEgg } from "../charts/styles";
@@ -88,6 +88,7 @@ async function generateEntityBreakdown(
     sortBy,
     isPerRun: options.perRun,
     groupBy: options.groupBy,
+    valueLabels: options.valueLabels,
   });
 
   console.log("Chart configuration created.");
@@ -184,6 +185,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       easing: opts.easing,
       hold: opts.hold,
       stagger: opts.stagger ?? false,
+      valueLabels: opts.valueLabels ?? false,
     };
 
     validateAnimateOutput(options.output, options.animate);
@@ -209,21 +211,21 @@ function makeEntitySummaryAction(perRun: boolean) {
 }
 
 export function createEntitySummaryCommand(): Command {
-  return addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
+  return addValueLabelsOption(addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary")
         .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ))).action(makeEntitySummaryAction(false));
+  )))).action(makeEntitySummaryAction(false));
 }
 
 export function createEntitySummaryPerRunCommand(): Command {
-  return addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
+  return addValueLabelsOption(addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
     addBaseOptions(
       new Command("entity-summary-per-run")
         .description("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
     )
-  ))).action(makeEntitySummaryAction(true));
+  )))).action(makeEntitySummaryAction(true));
 }
 
 

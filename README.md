@@ -102,6 +102,22 @@ belt-charts summary "results/my_amazing_map*.csv"
 
 ---
 
+### Value Labels
+
+`summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, and `entity-summary-per-run` support printing each stacked bar segment's value directly on the bar.
+
+| Option | Default | Description |
+|---|---|---|
+| `--value-labels` | `false` | Print each stacked segment's value on the bar. Segments too narrow to legibly fit their label are skipped |
+
+```
+belt-charts summary "results/my_amazing_map*.csv"
+  -o "charts/all_metrics.png"
+  --value-labels
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.

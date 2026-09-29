@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-09-29
+
+### Added
+- `--value-labels` flag on `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, and `entity-summary-per-run`: prints each stacked bar segment's value directly on the bar.
+
 ## [1.19.1] - 2026-09-26
 
 ### Fixed

@@ -8,7 +8,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput, addStaggerOption } from "./utils";
+import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -78,6 +78,7 @@ async function generateUpsPerRun(
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
     valueMode: "ups",
+    valueLabels: options.valueLabels,
   });
 
   console.log("Chart configuration created.");
@@ -96,10 +97,10 @@ async function generateUpsPerRun(
 }
 
 export function createUpsPerRunCommand(): Command {
-  return addStaggerOption(addAnimationOptions(addBaseOptions(
+  return addValueLabelsOption(addStaggerOption(addAnimationOptions(addBaseOptions(
     new Command("ups-per-run")
       .description("Generate a chart showing updates per second (UPS) for each individual run (not averaged across runs)"),
-  )))
+  ))))
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in the chart (default true)",
@@ -160,6 +161,7 @@ export function createUpsPerRunCommand(): Command {
         easing: opts.easing,
         hold: opts.hold,
         stagger: opts.stagger ?? false,
+        valueLabels: opts.valueLabels ?? false,
       };
 
       validateAnimateOutput(options.output, options.animate);
