@@ -10,7 +10,8 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityHeatmapChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
+import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
@@ -63,10 +64,11 @@ async function generateEntityHeatmap(
 }
 
 export function createEntityHeatmapCommand(): Command {
-  return addBaseOptions(
-    new Command("entity-heatmap")
-      .description("Generate a heatmap comparing entity-type µs values across benchmark files (rows = entity types, columns = designs)"),
-  )
+  return CommandBuilder
+    .command("entity-heatmap")
+    .setDescription("Generate a heatmap comparing entity-type µs values across benchmark files (rows = entity types, columns = designs)")
+    .addOption(baseOptions)
+    .build()
     .option<AggregationStrategy>(
       "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
       "Aggregate the runs by either minimum per tick or average per tick",

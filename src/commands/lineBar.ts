@@ -5,7 +5,8 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { addBaseOptions, addAggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { revealTimeseriesForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -106,15 +107,14 @@ function createLineBarCommand(type: "line" | "bar"): Command {
       ? "Generate line charts showing metrics over time"
       : "Generate bar charts showing metrics over time";
 
-  return addAggregateStrategyOption(
-    addAllowUnfilteredMetricsOption(
-      addAnimationOptions(
-        addBaseOptions(
-          new Command(type).description(description),
-        ),
-      ),
-    ),
-  )
+  return CommandBuilder
+    .command(type)
+    .setDescription(description)
+    .addOption(baseOptions)
+    .addOption(animationOptions)
+    .addOption(allowUnfilteredMetricsOption)
+    .addOption(aggregateStrategyOption)
+    .build()
     .option(
       "--tick-window-aggregation <number>",
       "Take the time weighted average for the tick window specified",

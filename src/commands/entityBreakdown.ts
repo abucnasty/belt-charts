@@ -14,7 +14,8 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
+import { baseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { enableInserterEasterEgg } from "../charts/styles";
@@ -114,44 +115,46 @@ async function generateEntityBreakdown(
   await config.exportTable?.();
 }
 
-function buildEntitySummaryOptions(command: Command): Command {
-  return command
-    .option<boolean>(
-      "--summary-table <boolean>",
-      "Create a verbose summary stats table in the chart (default true)",
-      (it) => it.toLowerCase() == "true",
-      true,
-    )
-    .option<boolean>(
-      "--summary-table-file <boolean>",
-      "Export the table as csv and markdown (default true)",
-      (it) => it.toLowerCase() == "true",
-      true,
-    )
-    .option<AggregationStrategy>(
-      "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
-      "Aggregate the runs by either minimum per tick or average per tick",
-      (it: string) => aggregationStrategyFromString(it),
-      AggregationStrategy.AVERAGE,
-    )
-    .option<number>(
-      "--top-n <number>",
-      "Keep only the top N entity types by max average (others fold into 'Other Entity Update'). 0 = show all.",
-      (it: string) => parseInt(it),
-      15,
-    )
-    .option<"run" | "total">(
-      "--sort-by <run | total>",
-      "(per-run only) Sort bars by run number or entityUpdate total (default: total)",
-      (it: string) => {
-        if (it === "run" || it === "total") return it;
-        console.error(`Invalid sort-by value: ${it}. Defaulting to "total".`);
-        return "total";
-      },
-      "total",
-    )
-    .addOption(new Option("--fish").hideHelp());
-}
+const entitySummaryOptions: OptionBuilder = {
+  build(command: Command): Command {
+    return command
+      .option<boolean>(
+        "--summary-table <boolean>",
+        "Create a verbose summary stats table in the chart (default true)",
+        (it) => it.toLowerCase() == "true",
+        true,
+      )
+      .option<boolean>(
+        "--summary-table-file <boolean>",
+        "Export the table as csv and markdown (default true)",
+        (it) => it.toLowerCase() == "true",
+        true,
+      )
+      .option<AggregationStrategy>(
+        "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
+        "Aggregate the runs by either minimum per tick or average per tick",
+        (it: string) => aggregationStrategyFromString(it),
+        AggregationStrategy.AVERAGE,
+      )
+      .option<number>(
+        "--top-n <number>",
+        "Keep only the top N entity types by max average (others fold into 'Other Entity Update'). 0 = show all.",
+        (it: string) => parseInt(it),
+        15,
+      )
+      .option<"run" | "total">(
+        "--sort-by <run | total>",
+        "(per-run only) Sort bars by run number or entityUpdate total (default: total)",
+        (it: string) => {
+          if (it === "run" || it === "total") return it;
+          console.error(`Invalid sort-by value: ${it}. Defaulting to "total".`);
+          return "total";
+        },
+        "total",
+      )
+      .addOption(new Option("--fish").hideHelp());
+  },
+};
 
 function makeEntitySummaryAction(perRun: boolean) {
   return async (pattern: string, opts: any) => {
@@ -211,21 +214,29 @@ function makeEntitySummaryAction(perRun: boolean) {
 }
 
 export function createEntitySummaryCommand(): Command {
-  return addValueLabelsOption(addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
-    addBaseOptions(
-      new Command("entity-summary")
-        .description("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
-    )
-  )))).action(makeEntitySummaryAction(false));
+  return CommandBuilder
+    .command("entity-summary")
+    .setDescription("Generate a stacked-bar chart breaking down entityUpdate into per-entity-type contributions")
+    .addOption(baseOptions)
+    .addOption(entitySummaryOptions)
+    .addOption(animationOptions)
+    .addOption(staggerOption)
+    .addOption(valueLabelsOption)
+    .build()
+    .action(makeEntitySummaryAction(false));
 }
 
 export function createEntitySummaryPerRunCommand(): Command {
-  return addValueLabelsOption(addStaggerOption(addAnimationOptions(buildEntitySummaryOptions(
-    addBaseOptions(
-      new Command("entity-summary-per-run")
-        .description("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions"),
-    )
-  )))).action(makeEntitySummaryAction(true));
+  return CommandBuilder
+    .command("entity-summary-per-run")
+    .setDescription("Generate a per-run stacked-bar chart breaking down entityUpdate into per-entity-type contributions")
+    .addOption(baseOptions)
+    .addOption(entitySummaryOptions)
+    .addOption(animationOptions)
+    .addOption(staggerOption)
+    .addOption(valueLabelsOption)
+    .build()
+    .action(makeEntitySummaryAction(true));
 }
 
 

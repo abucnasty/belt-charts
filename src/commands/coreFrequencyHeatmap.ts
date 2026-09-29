@@ -7,12 +7,13 @@ import { parseCpuFrequencyResultsFromCsv } from "../data/CpuFrequencyResult";
 import { HeatmapNormalizeMode, renderCoreFrequencyHeatmapChart } from "../charts/CoreFrequencyHeatmapChart";
 import { CoreFrequencyHeatmapChartOptions } from "./types";
 import {
-  addBaseOptions,
+  baseOptions,
   applyLabel,
   mergeCustomNames,
   parseNamesFile,
   resolveChartInputs,
 } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 
 /** Warns about --name keys that didn't match any save_name found across the parsed files. */
 function warnUnmatchedSaveNames(saveNames: Set<string>, customNames: Map<string, string>): void {
@@ -64,10 +65,11 @@ async function generateCoreFrequencyHeatmap(
 }
 
 export function createCoreFrequencyHeatmapCommand(): Command {
-  return addBaseOptions(
-    new Command("core-freq-heatmap")
-      .description("Generate a heatmap of per-core CPU frequency across runs (rows = runs, columns = cores)"),
-  )
+  return CommandBuilder
+    .command("core-freq-heatmap")
+    .setDescription("Generate a heatmap of per-core CPU frequency across runs (rows = runs, columns = cores)")
+    .addOption(baseOptions)
+    .build()
     .option<AggregationStrategy>(
       "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
       "Which per-core statistic to display/color",

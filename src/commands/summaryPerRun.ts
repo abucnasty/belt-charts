@@ -7,7 +7,8 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
+import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -100,10 +101,15 @@ async function generateSummaryPerRun(
 }
 
 export function createSummaryPerRunCommand(): Command {
-  return addValueLabelsOption(addStaggerOption(addAnimationOptions(addAllowUnfilteredMetricsOption(addBaseOptions(
-    new Command("summary-per-run")
-      .description("Generate a summary chart showing metrics for each individual run (not averaged across runs)"),
-  )))))
+  return CommandBuilder
+    .command("summary-per-run")
+    .setDescription("Generate a summary chart showing metrics for each individual run (not averaged across runs)")
+    .addOption(baseOptions)
+    .addOption(allowUnfilteredMetricsOption)
+    .addOption(animationOptions)
+    .addOption(staggerOption)
+    .addOption(valueLabelsOption)
+    .build()
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",

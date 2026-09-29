@@ -10,7 +10,8 @@ import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { ensureOutputDir } from "../utils";
 import { EntityMatrixChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
+import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask } from "./aggregateParseWorkerTask";
@@ -61,10 +62,11 @@ async function generateEntityMatrix(
 }
 
 export function createEntityMatrixCommand(): Command {
-  return addBaseOptions(
-    new Command("entity-matrix")
-      .description("Generate a panel chart showing each entity type as a row and each benchmark file as a column"),
-  )
+  return CommandBuilder
+    .command("entity-matrix")
+    .setDescription("Generate a panel chart showing each entity type as a row and each benchmark file as a column")
+    .addOption(baseOptions)
+    .build()
     .option<AggregationStrategy>(
       "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
       "Aggregate the runs by either minimum per tick or average per tick",
