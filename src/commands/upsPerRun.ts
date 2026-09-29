@@ -78,6 +78,7 @@ async function generateUpsPerRun(
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
     valueMode: "ups",
+    valueLabels: options.valueLabels,
   });
 
   console.log("Chart configuration created.");
