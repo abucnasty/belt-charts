@@ -14,6 +14,7 @@ import { ensureOutputDir } from "../utils";
 import { assignToGroup } from "../utils";
 import { BaseChartOptions } from "./types";
 import { Easing } from "../charts/animation";
+import { OptionBuilder } from "./commandBuilder";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
@@ -172,130 +173,134 @@ export function resolveMetrics(optsMetrics: MetricEnum[] | undefined): MetricEnu
   return optsMetrics ?? DEFAULT_METRICS;
 }
 
-export function addBaseOptions(command: Command): Command {
-  return command
-    .argument(
-      "<glob-pattern>",
-      "Glob pattern for CSV files (e.g. './data/*.csv')",
-    )
-    .option("-o, --output <file>", "Output file path", "verbose_metrics.png")
-    .option(
-      "-w, --width <px>",
-      "Chart width in pixels",
-      (it: string) => parseInt(it),
-      1000,
-    )
-    .option(
-      "-h, --height <px>",
-      "Chart height in pixels",
-      (it: string) => parseInt(it),
-      800,
-    )
-    .option(
-      "--remove-first-ticks <number>",
-      "Remove the first N ticks from the data (to ignore initialization spikes)",
-      (it: string) => parseInt(it),
-      1,
-    )
-    .option(
-      "--max-ticks <number>",
-      "Max tick to include in charts",
-      (it: string) => parseInt(it),
-      0,
-    )
-    .option(
-      "--trim-prefix <string>",
-      "Trim the prefix of the map name",
-      (it: string) => it,
-      "",
-    )
-    .option(
-      "--name <baseName=label>",
-      "Map a save-file base name to a custom chart label (repeatable). e.g. --name \"my_map=My Map\". Takes precedence over --trim-prefix and --names-file.",
-      (val: string, acc: Map<string, string>) => {
-        const idx = val.indexOf("=");
-        if (idx === -1) {
-          console.warn(`--name: invalid format "${val}", expected "<baseName>=<label>". Skipping.`);
+export const baseOptions: OptionBuilder = {
+  build(command: Command): Command {
+    return command
+      .argument(
+        "<glob-pattern>",
+        "Glob pattern for CSV files (e.g. './data/*.csv')",
+      )
+      .option("-o, --output <file>", "Output file path", "verbose_metrics.png")
+      .option(
+        "-w, --width <px>",
+        "Chart width in pixels",
+        (it: string) => parseInt(it),
+        1000,
+      )
+      .option(
+        "-h, --height <px>",
+        "Chart height in pixels",
+        (it: string) => parseInt(it),
+        800,
+      )
+      .option(
+        "--remove-first-ticks <number>",
+        "Remove the first N ticks from the data (to ignore initialization spikes)",
+        (it: string) => parseInt(it),
+        1,
+      )
+      .option(
+        "--max-ticks <number>",
+        "Max tick to include in charts",
+        (it: string) => parseInt(it),
+        0,
+      )
+      .option(
+        "--trim-prefix <string>",
+        "Trim the prefix of the map name",
+        (it: string) => it,
+        "",
+      )
+      .option(
+        "--name <baseName=label>",
+        "Map a save-file base name to a custom chart label (repeatable). e.g. --name \"my_map=My Map\". Takes precedence over --trim-prefix and --names-file.",
+        (val: string, acc: Map<string, string>) => {
+          const idx = val.indexOf("=");
+          if (idx === -1) {
+            console.warn(`--name: invalid format "${val}", expected "<baseName>=<label>". Skipping.`);
+            return acc;
+          }
+          acc.set(val.slice(0, idx), val.slice(idx + 1));
           return acc;
-        }
-        acc.set(val.slice(0, idx), val.slice(idx + 1));
-        return acc;
-      },
-      new Map<string, string>(),
-    )
-    .option(
-      "--names-file <path>",
-      "Path to a names-mapping file. Each non-blank, non-comment line: baseName=label. --name flags override entries in this file.",
-      (it: string) => it,
-      "",
-    )
-    .option(
-      "--aggregate-file <string>",
-      "Path to aggregate run results file",
-      (it: string) => it,
-      "",
-    )
-    .option(
-      "--stddev-filter <number>",
-      "Number of standard deviations to use for filtering run results",
-      (it: string) => Number(it),
-      3,
-    )
-    .option(
-      "--metrics <string>",
-      `Comma-separated metric names. Examples: "wholeUpdate,entityUpdate,controlBehaviorUpdate" (summary); "entityUpdate,Inserter,AssemblingMachine,MiningDrill" (entity breakdown). Use "*" for all defaults.`,
-      (it: string) => {
-        if (it == "*") {
-          return DEFAULT_METRICS;
-        }
+        },
+        new Map<string, string>(),
+      )
+      .option(
+        "--names-file <path>",
+        "Path to a names-mapping file. Each non-blank, non-comment line: baseName=label. --name flags override entries in this file.",
+        (it: string) => it,
+        "",
+      )
+      .option(
+        "--aggregate-file <string>",
+        "Path to aggregate run results file",
+        (it: string) => it,
+        "",
+      )
+      .option(
+        "--stddev-filter <number>",
+        "Number of standard deviations to use for filtering run results",
+        (it: string) => Number(it),
+        3,
+      )
+      .option(
+        "--metrics <string>",
+        `Comma-separated metric names. Examples: "wholeUpdate,entityUpdate,controlBehaviorUpdate" (summary); "entityUpdate,Inserter,AssemblingMachine,MiningDrill" (entity breakdown). Use "*" for all defaults.`,
+        (it: string) => {
+          if (it == "*") {
+            return DEFAULT_METRICS;
+          }
 
-        return it
-          .split(",")
-          .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
-      },
-    )
-    .option<number>(
-      "--min-percent <number>",
-      "Hide any metric whose max value never exceeds this % of the reference total across all files. 0 = no filter.",
-      (it: string) => parseFloat(it),
-      0,
-    )
-    .option<boolean>(
-      "--title-case [boolean]",
-      "Convert chart labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
-      (it: string) => it !== "false",
-      false,
-    )
-    .option<string[]>(
-      "--trim-substring <string>",
-      "Remove all occurrences of a substring from chart labels (repeatable). Applied after --trim-prefix and before --title-case. Bypassed by --name overrides.",
-      (val: string, acc: string[]) => [...acc, val],
-      [],
-    )
-    .option<string[]>(
-      "--group-by <keys>",
-      "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its label. Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
-      (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
-      [],
-    )
-    .option<string | null>(
-      "--title-override <string>",
-      "Override the chart's auto-generated title",
-      (it: string) => it,
-      null,
-    );
-}
+          return it
+            .split(",")
+            .map((metricName) => MetricRegistryInstance.getOrThrow(metricName));
+        },
+      )
+      .option<number>(
+        "--min-percent <number>",
+        "Hide any metric whose max value never exceeds this % of the reference total across all files. 0 = no filter.",
+        (it: string) => parseFloat(it),
+        0,
+      )
+      .option<boolean>(
+        "--title-case [boolean]",
+        "Convert chart labels to title case (supports snake_case, kebab-case, PascalCase, camelCase, SCREAMING_SNAKE). Bypassed by --name overrides.",
+        (it: string) => it !== "false",
+        false,
+      )
+      .option<string[]>(
+        "--trim-substring <string>",
+        "Remove all occurrences of a substring from chart labels (repeatable). Applied after --trim-prefix and before --title-case. Bypassed by --name overrides.",
+        (val: string, acc: string[]) => [...acc, val],
+        [],
+      )
+      .option<string[]>(
+        "--group-by <keys>",
+        "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its label. Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
+        (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
+        [],
+      )
+      .option<string | null>(
+        "--title-override <string>",
+        "Override the chart's auto-generated title",
+        (it: string) => it,
+        null,
+      );
+  },
+};
 
 export { assignToGroup } from "../utils";
 
 // Aggregate strategy option used by multiple chart types
-export function addAggregateStrategyOption(command: Command): Command {
-  return command.option(
-    "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
-    "Aggregate the runs by either minimum per tick or average per tick",
-    "average",
-  );
-}
+export const aggregateStrategyOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option(
+      "-a, --aggregate-strategy <average | minimum | maximum | median | standard_deviation>",
+      "Aggregate the runs by either minimum per tick or average per tick",
+      "average",
+    );
+  },
+};
 
 /**
  * Adds the `--allow-unfiltered-metrics` opt-in flag. Charts that support it
@@ -303,13 +308,15 @@ export function addAggregateStrategyOption(command: Command): Command {
  * `--metrics` is rendered. Layout/color/legend ordering may behave
  * unexpectedly for metrics outside the default profile.
  */
-export function addAllowUnfilteredMetricsOption(command: Command): Command {
-  return command.option(
-    "--allow-unfiltered-metrics",
-    "Bypass the built-in metric profile filter so any --metrics value is rendered. WARNING: metrics outside the default profile may render or lay out unexpectedly.",
-    false,
-  );
-}
+export const allowUnfilteredMetricsOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option(
+      "--allow-unfiltered-metrics",
+      "Bypass the built-in metric profile filter so any --metrics value is rendered. WARNING: metrics outside the default profile may render or lay out unexpectedly.",
+      false,
+    );
+  },
+};
 
 /** Emits a warning when --allow-unfiltered-metrics is enabled. */
 export function warnAllowUnfilteredMetrics(enabled: boolean): void {
@@ -327,63 +334,69 @@ const VALID_EASINGS: Easing[] = ["linear", "ease-out", "ease-in-out"];
  * Only applied to commands whose chart is built from a Chart.js config (see
  * `renderChartAnimationToFile`) — not every command supports animation.
  */
-export function addAnimationOptions(command: Command): Command {
-  return command
-    .option("--animate", "Render an animated MP4 instead of a static image. Requires -o/--output to end in .mp4", false)
-    .option<number>(
-      "--duration <seconds>",
-      "Animation duration in seconds",
-      (it: string) => parseFloat(it),
-      3,
-    )
-    .option<number>(
-      "--fps <number>",
-      "Animation frame rate",
-      (it: string) => parseInt(it),
-      30,
-    )
-    .option<Easing>(
-      "--easing <linear|ease-out|ease-in-out>",
-      "Animation easing curve",
-      (it: string) => {
-        if (VALID_EASINGS.includes(it as Easing)) return it as Easing;
-        console.error(`Invalid --easing value: ${it}. Must be one of ${VALID_EASINGS.join(", ")}. Defaulting to "ease-out".`);
-        return "ease-out";
-      },
-      "ease-out",
-    )
-    .option<number>(
-      "--hold <seconds>",
-      "Extra seconds to hold the final frame at the end of the animation",
-      (it: string) => parseFloat(it),
-      1,
-    );
-}
+export const animationOptions: OptionBuilder = {
+  build(command: Command): Command {
+    return command
+      .option("--animate", "Render an animated MP4 instead of a static image. Requires -o/--output to end in .mp4", false)
+      .option<number>(
+        "--duration <seconds>",
+        "Animation duration in seconds",
+        (it: string) => parseFloat(it),
+        3,
+      )
+      .option<number>(
+        "--fps <number>",
+        "Animation frame rate",
+        (it: string) => parseInt(it),
+        30,
+      )
+      .option<Easing>(
+        "--easing <linear|ease-out|ease-in-out>",
+        "Animation easing curve",
+        (it: string) => {
+          if (VALID_EASINGS.includes(it as Easing)) return it as Easing;
+          console.error(`Invalid --easing value: ${it}. Must be one of ${VALID_EASINGS.join(", ")}. Defaulting to "ease-out".`);
+          return "ease-out";
+        },
+        "ease-out",
+      )
+      .option<number>(
+        "--hold <seconds>",
+        "Extra seconds to hold the final frame at the end of the animation",
+        (it: string) => parseFloat(it),
+        1,
+      );
+  },
+};
 
 /**
  * Adds the opt-in `--stagger` flag for categorical (one-row-per-save-file) bar charts —
  * `summary`, `summary-per-run`, `ups`, `ups-per-run`, `entity-summary`, `entity-summary-per-run`.
  * Not applicable to `boxplot`/`line`/`bar`, which use a different animation family.
  */
-export function addStaggerOption(command: Command): Command {
-  return command.option(
-    "--stagger",
-    "Animate each bar's grow-in staggered by row (one save file/run at a time) instead of all bars growing together",
-    false,
-  );
-}
+export const staggerOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option(
+      "--stagger",
+      "Animate each bar's grow-in staggered by row (one save file/run at a time) instead of all bars growing together",
+      false,
+    );
+  },
+};
 
 /**
  * Adds the opt-in `--value-labels` flag, which prints each stacked segment's value directly
- * on the bar via `chartjs-plugin-datalabels`. Supported by the summary/entity chart families.
+ * on the bar. Supported by the summary/entity chart families.
  */
-export function addValueLabelsOption(command: Command): Command {
-  return command.option(
-    "--value-labels",
-    "Print each stacked segment's value on the bar",
-    false,
-  );
-}
+export const valueLabelsOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option(
+      "--value-labels",
+      "Print each stacked segment's value on the bar",
+      false,
+    );
+  },
+};
 
 /** Exits with an error if --animate is set but the output path isn't a .mp4 file. */
 export function validateAnimateOutput(output: string, animate: boolean): void {

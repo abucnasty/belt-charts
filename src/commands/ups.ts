@@ -4,7 +4,8 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
+import { baseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -70,10 +71,14 @@ async function generateUps(
 }
 
 export function createUpsCommand(): Command {
-  return addValueLabelsOption(addStaggerOption(addAnimationOptions(addBaseOptions(
-    new Command("ups")
-      .description("Generate a chart showing updates per second (UPS), derived from wholeUpdate, similar to the summary chart"),
-  ))))
+  return CommandBuilder
+    .command("ups")
+    .setDescription("Generate a chart showing updates per second (UPS), derived from wholeUpdate, similar to the summary chart")
+    .addOption(baseOptions)
+    .addOption(animationOptions)
+    .addOption(staggerOption)
+    .addOption(valueLabelsOption)
+    .build()
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in the chart (default true)",

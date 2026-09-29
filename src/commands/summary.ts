@@ -3,7 +3,8 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAllowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, addAnimationOptions, validateAnimateOutput, addStaggerOption, addValueLabelsOption } from "./utils";
+import { baseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -74,10 +75,15 @@ async function generateSummary(
 }
 
 export function createSummaryCommand(): Command {
-  return addValueLabelsOption(addStaggerOption(addAnimationOptions(addAllowUnfilteredMetricsOption(addBaseOptions(
-    new Command("summary")
-      .description("Generate a summary chart with aggregate statistics table"),
-  )))))
+  return CommandBuilder
+    .command("summary")
+    .setDescription("Generate a summary chart with aggregate statistics table")
+    .addOption(baseOptions)
+    .addOption(allowUnfilteredMetricsOption)
+    .addOption(animationOptions)
+    .addOption(staggerOption)
+    .addOption(valueLabelsOption)
+    .build()
     .option<boolean>(
       "--summary-table <boolean>",
       "Create a verbose summary stats table in summary chart (default true)",

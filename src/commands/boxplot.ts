@@ -2,7 +2,8 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { addBaseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, addAnimationOptions, validateAnimateOutput } from "./utils";
+import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput } from "./utils";
+import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
@@ -56,10 +57,12 @@ async function generateBoxPlot(
 }
 
 export function createBoxPlotCommand(): Command {
-  return addAnimationOptions(addBaseOptions(
-    new Command("boxplot")
-      .description("Generate boxplot charts showing distribution statistics"),
-  ))
+  return CommandBuilder
+    .command("boxplot")
+    .setDescription("Generate boxplot charts showing distribution statistics")
+    .addOption(baseOptions)
+    .addOption(animationOptions)
+    .build()
     .option(
       "--min-update <number>",
       "Min ms value to plot",
