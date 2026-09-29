@@ -373,6 +373,18 @@ export function addStaggerOption(command: Command): Command {
   );
 }
 
+/**
+ * Adds the opt-in `--value-labels` flag, which prints each stacked segment's value directly
+ * on the bar via `chartjs-plugin-datalabels`. Supported by the summary/entity chart families.
+ */
+export function addValueLabelsOption(command: Command): Command {
+  return command.option(
+    "--value-labels",
+    "Print each stacked segment's value on the bar",
+    false,
+  );
+}
+
 /** Exits with an error if --animate is set but the output path isn't a .mp4 file. */
 export function validateAnimateOutput(output: string, animate: boolean): void {
   if (animate && path.extname(output).toLowerCase() !== ".mp4") {
