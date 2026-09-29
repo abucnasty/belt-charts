@@ -36,9 +36,7 @@ export interface EntityBreakdownChartOptions {
   minPercent?: number;
   sortBy?: "total" | "preserve";
   isPerRun?: boolean;
-  /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
-  /** Print each stacked segment's value on the bar (opt-in, via chartjs-plugin-datalabels). */
   valueLabels?: boolean;
 }
 

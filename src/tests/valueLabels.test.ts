@@ -66,8 +66,7 @@ describe("--value-labels opt-in wiring", () => {
 });
 
 // Fakes chart.js's BarElement/DatasetMeta shape closely enough to exercise the plugin's
-// own per-segment rectangle math (the thing chartjs-plugin-datalabels gets wrong for
-// indexAxis:'y' stacked bars).
+// own per-segment rectangle math
 function makeFakeChart(datasets: { data: (number | null)[] }[], elementRects: { x: number; base: number; y: number }[][]) {
   const calls: string[] = [];
   const ctx = {

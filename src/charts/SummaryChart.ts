@@ -32,7 +32,6 @@ interface SummaryChartOptions {
   allowUnfilteredMetrics?: boolean;
   /** "ups" renders a single bar of 1e6/wholeUpdate (updates per second) instead of the stacked per-component time breakdown. */
   valueMode?: "time" | "ups";
-  /** Print each stacked segment's value on the bar (opt-in, via chartjs-plugin-datalabels). */
   valueLabels?: boolean;
 }
 
