@@ -24,6 +24,7 @@ import {
 } from "./commands";
 import { runLineBarWorkerTask, type LineBarWorkerTask } from "./commands/lineBarWorkerTask";
 import { runAggregateParseWorkerTask, type AggregateParseTask } from "./commands/aggregateParseWorkerTask";
+import { registerFonts } from "./charts/fonts";
 
 Chart.register(
   BoxPlotController,
@@ -43,6 +44,7 @@ if (!isMainThread) {
     (error: unknown) => parentPort!.postMessage({ ok: false, error: error instanceof Error ? error.message : String(error) }),
   );
 } else {
+  registerFonts();
   const program = new Command();
 
   program

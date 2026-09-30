@@ -1,5 +1,6 @@
 import { Canvas } from "skia-canvas";
 import { colors, chartLayout } from "./constants";
+import { FONT_FAMILY } from "./fonts";
 
 export interface TableRow {
   values: (string | number)[];
@@ -26,8 +27,8 @@ const MAX_HEADER_COLUMN_WIDTH_PX = chartLayout.TABLE_MAX_HEADER_COLUMN_WIDTH_PX;
 const HEADER_LINE_HEIGHT_PX = chartLayout.TABLE_HEADER_LINE_HEIGHT_PX;
 const MAX_HEADER_LINES = 2;
 const HEADER_BLOCK_HEIGHT_PX = MAX_HEADER_LINES * HEADER_LINE_HEIGHT_PX;
-const HEADER_FONT = "bold 12px Arial";
-const ROW_FONT = "12px Arial";
+const HEADER_FONT = `bold 12px ${FONT_FAMILY}`;
+const ROW_FONT = `12px ${FONT_FAMILY}`;
 const FLEX_COLUMN_LEADING_INSET_PX = 4;
 
 /** Canvas height (px) needed to draw a table with `rowCount` data rows (plus its up-to-2-line header). */
