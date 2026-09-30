@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-09-30
+
+### Added
+- `--scale <factor>` base option on every image-producing command: renders PNG (and `--animate` MP4) output at an integer multiple of the `-w`/`-h` pixel size while keeping the exact same layout, so higher-resolution images get proportionally larger, crisp text instead of tiny labels. e.g. `-w 1000 -h 800 --scale 2` → 2000×1600. Ignored for `.svg` output.
+
 ## [1.20.1] - 2026-09-29
 
 ### Changed

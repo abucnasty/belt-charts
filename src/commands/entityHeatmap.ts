@@ -57,7 +57,7 @@ async function generateEntityHeatmap(
     titleOverride: options.titleOverride,
   }, canvas);
 
-  const imageBuffer = await canvas.toBuffer("png");
+  const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
   const outputFile = path.resolve(process.cwd(), options.output);
   await fsp.writeFile(outputFile, imageBuffer);
   console.log(`Entity heatmap chart saved to ${outputFile}`);
@@ -102,6 +102,7 @@ export function createEntityHeatmapCommand(): Command {
       const options: EntityHeatmapChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

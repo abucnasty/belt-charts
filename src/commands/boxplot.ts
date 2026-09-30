@@ -49,10 +49,10 @@ async function generateBoxPlot(
     await renderChartAnimationToFile(
       (progress) => scaleBoxplotForAnimation(config, progress),
       width, options.height, options.output,
-      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold, scale: options.scale },
     );
   } else {
-    await renderChartToFile(config, width, options.height, options.output);
+    await renderChartToFile(config, width, options.height, options.output, options.scale);
   }
 }
 
@@ -79,6 +79,7 @@ export function createBoxPlotCommand(): Command {
       const options: BoxPlotChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

@@ -55,7 +55,7 @@ async function generateEntityMatrix(
     titleOverride: options.titleOverride,
   }, canvas);
 
-  const imageBuffer = await canvas.toBuffer("png");
+  const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
   const outputFile = path.resolve(process.cwd(), options.output);
   await fsp.writeFile(outputFile, imageBuffer);
   console.log(`Entity matrix chart saved to ${outputFile}`);
@@ -84,6 +84,7 @@ export function createEntityMatrixCommand(): Command {
       const options: EntityMatrixChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

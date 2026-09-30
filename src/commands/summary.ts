@@ -66,10 +66,10 @@ async function generateSummary(
     await renderChartAnimationToFile(
       (progress) => scaleCategoricalForAnimation(config, progress, options.stagger),
       width, height, options.output,
-      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold, scale: options.scale },
     );
   } else {
-    await renderChartToFile(config, width, height, options.output);
+    await renderChartToFile(config, width, height, options.output, options.scale);
   }
   await exportTable?.();
 }
@@ -112,6 +112,7 @@ export function createSummaryCommand(): Command {
       const options: SummaryChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

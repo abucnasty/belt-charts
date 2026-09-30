@@ -58,7 +58,7 @@ async function generateCoreFrequencyHeatmap(
     titleOverride: options.titleOverride,
   }, canvas);
 
-  const imageBuffer = await canvas.toBuffer("png");
+  const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
   const outputFile = path.resolve(process.cwd(), options.output);
   await fsp.writeFile(outputFile, imageBuffer);
   console.log(`Core frequency heatmap chart saved to ${outputFile}`);
@@ -103,6 +103,7 @@ export function createCoreFrequencyHeatmapCommand(): Command {
       const options: CoreFrequencyHeatmapChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         trimPrefix: opts.trimPrefix,
         trimSubstrings: opts.trimSubstring ?? [],
