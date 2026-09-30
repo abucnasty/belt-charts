@@ -39,6 +39,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `-o, --output <file>` | `verbose_metrics.png` | Output file path. Use `.svg` for vector output |
 | `-w, --width <px>` | `1400` | Chart width in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `-h, --height <px>` | `800` | Chart height in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
+| `--scale <factor>` | `1` | Integer output pixel multiplier for higher-resolution PNG/MP4 output — see “High-resolution output” below. Ignored for `.svg` |
 | `--remove-first-ticks <n>` | `1` | Skip the first N ticks (removes benchmark warm-up spikes) |
 | `--max-ticks <n>` | `0` | Only include ticks up to N. `0` = no limit |
 | `--trim-prefix <string>` | `""` | Strip a common prefix from all file names in chart labels |
@@ -55,6 +56,11 @@ All commands share a common set of **base options**, plus command-specific optio
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
 > **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled) and grow **width** to fit the in-chart table's columns; `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.
+>
+> **High-resolution output** — `-w`/`-h` set the *layout* size (font sizes, margins, and label placement are laid out against it). `--scale N` then renders that same layout at N× the pixel count, so text and lines stay sharp instead of shrinking. Final image size is `(width × N) × (height × N)`, applied after auto-sizing. e.g. `-w 1000 -h 800 --scale 2` produces a 2000×1600 PNG that looks identical to the 1000×800 one, just crisper:
+> ```bash
+> belt-charts summary "results/*.csv" -o charts/summary.png -w 1000 -h 800 --scale 2
+> ```
 >
 > `--title-case` recognises snake_case (`_`), kebab-case (`-`), PascalCase, camelCase, and SCREAMING_SNAKE — all produce the same space-separated title case output:
 >
