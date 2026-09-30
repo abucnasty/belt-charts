@@ -149,6 +149,7 @@ export function createTableCommand(): Command {
       const options: TableChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: 1,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

@@ -103,6 +103,7 @@ export function createCoreFrequencyHeatmapCommand(): Command {
       const options: CoreFrequencyHeatmapChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         trimPrefix: opts.trimPrefix,
         trimSubstrings: opts.trimSubstring ?? [],

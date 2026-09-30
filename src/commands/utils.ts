@@ -173,6 +173,15 @@ export function resolveMetrics(optsMetrics: MetricEnum[] | undefined): MetricEnu
   return optsMetrics ?? DEFAULT_METRICS;
 }
 
+export function parseScale(value: string): number {
+  const scale = Number(value);
+  if (!Number.isFinite(scale) || scale <= 0) {
+    console.error(`Invalid --scale value: ${value}. Must be a positive number.`);
+    process.exit(1);
+  }
+  return scale;
+}
+
 export const baseOptions: OptionBuilder = {
   build(command: Command): Command {
     return command
@@ -192,6 +201,12 @@ export const baseOptions: OptionBuilder = {
         "Chart height in pixels",
         (it: string) => parseInt(it),
         800,
+      )
+      .option<number>(
+        "--scale <factor>",
+        "Output pixel multiplier for higher-resolution images. -w/-h still set the layout size, so -w 1000 --scale 2 renders a 2000px-wide image with identical layout",
+        parseScale,
+        1,
       )
       .option(
         "--remove-first-ticks <number>",

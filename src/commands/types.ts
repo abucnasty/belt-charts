@@ -22,6 +22,8 @@ export type StaggerOption = {
 export type BaseChartOptions = {
   width: number;
   height: number;
+  /** Output pixel multiplier; layout is still computed from width/height. */
+  scale: number;
   output: string;
   removeFirstTicks: number;
   maxTicks: number;
@@ -110,7 +112,7 @@ export type EntityHeatmapChartOptions = BaseChartOptions & {
 // Core frequency heatmap chart specific options
 export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
-  "width" | "height" | "output" | "trimPrefix" | "customNames" | "namesFile" |
+  "width" | "height" | "scale" | "output" | "trimPrefix" | "customNames" | "namesFile" |
   "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride"
 > & {
   aggregateStrategy: AggregationStrategy;

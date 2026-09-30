@@ -144,6 +144,7 @@ export function createSummaryPerRunCommand(): Command {
       const options: SummaryPerRunChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

@@ -102,6 +102,7 @@ export function createEntityHeatmapCommand(): Command {
       const options: EntityHeatmapChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

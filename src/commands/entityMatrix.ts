@@ -84,6 +84,7 @@ export function createEntityMatrixCommand(): Command {
       const options: EntityMatrixChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

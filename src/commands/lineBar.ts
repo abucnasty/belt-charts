@@ -131,6 +131,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
       const options: LineBarChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

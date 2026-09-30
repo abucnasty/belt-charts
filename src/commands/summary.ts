@@ -112,6 +112,7 @@ export function createSummaryCommand(): Command {
       const options: SummaryChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

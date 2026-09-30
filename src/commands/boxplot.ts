@@ -79,6 +79,7 @@ export function createBoxPlotCommand(): Command {
       const options: BoxPlotChartOptions = {
         width: opts.width,
         height: opts.height,
+        scale: opts.scale,
         output: opts.output,
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,

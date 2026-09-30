@@ -162,6 +162,7 @@ function makeEntitySummaryAction(perRun: boolean) {
     const options: EntityBreakdownChartOptions = {
       width: opts.width,
       height: opts.height,
+      scale: opts.scale,
       output: opts.output,
       removeFirstTicks: opts.removeFirstTicks,
       maxTicks: opts.maxTicks,
