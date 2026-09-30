@@ -3,6 +3,7 @@ import { AggregationStrategy } from "../data/AggregationStrategy";
 import { CpuFrequencyResult, RunCoreFrequencyProfile, getCoreFrequencyStatValue } from "../data/CpuFrequencyResult";
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
+import { FONT_FAMILY } from "./fonts";
 
 export type { HeatmapNormalizeMode };
 
@@ -22,8 +23,8 @@ export interface CoreFrequencyHeatmapChartOptions {
 }
 
 const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px Arial`;
-const SMALL_FONT = `10px Arial`;
+const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
+const SMALL_FONT = `10px ${FONT_FAMILY}`;
 
 const MIN_ROW_HEIGHT = 24;
 const MIN_COL_WIDTH = 60;
@@ -164,7 +165,7 @@ export function renderCoreFrequencyHeatmapChart(
     options.titleOverride ??
     `Core Frequency Heatmap \u2014 ${strategyLabel[options.aggregateStrategy]} [MHz] (${normalizeLabel[options.normalize]})`;
 
-  ctx.font = "bold 16px Arial";
+  ctx.font = `bold 16px ${FONT_FAMILY}`;
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";

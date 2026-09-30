@@ -6,6 +6,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
+import { FONT_FAMILY } from "./fonts";
 
 // Ordered design-column palette (cycles when more files than colors)
 const DESIGN_COLORS = [
@@ -23,9 +24,9 @@ const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
 
 const MIN_ROW_HEIGHT = 22; // px — prevents unreadable rows at --top-n 0
 const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px Arial`;
-const BOLD_FONT = `bold ${FONT_SIZE}px Arial`;
-const SMALL_FONT = `10px Arial`;
+const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
+const BOLD_FONT = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
+const SMALL_FONT = `10px ${FONT_FAMILY}`;
 
 export interface EntityMatrixChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -178,7 +179,7 @@ export function renderEntityMatrixChart(
   };
   const title = options.titleOverride ?? `Entity Update Breakdown by Save File — ${strategyLabel[options.aggregationStrategy]} [µs]`;
 
-  ctx.font = `bold 16px Arial`;
+  ctx.font = `bold 16px ${FONT_FAMILY}`;
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.fillText(title, W / 2, 22);

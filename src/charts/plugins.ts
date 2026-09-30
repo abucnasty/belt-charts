@@ -2,6 +2,7 @@
  * Shared Chart.js plugin definitions used across multiple chart types.
  */
 import { colors } from "./constants";
+import { FONT_FAMILY } from "./fonts";
 
 // Originally attempted to just use chartjs-plugin-datalabels: that plugin has a known position bug in skia-canvas
 // https://github.com/chartjs/chartjs-plugin-datalabels/issues/416
@@ -10,7 +11,7 @@ export const valueLabelsPlugin = {
   afterDatasetsDraw(chart: any) {
     const { ctx } = chart;
     ctx.save();
-    ctx.font = "bold 12px sans-serif";
+    ctx.font = `bold 12px ${FONT_FAMILY}`;
     ctx.fillStyle = colors.white;
     ctx.strokeStyle = colors.black;
     ctx.lineWidth = 1;

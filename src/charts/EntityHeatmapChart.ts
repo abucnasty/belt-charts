@@ -7,6 +7,7 @@ import { AggregationStrategy } from "../data/AggregationStrategy";
 import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
+import { FONT_FAMILY } from "./fonts";
 
 export type { HeatmapNormalizeMode };
 
@@ -35,9 +36,9 @@ const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
 
 const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px Arial`;
-const BOLD_FONT = `bold ${FONT_SIZE}px Arial`;
-const SMALL_FONT = `10px Arial`;
+const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
+const BOLD_FONT = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
+const SMALL_FONT = `10px ${FONT_FAMILY}`;
 
 const MIN_ROW_HEIGHT = 24;
 const MIN_COL_WIDTH = 60;
@@ -199,7 +200,7 @@ export function renderEntityHeatmapChart(
     options.titleOverride ??
     `Entity Update Heatmap — ${strategyLabel[options.aggregationStrategy]} [µs] (${normalizeLabel[options.normalize]})`;
 
-  ctx.font = "bold 16px Arial";
+  ctx.font = `bold 16px ${FONT_FAMILY}`;
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
