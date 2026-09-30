@@ -175,8 +175,9 @@ export function resolveMetrics(optsMetrics: MetricEnum[] | undefined): MetricEnu
 
 export function parseScale(value: string): number {
   const scale = Number(value);
-  if (!Number.isFinite(scale) || scale <= 0) {
-    console.error(`Invalid --scale value: ${value}. Must be a positive number.`);
+  // skia-canvas export `density` only accepts integers.
+  if (!Number.isInteger(scale) || scale < 1) {
+    console.error(`Invalid --scale value: ${value}. Must be a positive integer.`);
     process.exit(1);
   }
   return scale;
@@ -204,7 +205,7 @@ export const baseOptions: OptionBuilder = {
       )
       .option<number>(
         "--scale <factor>",
-        "Output pixel multiplier for higher-resolution images. -w/-h still set the layout size, so -w 1000 --scale 2 renders a 2000px-wide image with identical layout",
+        "Integer output pixel multiplier for higher-resolution images. -w/-h still set the layout size, so -w 1000 --scale 2 renders a 2000px-wide image with identical layout",
         parseScale,
         1,
       )
@@ -459,13 +460,14 @@ export async function renderChartToFile(
   width: number,
   height: number,
   outputPath: string,
+  scale: number = 1,
 ): Promise<void> {
   const { Canvas } = await import("skia-canvas");
   const resolvedPath = path.resolve(process.cwd(), outputPath);
   const format = formatFromExtension(resolvedPath);
   const canvas = new Canvas(width, height);
   const chart = new Chart(canvas as any, config);
-  const imageBuffer = await canvas.toBuffer(format);
+  const imageBuffer = await canvas.toBuffer(format, format === "png" ? { density: scale } : undefined);
   await fsp.writeFile(resolvedPath, imageBuffer);
   console.log(`Chart saved to ${resolvedPath}`);
   chart.destroy();

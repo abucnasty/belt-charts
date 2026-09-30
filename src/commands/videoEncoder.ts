@@ -10,6 +10,8 @@ export interface AnimationRenderOptions {
   easing: Easing;
   /** Extra seconds to hold the final frame at the end of the animation. 0 = no hold. */
   holdSeconds: number;
+  /** Output pixel multiplier; layout is still computed from width/height. */
+  scale: number;
 }
 
 async function writeToStdin(stdin: NodeJS.WritableStream, buffer: Buffer): Promise<void> {
@@ -77,7 +79,7 @@ export async function renderChartAnimationToFile(
 
     const canvas = new Canvas(width, height);
     const chart = new Chart(canvas as any, config);
-    const frameBuffer = await canvas.toBuffer("png");
+    const frameBuffer = await canvas.toBuffer("png", { density: options.scale });
     chart.destroy();
 
     await writeToStdin(ffmpeg.stdin, frameBuffer);

@@ -79,10 +79,10 @@ async function generateLineOrBarCharts(
       return renderChartAnimationToFile(
         (progress) => revealTimeseriesForAnimation(config, progress),
         options.width, options.height, outputPath,
-        { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+        { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold, scale: options.scale },
       );
     }
-    return renderChartToFile(config, options.width, options.height, outputPath);
+    return renderChartToFile(config, options.width, options.height, outputPath, options.scale);
   };
 
   await runInWorkerPool<LineBarParseTask, BenchmarkTickResult>(parseTasks, {

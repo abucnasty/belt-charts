@@ -100,12 +100,12 @@ async function generateEntityBreakdown(
     await renderChartAnimationToFile(
       (progress) => scaleCategoricalForAnimation(config.config, progress, options.stagger),
       width, height, options.output,
-      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold },
+      { durationSeconds: options.duration, fps: options.fps, easing: options.easing, holdSeconds: options.hold, scale: options.scale },
     );
   } else {
     const canvas = new Canvas(width, height);
     const chart = new Chart(canvas as any, config.config);
-    const imageBuffer = await canvas.toBuffer("png");
+    const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
 
     const outputFile = path.resolve(process.cwd(), options.output);
     await fsp.writeFile(outputFile, imageBuffer);
