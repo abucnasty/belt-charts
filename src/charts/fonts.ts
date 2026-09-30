@@ -2,6 +2,7 @@ import path from "path";
 import { Chart } from "chart.js";
 import { FontLibrary } from "skia-canvas";
 
+// Titillium Web is the font used on factorio.com.
 export const FONT_FAMILY = "'Titillium Web', sans-serif";
 
 // Resolves to <package root>/fonts from the bundled dist/index.js.

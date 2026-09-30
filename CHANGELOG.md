@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-09-30
+
+### Changed
+- All charts now render text in the [Titillium Web](https://fonts.google.com/specimen/Titillium+Web) font (previously Arial / the system sans-serif default), as a nod to Factorio's website that which uses it. The font (Regular + Bold, SIL Open Font License) is bundled with the package, so no system install is required. Titillium Web is narrower than Arial, so auto-sized charts (e.g. those with in-chart summary tables) may render slightly narrower.
+
 ## [1.21.0] - 2026-09-30
 
 ### Added

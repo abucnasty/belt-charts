@@ -1,6 +1,6 @@
 {
   "name": "belt-charts",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "description": "A CLI tool for generating charts from verbose data from belt",
   "main": "dist/index.js",
   "scripts": {
@@ -18,6 +18,7 @@
   "files": [
     "dist",
     "bin",
+    "fonts",
     "CHANGELOG.md"
   ],
   "engines": {
