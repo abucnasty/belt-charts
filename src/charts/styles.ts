@@ -1,8 +1,7 @@
 import { Canvas } from "skia-canvas";
 import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
-import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { colors, metricStyles, MetricStyle, PatternType, unfriendly_colors } from "./constants";
+import { colors, metricStyles, MetricStyle, PatternType } from "./constants";
 
 let inserterEasterEggEnabled = false;
 
@@ -10,54 +9,19 @@ export function enableInserterEasterEgg(): void {
   inserterEasterEggEnabled = true;
 }
 
-/**
- * Lighten a hex color by a specified amount
- * @param hex - The hex color string (e.g., "#0072B2")
- * @param amount - The amount to lighten (0-255)
- * @returns The lightened hex color string
- */
-export function lightenColor(hex: string, amount: number): string {
-  const num = parseInt(hex.slice(1), 16);
-  let r = (num >> 16) + amount;
-  let g = ((num >> 8) & 0x00ff) + amount;
-  let b = (num & 0x0000ff) + amount;
-
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
-}
+/** Edge length (px) of one repeating pattern tile. */
+export const PATTERN_TILE_SIZE = 20;
 
 /**
- * Darken a hex color by a specified amount
- * @param hex - The hex color string (e.g., "#0072B2")
- * @param amount - The amount to darken (0-255)
- * @returns The darkened hex color string
+ * Draw one repeating pattern tile using skia-canvas (Node.js compatible): a solid
+ * colored background with a black motif overlay (matches chart background).
  */
-export function darkenColor(hex: string, amount: number): string {
-  const num = parseInt(hex.slice(1), 16);
-  let r = (num >> 16) - amount;
-  let g = ((num >> 8) & 0x00ff) - amount;
-  let b = (num & 0x0000ff) - amount;
-
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
-}
-
-/**
- * Draw a pattern on a canvas context using skia-canvas (Node.js compatible)
- * Creates a solid colored background with black pattern overlay (matches chart background)
- * Returns a CanvasPattern that can be used as backgroundColor in Chart.js
- */
-function drawPattern(
+export function drawPatternTile(
   patternType: PatternType,
   backgroundColor: string,
   patternColor: string = colors.black,
-  size: number = 20
-): CanvasPattern {
+  size: number = PATTERN_TILE_SIZE
+): Canvas {
   const canvas = new Canvas(size, size);
   const ctx = canvas.getContext("2d");
 
@@ -192,11 +156,20 @@ function drawPattern(
       break;
 
     case "weave":
+      // Crosshatch: both diagonal directions.
       ctx.beginPath();
-      ctx.moveTo(0, size / 2);
-      ctx.lineTo(size / 2, 0);
-      ctx.moveTo(size / 2, size);
-      ctx.lineTo(size, size / 2);
+      ctx.moveTo(0, size);
+      ctx.lineTo(size, 0);
+      ctx.moveTo(-size / 2, size / 2);
+      ctx.lineTo(size / 2, -size / 2);
+      ctx.moveTo(size / 2, size + size / 2);
+      ctx.lineTo(size + size / 2, size / 2);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(size, size);
+      ctx.moveTo(-size / 2, size / 2);
+      ctx.lineTo(size / 2, size + size / 2);
+      ctx.moveTo(size / 2, -size / 2);
+      ctx.lineTo(size + size / 2, size / 2);
       ctx.stroke();
       break;
 
@@ -318,80 +291,47 @@ function drawPattern(
       ctx.fillRect(0, 0, size, size);
   }
 
-  return ctx.createPattern(canvas, "repeat") as CanvasPattern;
+  return canvas;
 }
 
-/**
- * FNV-1a 32-bit hash for stable mapping of metric names to indices.
- */
-function fnv1a(input: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+// Remembers the source tile of every pattern we hand out so it can be re-anchored per shape.
+const patternTiles = new WeakMap<object, Canvas>();
+
+function createTilePattern(tile: Canvas, offsetX: number = 0, offsetY: number = 0): CanvasPattern {
+  const pattern = tile.getContext("2d").createPattern(tile, "repeat") as unknown as CanvasPattern;
+  if (offsetX !== 0 || offsetY !== 0) {
+    (pattern as any).setTransform(1, 0, 0, 1, offsetX, offsetY);
   }
-  return hash >>> 0;
-}
-
-const DETERMINISTIC_PATTERNS: PatternType[] = [
-  "diagonal",
-  "diagonal-right-left",
-  "dot",
-  "disc",
-  "ring",
-  "cross",
-  "plus",
-  "dash",
-  "cross-dash",
-  "dot-dash",
-  "line",
-  "line-vertical",
-  "weave",
-  "zigzag",
-  "zigzag-vertical",
-  "square",
-  "box",
-  "triangle",
-  "triangle-inverted",
-  "diamond",
-  "diamond-box",
-];
-
-let DETERMINISTIC_COLORS: string[] | null = null;
-function getDeterministicColors(): string[] {
-  if (!DETERMINISTIC_COLORS) {
-    // Exclude the 4 pinned entity colors (blue, yellow, vermillion, orange) so
-    // remaining entities get visually distinct colors from the named ones.
-    // Start with the remaining CB-friendly colors, then supplement with
-    // perceptually distinct extras.
-    DETERMINISTIC_COLORS = [
-      colors.green,           // #009E73
-      colors.sky_blue,        // #56B4E9
-      colors.reddish_purple,  // #CC79A7
-      unfriendly_colors.teal,
-      unfriendly_colors.lavender,
-      unfriendly_colors.lime,
-      unfriendly_colors.cyan,
-      unfriendly_colors.coral,
-      unfriendly_colors.indigo,
-      unfriendly_colors.mint,
-    ];
-  }
-  return DETERMINISTIC_COLORS;
+  patternTiles.set(pattern, tile);
+  return pattern;
 }
 
 /**
- * Compute a deterministic color for a metric name. Stable across runs, no patterns.
+ * Canvas patterns repeat from the canvas origin, so the same pattern shows a different crop
+ * in every bar/legend swatch. Returns a copy of `fill` whose tile grid is centered inside the
+ * given rect (whole tiles in the middle, equal partial tiles at each edge). Non-pattern fills
+ * (plain colors) are returned unchanged.
  */
-export function getDeterministicEntityStyle(metricName: string): MetricStyle {
-  const colorPalette = getDeterministicColors();
-  const hash = fnv1a(metricName);
-  const color = colorPalette[hash % colorPalette.length];
-  return { color };
+export function anchorPatternToRect(
+  fill: unknown,
+  left: number,
+  top: number,
+  width: number,
+  height: number
+): unknown {
+  if (fill === null || typeof fill !== "object") return fill;
+  const tile = patternTiles.get(fill);
+  if (!tile) return fill;
+  // Shapes narrower than one tile get the tile centered on them so the motif stays visible.
+  const centeredOffset = (extent: number, tileExtent: number) =>
+    (extent - Math.max(Math.floor(extent / tileExtent), 1) * tileExtent) / 2;
+  const offsetX = left + centeredOffset(Math.abs(width), tile.width);
+  const offsetY = top + centeredOffset(Math.abs(height), tile.height);
+  return createTilePattern(tile, offsetX, offsetY);
 }
 
 /**
- * Resolve the effective style for a metric: explicit entry > deterministic (entityUpdate children) > "other" fallback.
+ * Resolve the effective style for a metric: explicit entry > "other" fallback.
  */
 function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
   const explicit = metricStyles[metricName];
@@ -400,10 +340,6 @@ function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
       return { ...explicit, pattern: "inserter" as const };
     }
     return explicit;
-  }
-  const registered = MetricRegistryInstance.get(metricName as MetricName);
-  if (registered && (registered as { parent?: string }).parent === MetricEnum.ENTITY_UPDATE.name) {
-    return getDeterministicEntityStyle(metricName);
   }
   return metricStyles["other"];
 }
@@ -438,7 +374,7 @@ export function getMetricPattern(
 ): CanvasPattern | string {
   const style = resolveMetricStyle(metricName);
   if (style.pattern) {
-    return drawPattern(style.pattern, style.color);
+    return createTilePattern(drawPatternTile(style.pattern, style.color));
   }
   return style.color;
 }

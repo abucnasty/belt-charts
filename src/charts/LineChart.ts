@@ -4,7 +4,8 @@ import { BenchmarkTickResult, MetricValue, transformResultToMetricValues } from 
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { MetricRegistryInstance, MetricProfiles, toMetricRecord } from "../data/MetricRegistry"
+import { MetricRegistryInstance } from "../data/MetricRegistry"
+import { MetricProfiles, toMetricRecord } from "./metricProfiles"
 import { nanoToMicro, timeWeightedAverageByChunks } from "../utils"
 import { colors, chartLayout } from "./constants"
 import { backgroundPlugin } from "./plugins";

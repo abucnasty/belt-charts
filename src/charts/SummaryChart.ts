@@ -1,7 +1,8 @@
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
+import { MetricRegistryInstance } from "../data/MetricRegistry"
+import { MetricProfiles, toMetricRecord } from "./metricProfiles"
 import { formatSlowdown } from "../utils"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
@@ -9,10 +10,12 @@ import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData } from "../data/SummaryTransform"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
-import { backgroundPlugin, valueLabelsPlugin } from "./plugins"
+import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
+const profileOrder = (description: string) =>
+  MetricProfiles.SUMMARY_CHART.findIndex(it => it.description == description);
 
 interface SummaryChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -212,9 +215,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData, tableRenderOptions.flexColumnHeader)
     : 0;
 
-  datasets.sort((a, b) => {
-    return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)
-  })
+  datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
 
   let aggregationStrategyLabel = ""
   switch (options.aggregationStrategy) {
@@ -273,9 +274,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
             boxHeight: 20,
             boxWidth: 40,
             // order by supported metric order
-            sort: (a, b) => {
-              return Object.values(supportedMetrics).findIndex(it => it.description == a.text) - Object.values(supportedMetrics).findIndex(it => it.description == b.text)
-            }
+            sort: (a, b) => profileOrder(a.text) - profileOrder(b.text)
           },
         },
       },
@@ -307,7 +306,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

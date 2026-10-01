@@ -8,7 +8,7 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { formatSlowdown, nanoToMicro } from "../utils";
 import { colors, chartLayout } from "./constants";
 import { getMetricPattern } from "./styles";
-import { valueLabelsPlugin } from "./plugins";
+import { patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
@@ -351,7 +351,7 @@ export const createEntityBreakdownChartConfiguration = (
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName
