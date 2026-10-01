@@ -1,8 +1,7 @@
 import { Canvas } from "skia-canvas";
 import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
-import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { colors, metricStyles, MetricStyle, PatternType, unfriendly_colors } from "./constants";
+import { colors, metricStyles, MetricStyle, PatternType } from "./constants";
 
 let inserterEasterEggEnabled = false;
 
@@ -332,76 +331,7 @@ export function anchorPatternToRect(
 }
 
 /**
- * FNV-1a 32-bit hash for stable mapping of metric names to indices.
- */
-function fnv1a(input: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
-  }
-  return hash >>> 0;
-}
-
-const DETERMINISTIC_PATTERNS: PatternType[] = [
-  "diagonal",
-  "diagonal-right-left",
-  "dot",
-  "disc",
-  "ring",
-  "cross",
-  "plus",
-  "dash",
-  "cross-dash",
-  "dot-dash",
-  "line",
-  "line-vertical",
-  "weave",
-  "zigzag",
-  "zigzag-vertical",
-  "square",
-  "box",
-  "triangle",
-  "triangle-inverted",
-  "diamond",
-  "diamond-box",
-];
-
-let DETERMINISTIC_COLORS: string[] | null = null;
-function getDeterministicColors(): string[] {
-  if (!DETERMINISTIC_COLORS) {
-    // Exclude the 4 pinned entity colors (blue, yellow, vermillion, orange) so
-    // remaining entities get visually distinct colors from the named ones.
-    // Start with the remaining CB-friendly colors, then supplement with
-    // perceptually distinct extras.
-    DETERMINISTIC_COLORS = [
-      colors.green,           // #009E73
-      colors.sky_blue,        // #56B4E9
-      colors.reddish_purple,  // #CC79A7
-      unfriendly_colors.teal,
-      unfriendly_colors.lavender,
-      unfriendly_colors.lime,
-      unfriendly_colors.cyan,
-      unfriendly_colors.coral,
-      unfriendly_colors.indigo,
-      unfriendly_colors.mint,
-    ];
-  }
-  return DETERMINISTIC_COLORS;
-}
-
-/**
- * Compute a deterministic color for a metric name. Stable across runs, no patterns.
- */
-export function getDeterministicEntityStyle(metricName: string): MetricStyle {
-  const colorPalette = getDeterministicColors();
-  const hash = fnv1a(metricName);
-  const color = colorPalette[hash % colorPalette.length];
-  return { color };
-}
-
-/**
- * Resolve the effective style for a metric: explicit entry > deterministic (entityUpdate children) > "other" fallback.
+ * Resolve the effective style for a metric: explicit entry > "other" fallback.
  */
 function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
   const explicit = metricStyles[metricName];
@@ -410,10 +340,6 @@ function resolveMetricStyle(metricName: MetricName | string): MetricStyle {
       return { ...explicit, pattern: "inserter" as const };
     }
     return explicit;
-  }
-  const registered = MetricRegistryInstance.get(metricName as MetricName);
-  if (registered && (registered as { parent?: string }).parent === MetricEnum.ENTITY_UPDATE.name) {
-    return getDeterministicEntityStyle(metricName);
   }
   return metricStyles["other"];
 }
