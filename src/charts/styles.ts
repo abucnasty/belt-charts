@@ -172,6 +172,24 @@ export function drawPatternTile(
       break;
     }
 
+    case "honeycomb": {
+      const half = size / 2;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, half * 0.5);
+      ctx.lineTo(half / 2, 0);
+      ctx.lineTo(half * 1.5, 0);
+      ctx.lineTo(size, half * 0.5);
+      ctx.moveTo(0, half * 0.5);
+      ctx.lineTo(0, half * 1.5);
+      ctx.lineTo(half / 2, size);
+      ctx.lineTo(half * 1.5, size);
+      ctx.lineTo(size, half * 1.5);
+      ctx.lineTo(size, half * 0.5);
+      ctx.stroke();
+      break;
+    }
+
     case "wave":
       ctx.beginPath();
       for (let x = 0; x <= size; x++) {

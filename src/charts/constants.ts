@@ -103,6 +103,7 @@ export type PatternType =
   | "grid-diagonal"
   | "brick"
   | "star"
+  | "honeycomb"
   | "wave"
   | "zigzag"
   | "zigzag-vertical"
@@ -168,8 +169,8 @@ const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   BURNER_GENERATOR: { color: extra_colors.pale_grey, pattern: "grid" },
 
   AGRICULTURAL_TOWER: { color: colors.green, pattern: "stripe-horizontal" },
-  ASTEROID_COLLECTOR: { color: colors.blue, pattern: "star" },
-  THRUSTER: { color: colors.vermillion, pattern: "star" },
+  ASTEROID_COLLECTOR: { color: colors.blue, pattern: "honeycomb" },
+  THRUSTER: { color: colors.vermillion, pattern: "honeycomb" },
   FUSION_REACTOR: { color: colors.orange, pattern: "stripe-horizontal" },
   FUSION_GENERATOR: { color: colors.yellow, pattern: "stripe-horizontal" },
   CARGO_POD: { color: colors.sky_blue, pattern: "stripe-horizontal" },
