@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2026-09-30
+
+### Added
+- Pollution is now shown in `summary` charts (rust with a dot pattern).
+
+### Changed
+- Every entity type now has its own fixed color/pattern in `entity-summary` charts, so no two entities look alike (e.g. Pump and Turret previously shared a color).
+- `weave` pattern is now a crosshatch (it used to look identical to `diagonal`).
+
+### Fixed
+- Patterns are now aligned within each bar and legend swatch instead of being cut off at random offsets.
+
 ## [1.22.0] - 2026-09-30
 
 ### Changed
