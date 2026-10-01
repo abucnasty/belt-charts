@@ -1,7 +1,8 @@
 import { AggregationStrategy } from "../data/AggregationStrategy"
 import { MetricName } from "../data/Metric"
 import { MetricEnum } from "../data/MetricEnum"
-import { MetricProfiles, MetricRegistryInstance, toMetricRecord } from "../data/MetricRegistry"
+import { MetricRegistryInstance } from "../data/MetricRegistry"
+import { MetricProfiles, toMetricRecord } from "./metricProfiles"
 import { formatSlowdown } from "../utils"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
@@ -13,6 +14,8 @@ import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plug
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
+const profileOrder = (description: string) =>
+  MetricProfiles.SUMMARY_CHART.findIndex(it => it.description == description);
 
 interface SummaryChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -212,9 +215,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData, tableRenderOptions.flexColumnHeader)
     : 0;
 
-  datasets.sort((a, b) => {
-    return Object.values(supportedMetrics).findIndex(it => it.description == a.label) - Object.values(supportedMetrics).findIndex(it => it.description == b.label)
-  })
+  datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
 
   let aggregationStrategyLabel = ""
   switch (options.aggregationStrategy) {
@@ -273,9 +274,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
             boxHeight: 20,
             boxWidth: 40,
             // order by supported metric order
-            sort: (a, b) => {
-              return Object.values(supportedMetrics).findIndex(it => it.description == a.text) - Object.values(supportedMetrics).findIndex(it => it.description == b.text)
-            }
+            sort: (a, b) => profileOrder(a.text) - profileOrder(b.text)
           },
         },
       },

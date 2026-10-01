@@ -1,6 +1,7 @@
 import { dirname } from "node:path";
-import { MetricValue } from "./data/BenchmarkTickResult";
 import { mkdirSync } from "node:fs";
+
+type TickValue = { tick: number; value: number };
 
 export function average(array: number[]): number {
   return array.reduce((sum, val) => sum + val, 0) / array.length;
@@ -97,7 +98,7 @@ export function formatSlowdown(reference: number | null, current: number): strin
  * @param window - Number of ticks to look back from the last tick.
  * @returns Time-weighted average value within the window.
  */
-export function timeWeightedAverage(data: MetricValue[], window: number): number {
+export function timeWeightedAverage(data: TickValue[], window: number): number {
   if (data.length === 0) return 0;
 
   // Ensure sorted by tick
@@ -139,7 +140,7 @@ export function timeWeightedAverage(data: MetricValue[], window: number): number
  * @returns Array of { windowStart, windowEnd, twa }.
  */
 export function timeWeightedAverageByChunks(
-  data: MetricValue[],
+  data: TickValue[],
   window: number
 ): { tick: number; tickEnd: number; value: number }[] {
   if (data.length === 0) return [];

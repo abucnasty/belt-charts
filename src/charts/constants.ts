@@ -1,5 +1,5 @@
 import { CategoryMetricEnum, EntityMetricEnum, MetricEnum } from "../data/MetricEnum";
-import { darkenColor, lightenColor } from "./styles";
+import { darkenColor, lightenColor } from "./colorUtils";
 
 /**
  * Colorblind-friendly color palette
