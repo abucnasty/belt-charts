@@ -70,6 +70,21 @@ export const unfriendly_colors = {
 } as const;
 
 /**
+ * Extra entity hues, mostly from Paul Tol's light/bright schemes (https://sronpersonalpages.nl/~pault/),
+ * picked for the largest CIELAB distance from `colors` in normal, green-blind and red-blind vision
+ * while staying light enough to contrast with the black background and black pattern overlay.
+ */
+export const extra_colors = {
+  light_yellow: "#EEDD88",
+  indigo: "#6366F1",
+  red: "#EE6677",
+  mint: "#44BB99",
+  pink: "#FFAABB",
+  light_cyan: "#99DDFF",
+  pale_grey: "#DDDDDD",
+} as const;
+
+/**
  * Available pattern types for chart backgrounds
  * Implemented for Node.js/skia-canvas (no browser document required)
  */
@@ -82,12 +97,18 @@ export type PatternType =
   | "dot-dash"
   | "disc"
   | "ring"
-  | "line"
-  | "line-vertical"
-  | "weave"
+  | "stripe-horizontal"
+  | "stripe-vertical"
+  | "grid"
+  | "grid-diagonal"
+  | "brick"
+  | "star"
+  | "honeycomb"
+  | "wave"
   | "zigzag"
   | "zigzag-vertical"
   | "diagonal"
+  | "diagonal-wide"
   | "diagonal-right-left"
   | "square"
   | "box"
@@ -109,25 +130,27 @@ export interface MetricStyle {
 /**
  * Every entity type gets a unique (color, pattern) pair so no two entities ever render alike.
  * Rows are tiers ordered by how often the entity shows up in benchmarks: the most common get
- * solid colorblind-friendly colors, later tiers add a pattern. Non-colorblind-friendly hues
+ * solid colorblind-friendly colors, later tiers add a pattern (clearest patterns first). Extra hues
  * always carry a pattern. Typed by enum key so a newly added entity fails to compile until styled.
+ * Each pattern belongs to ONE color family (colorblind-friendly vs extra hues) so any two entities
+ * sharing a pattern differ by a colorblind-distinct hue.
  */
 const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   INSERTER: { color: colors.yellow },
   ASSEMBLING_MACHINE: { color: colors.blue },
-  MINING_DRILL: { color: colors.vermillion },
+  MINING_DRILL: { color: colors.reddish_purple },
   FURNACE: { color: colors.orange },
   PUMP: { color: colors.green },
   LOADER: { color: colors.sky_blue },
-  LAB: { color: colors.reddish_purple },
+  LAB: { color: colors.vermillion },
 
-  INFINITY_CONTAINER: { color: unfriendly_colors.lime, pattern: "diagonal" },
-  INFINITY_PIPE: { color: unfriendly_colors.indigo, pattern: "diagonal" },
-  ELECTRIC_ENERGY_INTERFACE: { color: unfriendly_colors.crimson, pattern: "diagonal" },
-  ROBOPORT: { color: unfriendly_colors.teal, pattern: "diagonal" },
-  LOGISTIC_ROBOT: { color: unfriendly_colors.rose, pattern: "diagonal" },
-  CONSTRUCTION_ROBOT: { color: unfriendly_colors.lavender, pattern: "diagonal" },
-  BOILER: { color: unfriendly_colors.bronze, pattern: "diagonal" },
+  INFINITY_CONTAINER: { color: extra_colors.light_yellow, pattern: "diagonal" },
+  INFINITY_PIPE: { color: extra_colors.indigo, pattern: "diagonal" },
+  ELECTRIC_ENERGY_INTERFACE: { color: extra_colors.red, pattern: "diagonal" },
+  ROBOPORT: { color: extra_colors.mint, pattern: "diagonal" },
+  LOGISTIC_ROBOT: { color: extra_colors.pink, pattern: "diagonal" },
+  CONSTRUCTION_ROBOT: { color: extra_colors.light_cyan, pattern: "diagonal" },
+  BOILER: { color: extra_colors.pale_grey, pattern: "diagonal" },
 
   GENERATOR: { color: colors.yellow, pattern: "dot" },
   REACTOR: { color: colors.blue, pattern: "dot" },
@@ -137,59 +160,59 @@ const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   CAR: { color: colors.sky_blue, pattern: "dot" },
   RADAR: { color: colors.reddish_purple, pattern: "dot" },
 
-  EXPLOSION: { color: unfriendly_colors.lime, pattern: "cross" },
-  OFFSHORE_PUMP: { color: unfriendly_colors.indigo, pattern: "cross" },
-  VALVE: { color: unfriendly_colors.crimson, pattern: "cross" },
-  CARGO_WAGON: { color: unfriendly_colors.teal, pattern: "cross" },
-  LOCOMOTIVE: { color: unfriendly_colors.rose, pattern: "cross" },
-  FLUID_WAGON: { color: unfriendly_colors.lavender, pattern: "cross" },
-  BURNER_GENERATOR: { color: unfriendly_colors.bronze, pattern: "cross" },
+  EXPLOSION: { color: extra_colors.light_yellow, pattern: "grid" },
+  OFFSHORE_PUMP: { color: extra_colors.indigo, pattern: "grid" },
+  VALVE: { color: extra_colors.red, pattern: "grid" },
+  CARGO_WAGON: { color: extra_colors.mint, pattern: "grid" },
+  LOCOMOTIVE: { color: extra_colors.pink, pattern: "grid" },
+  FLUID_WAGON: { color: extra_colors.light_cyan, pattern: "grid" },
+  BURNER_GENERATOR: { color: extra_colors.pale_grey, pattern: "grid" },
 
-  AGRICULTURAL_TOWER: { color: colors.yellow, pattern: "diagonal" },
-  ASTEROID_COLLECTOR: { color: colors.blue, pattern: "diagonal" },
-  THRUSTER: { color: colors.vermillion, pattern: "diagonal" },
-  FUSION_REACTOR: { color: colors.orange, pattern: "diagonal" },
-  FUSION_GENERATOR: { color: colors.green, pattern: "diagonal" },
-  CARGO_POD: { color: colors.sky_blue, pattern: "diagonal" },
-  HEAT_INTERFACE: { color: colors.reddish_purple, pattern: "diagonal" },
+  AGRICULTURAL_TOWER: { color: colors.green, pattern: "stripe-horizontal" },
+  ASTEROID_COLLECTOR: { color: colors.blue, pattern: "honeycomb" },
+  THRUSTER: { color: colors.vermillion, pattern: "honeycomb" },
+  FUSION_REACTOR: { color: colors.orange, pattern: "stripe-horizontal" },
+  FUSION_GENERATOR: { color: colors.yellow, pattern: "stripe-horizontal" },
+  CARGO_POD: { color: colors.sky_blue, pattern: "stripe-horizontal" },
+  HEAT_INTERFACE: { color: colors.reddish_purple, pattern: "stripe-horizontal" },
 
-  ROCKET_SILO_ROCKET: { color: unfriendly_colors.lime, pattern: "dot" },
-  ASTEROID: { color: unfriendly_colors.indigo, pattern: "dot" },
-  PROJECTILE: { color: unfriendly_colors.crimson, pattern: "dot" },
-  BEAM: { color: unfriendly_colors.teal, pattern: "dot" },
-  POWER_SWITCH: { color: unfriendly_colors.rose, pattern: "dot" },
-  GATE: { color: unfriendly_colors.lavender, pattern: "dot" },
-  SPIDER_VEHICLE: { color: unfriendly_colors.bronze, pattern: "dot" },
+  ROCKET_SILO_ROCKET: { color: extra_colors.light_yellow, pattern: "grid-diagonal" },
+  ASTEROID: { color: extra_colors.indigo, pattern: "grid-diagonal" },
+  PROJECTILE: { color: extra_colors.red, pattern: "grid-diagonal" },
+  BEAM: { color: extra_colors.mint, pattern: "grid-diagonal" },
+  POWER_SWITCH: { color: extra_colors.pink, pattern: "grid-diagonal" },
+  GATE: { color: extra_colors.light_cyan, pattern: "grid-diagonal" },
+  SPIDER_VEHICLE: { color: extra_colors.pale_grey, pattern: "grid-diagonal" },
 
-  COMBAT_ROBOT: { color: colors.yellow, pattern: "cross" },
-  CAPTURE_ROBOT: { color: colors.blue, pattern: "cross" },
-  ARTILLERY_TURRET: { color: colors.vermillion, pattern: "cross" },
-  ARTILLERY_WAGON: { color: colors.orange, pattern: "cross" },
-  ARTILLERY_PROJECTILE: { color: colors.green, pattern: "cross" },
-  ARTILLERY_FLARE: { color: colors.sky_blue, pattern: "cross" },
-  FLUID_TURRET: { color: colors.reddish_purple, pattern: "cross" },
+  COMBAT_ROBOT: { color: colors.yellow, pattern: "ring" },
+  CAPTURE_ROBOT: { color: colors.blue, pattern: "ring" },
+  ARTILLERY_TURRET: { color: colors.vermillion, pattern: "ring" },
+  ARTILLERY_WAGON: { color: colors.orange, pattern: "ring" },
+  ARTILLERY_PROJECTILE: { color: colors.green, pattern: "ring" },
+  ARTILLERY_FLARE: { color: colors.sky_blue, pattern: "ring" },
+  FLUID_TURRET: { color: colors.reddish_purple, pattern: "ring" },
 
-  FLUID_STREAM: { color: unfriendly_colors.lime, pattern: "ring" },
-  LAND_MINE: { color: unfriendly_colors.indigo, pattern: "ring" },
-  ENEMY_SPAWNER: { color: unfriendly_colors.crimson, pattern: "ring" },
-  UNIT: { color: unfriendly_colors.teal, pattern: "ring" },
-  SPIDER_UNIT: { color: unfriendly_colors.rose, pattern: "ring" },
-  INFINITY_CARGO_WAGON: { color: unfriendly_colors.lavender, pattern: "ring" },
-  OLD_AGRICULTURAL_TOWER: { color: unfriendly_colors.bronze, pattern: "ring" },
+  FLUID_STREAM: { color: extra_colors.light_yellow, pattern: "brick" },
+  LAND_MINE: { color: extra_colors.indigo, pattern: "brick" },
+  ENEMY_SPAWNER: { color: extra_colors.red, pattern: "brick" },
+  UNIT: { color: extra_colors.pale_grey, pattern: "brick" },
+  SPIDER_UNIT: { color: extra_colors.pink, pattern: "brick" },
+  INFINITY_CARGO_WAGON: { color: extra_colors.light_cyan, pattern: "brick" },
+  OLD_AGRICULTURAL_TOWER: { color: extra_colors.mint, pattern: "brick" },
 
-  ITEM_REQUEST_PROXY: { color: colors.yellow, pattern: "ring" },
-  TEMPORARY_CONTAINER: { color: colors.blue, pattern: "ring" },
-  CHARACTER_CORPSE: { color: colors.vermillion, pattern: "ring" },
-  CORPSE: { color: colors.orange, pattern: "ring" },
-  STICKER: { color: colors.green, pattern: "ring" },
-  SMOKE_WITH_TRIGGER: { color: colors.sky_blue, pattern: "ring" },
-  PARTICLE_SOURCE: { color: colors.reddish_purple, pattern: "ring" },
+  ITEM_REQUEST_PROXY: { color: colors.yellow, pattern: "zigzag" },
+  TEMPORARY_CONTAINER: { color: colors.blue, pattern: "zigzag" },
+  CHARACTER_CORPSE: { color: colors.vermillion, pattern: "zigzag" },
+  CORPSE: { color: colors.orange, pattern: "zigzag" },
+  STICKER: { color: colors.green, pattern: "zigzag" },
+  SMOKE_WITH_TRIGGER: { color: colors.sky_blue, pattern: "zigzag" },
+  PARTICLE_SOURCE: { color: colors.reddish_purple, pattern: "zigzag" },
 
-  FLAME_THROWER_EXPLOSION: { color: unfriendly_colors.lime, pattern: "line-vertical" },
-  FLYING_TEXT_ENTITY: { color: unfriendly_colors.indigo, pattern: "line-vertical" },
-  HIGHLIGHT_BOX_ENTITY: { color: unfriendly_colors.crimson, pattern: "line-vertical" },
-  SPEECH_BUBBLE: { color: unfriendly_colors.teal, pattern: "line-vertical" },
-  PROGRAMMABLE_SPEAKER: { color: unfriendly_colors.rose, pattern: "line-vertical" },
+  FLAME_THROWER_EXPLOSION: { color: extra_colors.light_yellow, pattern: "wave" },
+  FLYING_TEXT_ENTITY: { color: extra_colors.indigo, pattern: "wave" },
+  HIGHLIGHT_BOX_ENTITY: { color: extra_colors.red, pattern: "wave" },
+  SPEECH_BUBBLE: { color: extra_colors.mint, pattern: "wave" },
+  PROGRAMMABLE_SPEAKER: { color: extra_colors.pink, pattern: "wave" },
 };
 
 /**
