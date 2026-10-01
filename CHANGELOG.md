@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-09-30
+
+### Added
+- New chart patterns: `grid`, `stripe-horizontal`, `stripe-vertical`, `brick`, `wave`, `honeycomb`, `star`, `diagonal-wide`.
+
+### Changed
+- Entity colors outside the colorblind-safe palette were replaced with colorblind-distinct ones, so similar entities (e.g. Rocket Silo and Spider Vehicle) no longer look alike.
+- Entity patterns were reshuffled so the clearest patterns are used first.
+- Labs are now red, Agricultural Towers green, and Asteroid Collectors / Thrusters use the honeycomb pattern.
+- `weave` pattern renamed to `grid-diagonal`; `line` / `line-vertical` replaced by `stripe-horizontal` / `stripe-vertical`.
+
 ## [1.23.0] - 2026-09-30
 
 ### Added
