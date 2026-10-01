@@ -155,6 +155,23 @@ export function drawPatternTile(
       ctx.stroke();
       break;
 
+    case "star": {
+      const outer = size * 0.38;
+      const inner = outer * 0.45;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const radius = i % 2 === 0 ? outer : inner;
+        const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+        const x = size / 2 + Math.cos(angle) * radius;
+        const y = size / 2 + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
     case "wave":
       ctx.beginPath();
       for (let x = 0; x <= size; x++) {
