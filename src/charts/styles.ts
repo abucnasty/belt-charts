@@ -36,6 +36,8 @@ export function drawPatternTile(
 
   switch (patternType) {
     case "diagonal":
+    case "diagonal-wide":
+      if (patternType === "diagonal-wide") ctx.lineWidth = size / 4;
       ctx.beginPath();
       ctx.moveTo(0, size);
       ctx.lineTo(size, 0);
@@ -121,17 +123,45 @@ export function drawPatternTile(
       ctx.stroke();
       break;
 
-    case "line":
+    case "stripe-horizontal":
+      // Thin and dense: thick stripes cover so much of the fill that bars blend into the black background.
+      for (let i = 0; i < 3; i++) ctx.fillRect(0, (size * (2 * i + 1)) / 6 - 0.75, size, 1.5);
+      break;
+
+    case "stripe-vertical":
+      for (let i = 0; i < 3; i++) ctx.fillRect((size * (2 * i + 1)) / 6 - 0.75, 0, 1.5, size);
+      break;
+
+    case "grid":
       ctx.beginPath();
       ctx.moveTo(0, size / 2);
       ctx.lineTo(size, size / 2);
+      ctx.moveTo(size / 2, 0);
+      ctx.lineTo(size / 2, size);
       ctx.stroke();
       break;
 
-    case "line-vertical":
+    case "brick":
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
+      ctx.moveTo(0, 0.75);
+      ctx.lineTo(size, 0.75);
+      ctx.moveTo(0, size / 2);
+      ctx.lineTo(size, size / 2);
       ctx.moveTo(size / 2, 0);
-      ctx.lineTo(size / 2, size);
+      ctx.lineTo(size / 2, size / 2);
+      ctx.moveTo(0.75, size / 2);
+      ctx.lineTo(0.75, size);
+      ctx.stroke();
+      break;
+
+    case "wave":
+      ctx.beginPath();
+      for (let x = 0; x <= size; x++) {
+        const y = size / 2 + (Math.sin((x / size) * Math.PI * 2) * size) / 5;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
       ctx.stroke();
       break;
 
@@ -155,8 +185,7 @@ export function drawPatternTile(
       ctx.stroke();
       break;
 
-    case "weave":
-      // Crosshatch: both diagonal directions.
+    case "grid-diagonal":
       ctx.beginPath();
       ctx.moveTo(0, size);
       ctx.lineTo(size, 0);

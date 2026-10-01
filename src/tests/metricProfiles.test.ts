@@ -26,7 +26,7 @@ describe("entity styles", () => {
     expect(unpatterned).toEqual([]);
   });
 
-  // Extra hues resemble colorblind-friendly ones (orange/bronze), so a shared pattern makes them look alike.
+  // Keeps similar-looking hues across the two families (e.g. sky blue / light cyan) apart by pattern.
   it("never shares a pattern between colorblind-friendly and extra hues", () => {
     const familiesByPattern = new Map<string, Set<string>>();
     entityStyles.forEach(({ style }) => {
