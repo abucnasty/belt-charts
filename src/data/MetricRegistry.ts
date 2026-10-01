@@ -38,6 +38,7 @@ export const MetricProfiles = {
         MetricEnum.ELECTRIC_NETWORK_UPDATE,
         MetricEnum.FLUID_FLOW_UPDATE,
         MetricEnum.HEAT_NETWORK_UPDATE,
+        MetricEnum.POLLUTION_UPDATE,
         MetricEnum.OTHER,
     ] as MetricEnum[],
 } as const;
