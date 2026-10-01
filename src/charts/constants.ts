@@ -136,11 +136,11 @@ export interface MetricStyle {
 const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   INSERTER: { color: colors.yellow },
   ASSEMBLING_MACHINE: { color: colors.blue },
-  MINING_DRILL: { color: colors.vermillion },
+  MINING_DRILL: { color: colors.reddish_purple },
   FURNACE: { color: colors.orange },
   PUMP: { color: colors.green },
   LOADER: { color: colors.sky_blue },
-  LAB: { color: colors.reddish_purple },
+  LAB: { color: colors.vermillion },
 
   INFINITY_CONTAINER: { color: extra_colors.light_yellow, pattern: "diagonal" },
   INFINITY_PIPE: { color: extra_colors.indigo, pattern: "diagonal" },
