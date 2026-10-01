@@ -166,11 +166,11 @@ const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   FLUID_WAGON: { color: extra_colors.light_cyan, pattern: "grid" },
   BURNER_GENERATOR: { color: extra_colors.pale_grey, pattern: "grid" },
 
-  AGRICULTURAL_TOWER: { color: colors.yellow, pattern: "stripe-horizontal" },
+  AGRICULTURAL_TOWER: { color: colors.green, pattern: "stripe-horizontal" },
   ASTEROID_COLLECTOR: { color: colors.blue, pattern: "stripe-horizontal" },
   THRUSTER: { color: colors.vermillion, pattern: "stripe-horizontal" },
   FUSION_REACTOR: { color: colors.orange, pattern: "stripe-horizontal" },
-  FUSION_GENERATOR: { color: colors.green, pattern: "stripe-horizontal" },
+  FUSION_GENERATOR: { color: colors.yellow, pattern: "stripe-horizontal" },
   CARGO_POD: { color: colors.sky_blue, pattern: "stripe-horizontal" },
   HEAT_INTERFACE: { color: colors.reddish_purple, pattern: "stripe-horizontal" },
 
@@ -193,10 +193,10 @@ const entityStyles: Record<keyof typeof EntityMetricEnum, MetricStyle> = {
   FLUID_STREAM: { color: extra_colors.light_yellow, pattern: "brick" },
   LAND_MINE: { color: extra_colors.indigo, pattern: "brick" },
   ENEMY_SPAWNER: { color: extra_colors.red, pattern: "brick" },
-  UNIT: { color: extra_colors.mint, pattern: "brick" },
+  UNIT: { color: extra_colors.pale_grey, pattern: "brick" },
   SPIDER_UNIT: { color: extra_colors.pink, pattern: "brick" },
   INFINITY_CARGO_WAGON: { color: extra_colors.light_cyan, pattern: "brick" },
-  OLD_AGRICULTURAL_TOWER: { color: extra_colors.pale_grey, pattern: "brick" },
+  OLD_AGRICULTURAL_TOWER: { color: extra_colors.mint, pattern: "brick" },
 
   ITEM_REQUEST_PROXY: { color: colors.yellow, pattern: "zigzag" },
   TEMPORARY_CONTAINER: { color: colors.blue, pattern: "zigzag" },
