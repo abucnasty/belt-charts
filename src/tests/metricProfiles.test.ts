@@ -25,6 +25,18 @@ describe("entity styles", () => {
       .map(({ name }) => name);
     expect(unpatterned).toEqual([]);
   });
+
+  // Extra hues resemble colorblind-friendly ones (orange/bronze), so a shared pattern makes them look alike.
+  it("never shares a pattern between colorblind-friendly and extra hues", () => {
+    const familiesByPattern = new Map<string, Set<string>>();
+    entityStyles.forEach(({ style }) => {
+      const pattern = style.pattern ?? "solid";
+      const family = colorblindFriendly.has(style.color) ? "colorblind-friendly" : "extra";
+      familiesByPattern.set(pattern, (familiesByPattern.get(pattern) ?? new Set()).add(family));
+    });
+    const mixed = [...familiesByPattern].filter(([, families]) => families.size > 1).map(([pattern]) => pattern);
+    expect(mixed).toEqual([]);
+  });
 });
 
 describe("MetricProfiles", () => {
