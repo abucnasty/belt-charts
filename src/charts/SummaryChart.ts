@@ -9,7 +9,7 @@ import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData } from "../data/SummaryTransform"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
-import { backgroundPlugin, valueLabelsPlugin } from "./plugins"
+import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
@@ -307,7 +307,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

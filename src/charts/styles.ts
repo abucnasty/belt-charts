@@ -47,17 +47,19 @@ export function darkenColor(hex: string, amount: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
+/** Edge length (px) of one repeating pattern tile. */
+export const PATTERN_TILE_SIZE = 20;
+
 /**
- * Draw a pattern on a canvas context using skia-canvas (Node.js compatible)
- * Creates a solid colored background with black pattern overlay (matches chart background)
- * Returns a CanvasPattern that can be used as backgroundColor in Chart.js
+ * Draw one repeating pattern tile using skia-canvas (Node.js compatible): a solid
+ * colored background with a black motif overlay (matches chart background).
  */
-function drawPattern(
+export function drawPatternTile(
   patternType: PatternType,
   backgroundColor: string,
   patternColor: string = colors.black,
-  size: number = 20
-): CanvasPattern {
+  size: number = PATTERN_TILE_SIZE
+): Canvas {
   const canvas = new Canvas(size, size);
   const ctx = canvas.getContext("2d");
 
@@ -192,11 +194,20 @@ function drawPattern(
       break;
 
     case "weave":
+      // Crosshatch: both diagonal directions.
       ctx.beginPath();
-      ctx.moveTo(0, size / 2);
-      ctx.lineTo(size / 2, 0);
-      ctx.moveTo(size / 2, size);
-      ctx.lineTo(size, size / 2);
+      ctx.moveTo(0, size);
+      ctx.lineTo(size, 0);
+      ctx.moveTo(-size / 2, size / 2);
+      ctx.lineTo(size / 2, -size / 2);
+      ctx.moveTo(size / 2, size + size / 2);
+      ctx.lineTo(size + size / 2, size / 2);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(size, size);
+      ctx.moveTo(-size / 2, size / 2);
+      ctx.lineTo(size / 2, size + size / 2);
+      ctx.moveTo(size / 2, -size / 2);
+      ctx.lineTo(size + size / 2, size / 2);
       ctx.stroke();
       break;
 
@@ -318,7 +329,43 @@ function drawPattern(
       ctx.fillRect(0, 0, size, size);
   }
 
-  return ctx.createPattern(canvas, "repeat") as CanvasPattern;
+  return canvas;
+}
+
+// Remembers the source tile of every pattern we hand out so it can be re-anchored per shape.
+const patternTiles = new WeakMap<object, Canvas>();
+
+function createTilePattern(tile: Canvas, offsetX: number = 0, offsetY: number = 0): CanvasPattern {
+  const pattern = tile.getContext("2d").createPattern(tile, "repeat") as unknown as CanvasPattern;
+  if (offsetX !== 0 || offsetY !== 0) {
+    (pattern as any).setTransform(1, 0, 0, 1, offsetX, offsetY);
+  }
+  patternTiles.set(pattern, tile);
+  return pattern;
+}
+
+/**
+ * Canvas patterns repeat from the canvas origin, so the same pattern shows a different crop
+ * in every bar/legend swatch. Returns a copy of `fill` whose tile grid is centered inside the
+ * given rect (whole tiles in the middle, equal partial tiles at each edge). Non-pattern fills
+ * (plain colors) are returned unchanged.
+ */
+export function anchorPatternToRect(
+  fill: unknown,
+  left: number,
+  top: number,
+  width: number,
+  height: number
+): unknown {
+  if (fill === null || typeof fill !== "object") return fill;
+  const tile = patternTiles.get(fill);
+  if (!tile) return fill;
+  // Shapes narrower than one tile get the tile centered on them so the motif stays visible.
+  const centeredOffset = (extent: number, tileExtent: number) =>
+    (extent - Math.max(Math.floor(extent / tileExtent), 1) * tileExtent) / 2;
+  const offsetX = left + centeredOffset(Math.abs(width), tile.width);
+  const offsetY = top + centeredOffset(Math.abs(height), tile.height);
+  return createTilePattern(tile, offsetX, offsetY);
 }
 
 /**
@@ -438,7 +485,7 @@ export function getMetricPattern(
 ): CanvasPattern | string {
   const style = resolveMetricStyle(metricName);
   if (style.pattern) {
-    return drawPattern(style.pattern, style.color);
+    return createTilePattern(drawPatternTile(style.pattern, style.color));
   }
   return style.color;
 }
