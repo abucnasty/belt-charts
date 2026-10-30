@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.1] - 2026-10-30
+
+### Fixed
+- Large CSVs (hundreds of MB to GB+) no longer crash with `ERR_WORKER_OUT_OF_MEMORY`. Every command now keeps only the selected metric values in compact numeric buffers instead of an object per value (aggregate charts) or every parsed row (`line` / `bar`). Peak memory on a 223 MB file dropped from ~3.9 GB to ~0.4 GB, and a 696 MB file that previously crashed `entity-summary` now needs ~0.4 GB.
+- `line` / `bar` without `--max-ticks` no longer drop every row; `0` now means "no limit", as documented.
+- CSVs saved with a UTF-8 byte-order mark (e.g. written by PowerShell) are now read correctly instead of losing their first column; blank lines are skipped instead of erroring.
+
+### Changed
+- CSV parsing is about 4x faster: every parser now uses a built-in streaming reader instead of `csv-parser`, which has been removed as a dependency. `entity-summary` on a 696 MB file went from 53 s to 14 s.
+
 ## [1.24.0] - 2026-09-30
 
 ### Added

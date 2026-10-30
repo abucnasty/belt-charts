@@ -4,7 +4,7 @@ import { MetricRegistryInstance } from "./MetricRegistry";
 import { average, max, median, min, standardDeviation } from "../utils";
 import { MetricEnum } from "./MetricEnum";
 import { AggregationStrategy } from "./AggregationStrategy";
-import { readCsvRows } from "./csvReader";
+import { readCsv } from "./csvReader";
 
 export type BenchmarkResultRaw = Record<MetricName, number> & {
     tick: number;
@@ -75,6 +75,20 @@ export const transformMetricTickStatToMetricValue = (metricTickStat: MetricTickS
     }
 }
 
+/** Maps CSV header columns to known metrics, skipping `tick`/`run`, blank and unrecognised columns. */
+export const metricsFromColumns = (columns: string[], filePath: string): MetricEnum[] =>
+    columns
+        .filter(it => it !== "tick" && it !== "run")
+        .filter(it => it.length > 0)
+        .flatMap(metricName => {
+            const metric = MetricRegistryInstance.get(metricName as MetricName);
+            if (!metric) {
+                console.warn(`Unknown metric column "${metricName}" in ${filePath} - skipping`);
+                return [];
+            }
+            return [metric];
+        });
+
 export const parseBenchmarkAveragePerTickResultFromCsv = async (
     filePath: string,
     runResultsToRemove: Set<number>,
@@ -83,51 +97,55 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (
 ): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
-    const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
+    // Only the selected metric values are kept per tick, flattened as [run0 m0..mN, run1 m0..mN, ...].
+    // Retaining whole parsed rows (every CSV column, as strings) exhausts the heap on large files.
+    const valuesPerTick: Map<number, number[]> = new Map();
 
-    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
-                const run = Number(row.run);
-                if (runResultsToRemove.has(run)) {
-                    return
-                }
-                const tick = Number(row.tick);
-                if (maxTicks !== undefined && tick > maxTicks) {
-                    return
-                }
+    await readCsv(filePath, (columns) => {
+        // Only keep columns actually needed for this chart - CSVs can have 100+
+        // metric columns, and building/serializing stats for all of them across
+        // a worker-thread boundary can exhaust the main thread's heap.
+        metrics = metricsFromColumns(
+            columns.filter(it => metricNames === undefined || metricNames.has(it as MetricName) || it === MetricEnum.WHOLE_UPDATE.name),
+            filePath,
+        );
+        const runIndex = columns.lastIndexOf("run");
+        const tickIndex = columns.lastIndexOf("tick");
+        const wholeUpdateIndex = columns.lastIndexOf(MetricEnum.WHOLE_UPDATE.name);
+        const metricIndices = metrics.map(metric => columns.lastIndexOf(metric.name));
 
-                if (metrics.length === 0) {
-                    metrics = Object.keys(row)
-                        .filter(it => it !== "tick" && it !== "run")
-                        .filter(it => `${it}`.length > 0)
-                        // Only keep columns actually needed for this chart - CSVs can have 100+
-                        // metric columns, and building/serializing stats for all of them across
-                        // a worker-thread boundary can exhaust the main thread's heap.
-                        .filter(it => metricNames === undefined || metricNames.has(it as MetricName) || it === MetricEnum.WHOLE_UPDATE.name)
-                        .flatMap(metricName => {
-                            const metric = MetricRegistryInstance.get(metricName as MetricName);
-                            if (!metric) {
-                                console.warn(`Unknown metric column "${metricName}" in ${filePath} - skipping`);
-                                return [];
-                            }
-                            return [metric];
-                        });
-                }
-                const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
-                if (wholeUpdate == undefined) {
-                    throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
-                }
-                if (!rawResultsPerTick.has(tick)) {
-                    rawResultsPerTick.set(tick, [row]);
-                } else {
-                    rawResultsPerTick.get(tick)!.push(row);
-                }
+        return (fields) => {
+            const run = Number(fields[runIndex]);
+            if (runResultsToRemove.has(run)) {
+                return
+            }
+            const tick = Number(fields[tickIndex]);
+            // 0 means "no limit", matching --max-ticks.
+            if (maxTicks !== undefined && maxTicks > 0 && tick > maxTicks) {
+                return
+            }
+            if (fields[wholeUpdateIndex] == undefined) {
+                throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
+            }
+            let tickValues = valuesPerTick.get(tick);
+            if (tickValues === undefined) {
+                tickValues = [];
+                valuesPerTick.set(tick, tickValues);
+            }
+            for (const index of metricIndices) {
+                tickValues.push(Number(fields[index]));
+            }
+        };
     });
 
     const metricStats: Map<MetricName, MetricTickStat[]> = new Map(metrics.map(it => [it.name, []]));
 
-    rawResultsPerTick.forEach((rows, tick) => {
-        metrics.forEach(metric => {
-            const rawMetricValues = rows.map(row => Number(row[metric.name]));
+    valuesPerTick.forEach((tickValues, tick) => {
+        metrics.forEach((metric, metricIndex) => {
+            const rawMetricValues: number[] = [];
+            for (let i = metricIndex; i < tickValues.length; i += metrics.length) {
+                rawMetricValues.push(tickValues[i]);
+            }
             metricStats.get(metric.name)!.push({
                 average: average(rawMetricValues),
                 standardDeviation: standardDeviation(rawMetricValues),
@@ -159,19 +177,24 @@ export const computeMaxMetricValueFromCsv = async (
 ): Promise<number> => {
     let maxValue = -Infinity;
 
-    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
-        const run = Number(row.run);
-        if (runResultsToRemove.has(run)) {
-            return
-        }
-        const tick = Number(row.tick);
-        if (ticksToIgnore > 0 && tick <= ticksToIgnore) {
-            return
-        }
-        const value = Number(row[metricName]);
-        if (value > maxValue) {
-            maxValue = value;
-        }
+    await readCsv(filePath, (columns) => {
+        const runIndex = columns.lastIndexOf("run");
+        const tickIndex = columns.lastIndexOf("tick");
+        const metricIndex = columns.lastIndexOf(metricName);
+        return (fields) => {
+            const run = Number(fields[runIndex]);
+            if (runResultsToRemove.has(run)) {
+                return
+            }
+            const tick = Number(fields[tickIndex]);
+            if (ticksToIgnore > 0 && tick <= ticksToIgnore) {
+                return
+            }
+            const value = Number(fields[metricIndex]);
+            if (value > maxValue) {
+                maxValue = value;
+            }
+        };
     });
 
     return maxValue;

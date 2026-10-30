@@ -1,5 +1,4 @@
-import fs from "fs"
-import csv from "csv-parser";
+import { readCsvRows } from "./csvReader";
 import { median, medianAbsoluteDeviation } from "../utils";
 
 // Scales MAD to be comparable to a standard deviation under a normal distribution, so
@@ -26,29 +25,25 @@ export type RunResultBySaveName = Map<string, RunResultRow[]>
 export const parseRunResultsFile = async (filePath: string): Promise<RunResultBySaveName> => {
     const results: Map<string, RunResultRow[]> = new Map();
 
-    await new Promise<void>((resolve, reject) => {
-        fs.createReadStream(filePath)
-            .pipe(csv())
-            .on("data", (row: RunResultRow) => {
-                const saveName = row.save_name
-                const runResults = results.get(saveName) || []
-                results.set(saveName, runResults.concat([{
-                    save_name: saveName,
-                    run_index: Number(row.run_index),
-                    execution_time_ms: Number(row.execution_time_ms),
-                    avg_ms: Number(row.avg_ms),
-                    min_ms: Number(row.min_ms),
-                    max_ms: Number(row.max_ms),
-                    effective_ups: Number(row.effective_ups),
-                    ticks: Number(row.ticks),
-                    factorio_version: row.factorio_version,
-                    platform: row.platform,
-                }]))
-            })
-            .on("end", () => {
-                resolve();
-            })
-            .on("error", reject)
+    await readCsvRows<RunResultRow>(filePath, (row) => {
+        const saveName = row.save_name
+        let runResults = results.get(saveName)
+        if (runResults === undefined) {
+            runResults = []
+            results.set(saveName, runResults)
+        }
+        runResults.push({
+            save_name: saveName,
+            run_index: Number(row.run_index),
+            execution_time_ms: Number(row.execution_time_ms),
+            avg_ms: Number(row.avg_ms),
+            min_ms: Number(row.min_ms),
+            max_ms: Number(row.max_ms),
+            effective_ups: Number(row.effective_ups),
+            ticks: Number(row.ticks),
+            factorio_version: row.factorio_version,
+            platform: row.platform,
+        })
     })
 
     return results;

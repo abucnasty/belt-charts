@@ -18,17 +18,24 @@ export function milliToMicro(milli: number): number {
 export function standardDeviation(array: number[]): number {
   const n = array.length
   const mean = array.reduce((a, b) => a + b) / n
-  return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n)
+  return Math.sqrt(array.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / n)
 }
 
+// Linear scans rather than sorting a copy: these run over large sample arrays.
 export function max(array: number[]): number {
-  const sorted = [...array].sort((a, b) => a - b)
-  return sorted[sorted.length - 1]
+  let result = array[0]
+  for (let i = 1; i < array.length; i++) {
+    if (array[i] > result) result = array[i]
+  }
+  return result
 }
 
 export function min(array: number[]): number {
-  const sorted = [...array].sort((a, b) => a - b)
-  return sorted[0]
+  let result = array[0]
+  for (let i = 1; i < array.length; i++) {
+    if (array[i] < result) result = array[i]
+  }
+  return result
 }
 
 export function roundTo(number: number, places: number): number {
