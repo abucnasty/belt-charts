@@ -1,12 +1,12 @@
 import path from "path";
 import { MetricName } from "./Metric";
 import { MetricRegistryInstance } from "./MetricRegistry";
-import { average, max, median, min, standardDeviation } from "../utils";
 import { MetricEnum } from "./MetricEnum";
 import { BenchmarkResultRaw } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
 import { readCsvRows } from "./csvReader";
+import { MetricSamples } from "./MetricSamples";
 
 export type MetricAggregate = {
     average: number; // in nanoseconds
@@ -45,7 +45,8 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     runsToRemove: Set<number>
 ): Promise<BenchmarkAggregateRunResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
-    const runValuesPerMetric: Map<number, Partial<Record<MetricName, RunValue[]>>> = new Map()
+    // Samples per run, indexed in the same order as `metrics`.
+    const samplesPerRun: Map<number, MetricSamples[]> = new Map()
 
     console.log(`Parsing benchmark aggregate run results from CSV file: ${filePath} removing the first ${removeFirstTicks} ticks`)
 
@@ -75,27 +76,20 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
                     return
                 }
 
-                if (runValuesPerMetric.get(run) === undefined) {
-                    const metricToRunValues: Partial<Record<MetricName, RunValue[]>> = {};
-                    metrics.forEach(metric => {
-                        metricToRunValues[metric.name] = [];
-                    });
-                    runValuesPerMetric.set(run, metricToRunValues);
-                }
-
                 const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
                 if (wholeUpdate == undefined) {
                     throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
                 }
 
-                const runEntry = runValuesPerMetric.get(run)!;
-                metrics.forEach(metric => {
-                    const rawValue = Number(row[metric.name]);
-                    runEntry[metric.name]!.push({
-                        value: isNaN(rawValue) ? 0 : rawValue,
-                        run: Number(row.run)
-                    });
-                });
+                let runSamples = samplesPerRun.get(run);
+                if (runSamples === undefined) {
+                    runSamples = metrics.map(() => new MetricSamples());
+                    samplesPerRun.set(run, runSamples);
+                }
+                for (let i = 0; i < metrics.length; i++) {
+                    const rawValue = Number(row[metrics[i].name]);
+                    runSamples[i].push(isNaN(rawValue) ? 0 : rawValue);
+                }
     });
 
 
@@ -104,19 +98,14 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
         runAggregates.set(metric.name, [])
     })
 
-    if (runValuesPerMetric.size === 0) {
+    if (samplesPerRun.size === 0) {
         throw new Error("No data found in the CSV file after applying filters. Please check the file and the provided parameters.");
     }
 
-    for (const [run, metricToRunValues] of runValuesPerMetric) {
-        metrics.forEach(metric => {
-            const rawValues = metricToRunValues[metric.name]!.map(it => it.value)
+    for (const [run, runSamples] of samplesPerRun) {
+        metrics.forEach((metric, i) => {
             runAggregates.get(metric.name)!.push({
-                average: average(rawValues),
-                standardDeviation: standardDeviation(rawValues),
-                minimum: min(rawValues),
-                maximum: max(rawValues),
-                median: median(rawValues),
+                ...runSamples[i].aggregate(),
                 run: run
             })
         })
@@ -124,20 +113,9 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
     const all: Map<MetricName, MetricAggregate> = new Map()
 
-    metrics.forEach(metric => {
-        const metricRawValues: number[] = []
-        runValuesPerMetric.forEach((metricToRunValues) => {
-            metricToRunValues[metric.name]!.forEach(it => {
-                metricRawValues.push(it.value)
-            })
-        })
-        all.set(metric.name, {
-            average: average(metricRawValues),
-            standardDeviation: standardDeviation(metricRawValues),
-            minimum: min(metricRawValues),
-            maximum: max(metricRawValues),
-            median: median(metricRawValues),
-        })
+    metrics.forEach((metric, i) => {
+        const allRuns = MetricSamples.merge([...samplesPerRun.values()].map(runSamples => runSamples[i]))
+        all.set(metric.name, allRuns.aggregate())
     })
 
     return {

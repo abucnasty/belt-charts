@@ -83,7 +83,9 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (
 ): Promise<BenchmarkTickResult> => {
     const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
     let metrics: MetricEnum[] = [];
-    const rawResultsPerTick: Map<number, BenchmarkResultRaw[]> = new Map();
+    // Only the selected metric values are kept per tick, flattened as [run0 m0..mN, run1 m0..mN, ...].
+    // Retaining whole parsed rows (every CSV column, as strings) exhausts the heap on large files.
+    const valuesPerTick: Map<number, number[]> = new Map();
 
     await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
                 const run = Number(row.run);
@@ -91,7 +93,8 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (
                     return
                 }
                 const tick = Number(row.tick);
-                if (maxTicks !== undefined && tick > maxTicks) {
+                // 0 means "no limit", matching --max-ticks.
+                if (maxTicks !== undefined && maxTicks > 0 && tick > maxTicks) {
                     return
                 }
 
@@ -116,18 +119,24 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (
                 if (wholeUpdate == undefined) {
                     throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
                 }
-                if (!rawResultsPerTick.has(tick)) {
-                    rawResultsPerTick.set(tick, [row]);
-                } else {
-                    rawResultsPerTick.get(tick)!.push(row);
+                let tickValues = valuesPerTick.get(tick);
+                if (tickValues === undefined) {
+                    tickValues = [];
+                    valuesPerTick.set(tick, tickValues);
+                }
+                for (const metric of metrics) {
+                    tickValues.push(Number(row[metric.name]));
                 }
     });
 
     const metricStats: Map<MetricName, MetricTickStat[]> = new Map(metrics.map(it => [it.name, []]));
 
-    rawResultsPerTick.forEach((rows, tick) => {
-        metrics.forEach(metric => {
-            const rawMetricValues = rows.map(row => Number(row[metric.name]));
+    valuesPerTick.forEach((tickValues, tick) => {
+        metrics.forEach((metric, metricIndex) => {
+            const rawMetricValues: number[] = [];
+            for (let i = metricIndex; i < tickValues.length; i += metrics.length) {
+                rawMetricValues.push(tickValues[i]);
+            }
             metricStats.get(metric.name)!.push({
                 average: average(rawMetricValues),
                 standardDeviation: standardDeviation(rawMetricValues),
