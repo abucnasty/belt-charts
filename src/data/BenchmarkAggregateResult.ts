@@ -1,11 +1,10 @@
 import path from "path";
 import { MetricName } from "./Metric";
-import { MetricRegistryInstance } from "./MetricRegistry";
 import { MetricEnum } from "./MetricEnum";
-import { BenchmarkResultRaw } from "./BenchmarkTickResult";
+import { metricsFromColumns } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
-import { readCsvRows } from "./csvReader";
+import { readCsv } from "./csvReader";
 import { MetricSamples } from "./MetricSamples";
 
 export type MetricAggregate = {
@@ -50,48 +49,43 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
 
     console.log(`Parsing benchmark aggregate run results from CSV file: ${filePath} removing the first ${removeFirstTicks} ticks`)
 
-    await readCsvRows<BenchmarkResultRaw>(filePath, (row) => {
-                const run = Number(row.run)
-                if (runsToRemove.has(run)) {
-                    return
-                }
-                if (metrics.length === 0) {
-                    metrics = Object.keys(row)
-                        .filter(it => it !== "tick" && it !== "run")
-                        .filter(it => `${it}`.length > 0)
-                        .flatMap(metricName => {
-                            const metric = MetricRegistryInstance.get(metricName as MetricName);
-                            if (!metric) {
-                                console.warn(`Unknown metric column "${metricName}" in ${filePath} - skipping`);
-                                return [];
-                            }
-                            return [metric];
-                        });
-                }
-                if (Number(row.tick) <= removeFirstTicks) {
-                    return
-                }
+    await readCsv(filePath, (columns) => {
+        if (metrics.length === 0) {
+            metrics = metricsFromColumns(columns, filePath);
+        }
+        // lastIndexOf: on duplicate column names the last one wins, as with keyed rows.
+        const runIndex = columns.lastIndexOf("run");
+        const tickIndex = columns.lastIndexOf("tick");
+        const wholeUpdateIndex = columns.lastIndexOf(MetricEnum.WHOLE_UPDATE.name);
+        const metricIndices = metrics.map(metric => columns.lastIndexOf(metric.name));
 
-                if (maxTick > 0 && Number(row.tick) > maxTick) {
-                    return
-                }
+        return (fields) => {
+            const run = Number(fields[runIndex])
+            if (runsToRemove.has(run)) {
+                return
+            }
+            const tick = Number(fields[tickIndex])
+            if (tick <= removeFirstTicks) {
+                return
+            }
+            if (maxTick > 0 && tick > maxTick) {
+                return
+            }
+            if (fields[wholeUpdateIndex] == undefined) {
+                throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
+            }
 
-                const wholeUpdate = row[MetricEnum.WHOLE_UPDATE.name];
-                if (wholeUpdate == undefined) {
-                    throw new Error("Expected 'wholeUpdate' column to be present in the CSV");
-                }
-
-                let runSamples = samplesPerRun.get(run);
-                if (runSamples === undefined) {
-                    runSamples = metrics.map(() => new MetricSamples());
-                    samplesPerRun.set(run, runSamples);
-                }
-                for (let i = 0; i < metrics.length; i++) {
-                    const rawValue = Number(row[metrics[i].name]);
-                    runSamples[i].push(isNaN(rawValue) ? 0 : rawValue);
-                }
+            let runSamples = samplesPerRun.get(run);
+            if (runSamples === undefined) {
+                runSamples = metrics.map(() => new MetricSamples());
+                samplesPerRun.set(run, runSamples);
+            }
+            for (let i = 0; i < metrics.length; i++) {
+                const rawValue = Number(fields[metricIndices[i]]);
+                runSamples[i].push(isNaN(rawValue) ? 0 : rawValue);
+            }
+        };
     });
-
 
     const runAggregates: Map<MetricName, MetricRunAggregate[]> = new Map()
     metrics.forEach(metric => {
