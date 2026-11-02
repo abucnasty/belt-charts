@@ -35,7 +35,10 @@ All commands share a common set of **base options**, plus command-specific optio
 
 | Option | Default | Description |
 |---|---|---|
-| `<glob-pattern>` | *(required)* | Glob pattern for input CSV files, e.g. `"results/*.csv"` |
+| `[glob-pattern]` | *(see `--input`)* | Glob pattern for input CSV files, e.g. `"results/*.csv"`. Optional when `--input` is given |
+| `--input <glob>[:<suffix>]` | *(none)* | Results files to chart. Repeatable, and combined with the positional pattern. An optional `:suffix` is appended to the label of every file of that input as `<label> (suffix)` (after `--name` / `--names-file` and the other label transforms), so two folders with the same file names chart together in one command — see “Several inputs” below |
+| `--include <pattern>` | *(none)* | Only chart inputs whose base name or label matches this glob pattern. Repeatable (OR-matched) |
+| `--exclude <pattern>` | *(none)* | Skip inputs whose base name or label matches this glob pattern. Repeatable; applied after `--include` |
 | `-o, --output <file>` | `verbose_metrics.png` | Output file path. Use `.svg` for vector output |
 | `-w, --width <px>` | `1400` | Chart width in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `-h, --height <px>` | `800` | Chart height in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
@@ -53,6 +56,15 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
 | `--title-override <string>` | *(auto)* | Override the chart's auto-generated title |
 
+> **Several inputs** — chart two sessions of the same saves (two allocators, game versions or machines) without symlinks or a temporary names file:
+> ```bash
+> belt-charts ups --input "results_malloc/*.csv:malloc" --input "results_mimalloc/*.csv:mimalloc" -o charts/ups.png
+> # rows: "4 Inserters, As Saved (malloc)", "4 Inserters, As Saved (mimalloc)", ...
+> ```
+> The suffix is whatever follows the last `:` of the argument (a Windows drive letter such as `C:\data\*.csv` is not mistaken for one). `--names-file` and `--name` keys still refer to the base name without the suffix. `--aggregate-file` run filters are matched by base name, so they apply to every input that has that file name. `bar` / `line` write one image per input file; the suffix is added to each file name (`timeseries_<name>_<suffix>.png`).
+>
+> `--include` / `--exclude` patterns are matched (shell-glob style, `*` and `?`) against the file's base name, its label, and its label with the suffix, e.g. `--exclude "*(mimalloc)"`.
+>
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
 > **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled) and grow **width** to fit the in-chart table's columns; `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.

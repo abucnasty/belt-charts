@@ -26,6 +26,8 @@ export interface BenchmarkAggregateRunResult {
     displayName: string;
     /** Optional group key set by the command layer for chart clustering. Carried through label transforms via object spread. */
     group?: string;
+    /** Label suffix of the `--input <glob>:<suffix>` this result was read from. Already appended to `displayName` by the label pipeline. */
+    inputSuffix?: string;
     metrics: MetricEnum[]
     runs: Map<MetricName, MetricRunAggregate[]>
     all: Map<MetricName, MetricAggregate>
@@ -280,6 +282,7 @@ export const explodeIntoPerRunResults = (
             runs: new Map(), // Empty since chart only reads "all"
             all: all,
             group: result.group,
+            inputSuffix: result.inputSuffix,
             __singleRun: true,
         } as SingleRunAggregateResult;
     });

@@ -2,29 +2,21 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 async function generateBoxPlot(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: BoxPlotChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: options.metrics.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, options.metrics.map((m) => m.name));
 
-  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, result) => {
       aggregateResults[task.fileIndex] = applyLabel(
@@ -81,6 +73,7 @@ export function createBoxPlotCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...inputOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -104,12 +97,9 @@ export function createBoxPlotCommand(): Command {
       };
 
       validateAnimateOutput(options.output, options.animate);
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
 
-      await generateBoxPlot(files, runsToRemove, options);
+      await generateBoxPlot(inputs, runsToRemove, options);
     });
 }

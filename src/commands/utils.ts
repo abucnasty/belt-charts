@@ -15,6 +15,9 @@ import { assignToGroup } from "../utils";
 import { BaseChartOptions } from "./types";
 import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
+import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
+
+export type { ChartInput } from "./inputs";
 
 export function getBaseName(file: string): string {
   return path.basename(file, ".csv").replace("_verbose_metrics", "");
@@ -51,17 +54,21 @@ export function toTitleCase(s: string): string {
  *   1. If `originalFileName` matches a `customNames` entry, use that label verbatim (bypasses all other steps).
  *   2. Otherwise: trimPrefix -> trimSubstrings -> titleCase, writing to `displayName`.
  * `originalFileName` is preserved unchanged so downstream lookups (group matching, run filters) still work.
+ * A result that carries an `inputSuffix` (from `--input "<glob>:<suffix>"`) gets ` (<suffix>)` appended
+ * after all of the above, including after a `--name` override.
  */
-export function applyLabel<T extends { originalFileName: string; displayName: string }>(
+export function applyLabel<T extends { originalFileName: string; displayName: string; inputSuffix?: string }>(
   result: T,
   trimPrefix: string,
   customNames: Map<string, string>,
   titleCase?: boolean,
   trimSubstrings?: string[],
 ): T {
+  const withSuffix = (r: T): T =>
+    result.inputSuffix ? { ...r, displayName: `${r.displayName} (${result.inputSuffix})` } : r;
   const custom = customNames.get(result.originalFileName);
   if (custom !== undefined) {
-    return { ...result, displayName: custom };
+    return withSuffix({ ...result, displayName: custom });
   }
   let r = applyTrimPrefix(result, trimPrefix);
   if (trimSubstrings?.length) {
@@ -70,7 +77,7 @@ export function applyLabel<T extends { originalFileName: string; displayName: st
   if (titleCase) {
     r = { ...r, displayName: toTitleCase(r.displayName) };
   }
-  return r;
+  return withSuffix(r);
 }
 
 /**
@@ -183,13 +190,65 @@ export function parseScale(value: string): number {
   return scale;
 }
 
-export const baseOptions: OptionBuilder = {
+/**
+ * Adds the input-selection arguments shared by every command that reads results files:
+ * the positional glob, the repeatable `--input <glob>[:<label suffix>]`, and `--include` / `--exclude`.
+ * See `resolveChartInputs` for how they are combined.
+ */
+export const inputOptions: OptionBuilder = {
   build(command: Command): Command {
     return command
       .argument(
-        "<glob-pattern>",
-        "Glob pattern for CSV files (e.g. './data/*.csv')",
+        "[glob-pattern]",
+        "Glob pattern for CSV files (e.g. './data/*.csv'). Optional when --input is given.",
       )
+      .option<string[]>(
+        "--input <glob[:suffix]>",
+        "Results files to chart (repeatable). An optional \":suffix\" labels that input's rows \"<label> (suffix)\", so two folders with the same file names can be charted together. e.g. --input \"malloc/*.csv:malloc\" --input \"mimalloc/*.csv:mimalloc\"",
+        (val: string, acc: string[]) => [...acc, val],
+        [],
+      )
+      .option<string[]>(
+        "--include <pattern>",
+        "Only chart inputs whose base name or label matches this glob pattern (repeatable, OR-matched)",
+        (val: string, acc: string[]) => [...acc, val],
+        [],
+      )
+      .option<string[]>(
+        "--exclude <pattern>",
+        "Skip inputs whose base name or label matches this glob pattern (repeatable). Applied after --include",
+        (val: string, acc: string[]) => [...acc, val],
+        [],
+      );
+  },
+};
+
+export type RowSort = "total" | "input" | "name";
+
+/**
+ * Adds `--sort`, the row order of the bar charts. `total` (the default) ranks rows by their total
+ * time; `input` keeps the order of the `--include` patterns, then the names file, then the inputs,
+ * so a series of charts over different subsets shows the same saves in the same order; `name`
+ * sorts by the label shown in the chart.
+ */
+export const sortOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option<RowSort>(
+      "--sort <total | input | name>",
+      "Row order: by total time (default), in input order (--include patterns, then names file, then inputs), or by label",
+      (it: string) => {
+        if (it === "total" || it === "input" || it === "name") return it;
+        console.error(`Invalid --sort value: ${it}. Must be one of total, input, name. Defaulting to "total".`);
+        return "total";
+      },
+      "total",
+    );
+  },
+};
+
+export const baseOptions: OptionBuilder = {
+  build(command: Command): Command {
+    return inputOptions.build(command)
       .option("-o, --output <file>", "Output file path", "verbose_metrics.png")
       .option(
         "-w, --width <px>",
@@ -422,22 +481,80 @@ export function validateAnimateOutput(output: string, animate: boolean): void {
   }
 }
 
+/** The options every command passes through to choose its input files; spread into a command's options literal. */
+export function inputOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "include" | "exclude"> {
+  return {
+    input: opts.input ?? [],
+    include: opts.include ?? [],
+    exclude: opts.exclude ?? [],
+  };
+}
+
 /**
- * Resolves glob pattern to matched files, loads run outlier filters, and
- * ensures the output directory exists. Shared by all command action handlers.
+ * Resolves the positional glob and every `--input` to matched files (each remembering its label
+ * suffix), applies `--include` / `--exclude`, orders them for `--sort input`, merges the names file
+ * into `options.customNames`, loads run outlier filters, and ensures the output directory exists.
+ * Shared by all command action handlers.
  */
 export async function resolveChartInputs(
-  pattern: string,
-  options: Pick<BaseChartOptions, "aggregateFile" | "stddevFilter" | "output">,
-): Promise<{ files: string[]; runsToRemove: Map<string, Set<number>> }> {
-  const files = globSync(pattern);
-  if (files.length === 0) {
-    console.error(`No files matched the given pattern ${pattern}`);
+  pattern: string | undefined,
+  options: Pick<BaseChartOptions, "aggregateFile" | "stddevFilter" | "output" | "input" | "include" | "exclude" | "namesFile" | "customNames" | "trimPrefix" | "titleCase" | "trimSubstrings"> & { sort?: RowSort },
+): Promise<{ files: string[]; inputs: ChartInput[]; runsToRemove: Map<string, Set<number>> }> {
+  // The positional pattern is taken whole (it never carries a suffix), as before.
+  const specs: InputSpec[] = [...(pattern ? [{ glob: pattern }] : []), ...options.input.map(parseInputSpec)];
+  if (specs.length === 0) {
+    console.error("No input given: pass a glob pattern or at least one --input <glob>[:<suffix>]");
     process.exit(1);
   }
+  let inputs: ChartInput[] = [];
+  for (const spec of specs) {
+    const matched = globSync(spec.glob);
+    if (matched.length === 0) {
+      console.error(`No files matched the given pattern ${spec.glob}`);
+      process.exit(1);
+    }
+    inputs.push(...matched.map((file) => ({ file, suffix: spec.suffix })));
+  }
+
+  if (options.namesFile) {
+    options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
+  }
+
+  // What a pattern may match: the base name and the label(s) shown in the chart.
+  const candidatesOf = (input: ChartInput): string[] => {
+    const base = getBaseName(input.file);
+    const label = applyLabel(
+      { originalFileName: base, displayName: base },
+      options.trimPrefix,
+      options.customNames,
+      options.titleCase,
+      options.trimSubstrings,
+    ).displayName;
+    return input.suffix ? [base, label, `${label} (${input.suffix})`] : [base, label];
+  };
+
+  if (options.include.length > 0 || options.exclude.length > 0) {
+    const { kept, unmatchedIncludes, unmatchedExcludes } = filterInputs(
+      inputs,
+      { include: options.include, exclude: options.exclude },
+      candidatesOf,
+    );
+    unmatchedIncludes.forEach((p) => console.warn(`--include: pattern "${p}" did not match any input`));
+    unmatchedExcludes.forEach((p) => console.warn(`--exclude: pattern "${p}" did not match any input`));
+    if (kept.length === 0) {
+      console.error("No files left after applying --include / --exclude");
+      process.exit(1);
+    }
+    inputs = kept;
+  }
+
+  if (options.sort === "input") {
+    inputs = orderInputs(inputs, (input) => getBaseName(input.file), options.include, candidatesOf, [...options.customNames.keys()]);
+  }
+
   const runsToRemove = await loadRunFilters(options.aggregateFile, options.stddevFilter);
   ensureOutputDir(path.resolve(process.cwd(), options.output));
-  return { files, runsToRemove };
+  return { files: inputs.map((input) => input.file), inputs, runsToRemove };
 }
 
 type SupportedFormat = "png" | "svg";

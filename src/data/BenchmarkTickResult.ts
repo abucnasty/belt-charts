@@ -35,6 +35,8 @@ export interface BenchmarkTickResult {
     originalFileName: string;
     /** Transformed label shown in charts. Modified by the label pipeline. */
     displayName: string;
+    /** Label suffix of the `--input <glob>:<suffix>` this result was read from. */
+    inputSuffix?: string;
     metrics: MetricEnum[]
     metricTickStats: Map<MetricName, MetricTickStat[]>
 }

@@ -43,6 +43,12 @@ export type BaseChartOptions = {
   groupBy: string[];
   /** Override the chart's auto-generated title. Null = use the chart's default title. */
   titleOverride: string | null;
+  /** Repeatable `--input <glob>[:<label suffix>]` arguments, read in addition to the positional glob. */
+  input: string[];
+  /** `--include` glob patterns: when non-empty, only inputs whose base name or label matches one are charted. */
+  include: string[];
+  /** `--exclude` glob patterns: inputs whose base name or label matches one are skipped. */
+  exclude: string[];
 };
 
 // Summary chart specific options
@@ -113,7 +119,8 @@ export type EntityHeatmapChartOptions = BaseChartOptions & {
 export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
   "width" | "height" | "scale" | "output" | "trimPrefix" | "customNames" | "namesFile" |
-  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride"
+  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride" |
+  "input" | "include" | "exclude"
 > & {
   aggregateStrategy: AggregationStrategy;
   normalize: "global" | "column" | "row";

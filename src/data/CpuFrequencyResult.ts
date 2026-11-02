@@ -32,6 +32,8 @@ export interface CpuFrequencyResult {
     displayName: string;
     /** Optional group key set by the command layer for chart clustering. */
     group?: string;
+    /** Label suffix of the `--input <glob>:<suffix>` this result was read from. */
+    inputSuffix?: string;
     runs: RunCoreFrequencyProfile[];
 }
 

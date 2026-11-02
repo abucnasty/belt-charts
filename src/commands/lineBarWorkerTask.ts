@@ -22,6 +22,8 @@ export type LineBarParseTask = {
   customNames: [string, string][];
   titleCase: boolean;
   trimSubstrings: string[];
+  /** Label suffix of the input this file came from; recorded on the result as `inputSuffix`. */
+  suffix?: string;
 };
 
 export type LineBarWorkerTask = LineBarScanTask | LineBarParseTask;
@@ -49,5 +51,6 @@ export async function runLineBarWorkerTask(task: LineBarWorkerTask): Promise<num
   if (task.removeFirstTicks > 0) {
     result = ignoreFirstTicksFromResult(result, task.removeFirstTicks);
   }
+  if (task.suffix) result = { ...result, inputSuffix: task.suffix };
   return applyLabel(result, task.trimPrefix, new Map(task.customNames), task.titleCase, task.trimSubstrings);
 }

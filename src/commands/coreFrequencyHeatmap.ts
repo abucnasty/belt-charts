@@ -12,6 +12,8 @@ import {
   mergeCustomNames,
   parseNamesFile,
   resolveChartInputs,
+  inputOptionsFrom,
+  type ChartInput,
 } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 
@@ -25,18 +27,18 @@ function warnUnmatchedSaveNames(saveNames: Set<string>, customNames: Map<string,
 }
 
 async function generateCoreFrequencyHeatmap(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: CoreFrequencyHeatmapChartOptions,
 ): Promise<void> {
   const results = [];
 
-  for (const file of files) {
+  for (const { file, suffix } of inputs) {
     console.log(`Processing file: ${file}`);
     const parsed = await parseCpuFrequencyResultsFromCsv(file, runsToRemove, options.saveNameFilters);
     for (const result of parsed) {
       results.push(applyLabel(
-        result,
+        suffix ? { ...result, inputSuffix: suffix } : result,
         options.trimPrefix,
         options.customNames,
         options.titleCase,
@@ -105,6 +107,7 @@ export function createCoreFrequencyHeatmapCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...inputOptionsFrom(opts),
         trimPrefix: opts.trimPrefix,
         trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),
@@ -120,11 +123,8 @@ export function createCoreFrequencyHeatmapCommand(): Command {
         saveNameFilters: opts.saveNameFilter ?? [],
       };
 
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
 
-      await generateCoreFrequencyHeatmap(files, runsToRemove, options);
+      await generateCoreFrequencyHeatmap(inputs, runsToRemove, options);
     });
 }

@@ -5,7 +5,7 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput } from "./utils";
+import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { revealTimeseriesForAnimation } from "../charts/animation";
@@ -13,7 +13,7 @@ import { runInWorkerPool } from "./workerPool";
 import { LineBarParseTask, LineBarScanTask } from "./lineBarWorkerTask";
 
 async function generateLineOrBarCharts(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: LineBarChartOptions,
 ): Promise<void> {
@@ -21,7 +21,7 @@ async function generateLineOrBarCharts(
   let maxWholeUpdate = options.maxUpdate;
   if (maxWholeUpdate == null) {
     console.log("--max-update not provided, auto-detecting max value across all files...");
-    const scanTasks: LineBarScanTask[] = files.map((file) => ({
+    const scanTasks: LineBarScanTask[] = inputs.map(({ file }) => ({
       taskType: "lineBarScan",
       file,
       runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
@@ -45,9 +45,10 @@ async function generateLineOrBarCharts(
   const ext = path.extname(options.output) || ".png";
   const maxUpdateValue = maxWholeUpdate;
 
-  const parseTasks: LineBarParseTask[] = files.map((file) => ({
+  const parseTasks: LineBarParseTask[] = inputs.map(({ file, suffix }) => ({
     taskType: "lineBarParse",
     file,
+    suffix,
     runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
     maxTicks: options.maxTicks,
     removeFirstTicks: options.removeFirstTicks,
@@ -74,7 +75,8 @@ async function generateLineOrBarCharts(
       tickWindow: options.tickWindowAggregation,
       metrics: options.metrics,
     });
-    const outputPath = `${fileNameWithoutExt}_${result.originalFileName}${ext}`;
+    // Inputs sharing file names are told apart by their suffix.
+    const outputPath = `${fileNameWithoutExt}_${result.originalFileName}${result.inputSuffix ? `_${result.inputSuffix}` : ""}${ext}`;
     if (options.animate) {
       return renderChartAnimationToFile(
         (progress) => revealTimeseriesForAnimation(config, progress),
@@ -133,6 +135,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...inputOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -159,14 +162,11 @@ function createLineBarCommand(type: "line" | "bar"): Command {
       };
 
       validateAnimateOutput(options.output, options.animate);
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
       warnAllowUnfilteredMetrics(options.allowUnfilteredMetrics);
 
-      await generateLineOrBarCharts(files, runsToRemove, options);
+      await generateLineOrBarCharts(inputs, runsToRemove, options);
     });
 }
 

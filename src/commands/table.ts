@@ -6,26 +6,18 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, resolveMetrics } from "./utils";
+import { applyLabel, warnUnmatchedNames, resolveChartInputs, resolveMetrics, inputOptions, inputOptionsFrom, type ChartInput } from "./utils";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 async function generateTable(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: TableChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: options.metrics.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, options.metrics.map((m) => m.name));
 
-  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, result) => {
       aggregateResults[task.fileIndex] = applyLabel(
@@ -48,12 +40,8 @@ async function generateTable(
 }
 
 export function createTableCommand(): Command {
-  return new Command("table")
-    .description("Export aggregate statistics to CSV table")
-    .argument(
-      "<glob-pattern>",
-      "Glob pattern for CSV files (e.g. './data/*.csv')",
-    )
+  return inputOptions.build(new Command("table")
+    .description("Export aggregate statistics to CSV table"))
     .option(
       "-o, --output <file>",
       "Output file path (without extension)",
@@ -151,6 +139,7 @@ export function createTableCommand(): Command {
         height: opts.height,
         scale: 1,
         output: opts.output,
+        ...inputOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -168,12 +157,9 @@ export function createTableCommand(): Command {
         titleOverride: null,
       };
 
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
 
-      await generateTable(files, runsToRemove, options);
+      await generateTable(inputs, runsToRemove, options);
     });
 }
