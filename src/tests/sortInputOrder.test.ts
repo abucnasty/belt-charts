@@ -73,8 +73,8 @@ describe("--sort input keeps the input order without --group-by", () => {
     });
   }
 
-  it("entity-summary, also with --rest-of-tick and --error-bars", () => {
-    for (const extra of [{}, { restOfTick: true }, { errorBars: "minmax" as const }]) {
+  it("entity-summary, also with --error-bars", () => {
+    for (const extra of [{}, { errorBars: "minmax" as const }]) {
       const { config, table } = createEntityBreakdownChartConfiguration(inInputOrder, {
         aggregationStrategy: AggregationStrategy.AVERAGE, sort: "input", ...extra,
       });

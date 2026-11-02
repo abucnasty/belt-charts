@@ -20,8 +20,6 @@ import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableRes
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
-const REST_OF_TICK_NAME = "restOfTick";
-const REST_OF_TICK_DESCRIPTION = "Rest of Tick";
 
 interface EntityBreakdownMetricValue {
   metricName: string;
@@ -36,12 +34,8 @@ interface EntityBreakdownChartData {
   inputSuffix?: string;
   group?: string;
   entityUpdateTotal: number;
-  /** Whole update time (µs); 0 when wholeUpdate was not parsed. */
-  wholeUpdateTotal: number;
-  /** Length of the bar: the whole update when the rest of the tick is shown, otherwise the entity update. */
-  barTotal: number;
-  /** Per-run means (µs) of the bar's total, one value per run; empty for per-run (exploded) results. */
-  barRunMeans: number[];
+  /** Per-run means (µs) of the entity update, one value per run; empty for per-run (exploded) results. */
+  entityUpdateRunMeans: number[];
   metricValues: EntityBreakdownMetricValue[];
 }
 
@@ -60,11 +54,6 @@ export interface EntityBreakdownChartOptions extends BaselineOptions {
   isPerRun?: boolean;
   groupBy?: string[];
   valueLabels?: boolean;
-  /**
-   * Adds a "Rest of Tick" segment (wholeUpdate - entityUpdate) so the bar spans the whole update and
-   * rows are ranked by it. Needs wholeUpdate in the parsed results.
-   */
-  restOfTick?: boolean;
   /** Draws the run-to-run spread of the per-run means of the bar's total on each bar, and adds it to the table. Ignored with a baseline. */
   errorBars?: ErrorBarMode;
   /** One row per save with one bar per input suffix ("session") side by side, instead of one row per file. */
@@ -85,12 +74,9 @@ export interface EntityBreakdownChartResult {
 const mapEntityBreakdownData = (
   result: BenchmarkAggregateRunResult,
   entityChildren: MetricName[],
-  restOfTick: boolean,
 ): EntityBreakdownChartData => {
   const entityUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.ENTITY_UPDATE.name);
   const entityUpdateTotal = entityUpdateAgg ? nanoToMicro(entityUpdateAgg.average) : 0;
-  const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name);
-  const wholeUpdateTotal = wholeUpdateAgg ? nanoToMicro(wholeUpdateAgg.average) : 0;
 
   const childValues = entityChildren.flatMap(name => {
     const agg = result.all.get(name);
@@ -110,10 +96,7 @@ const mapEntityBreakdownData = (
     inputSuffix: result.inputSuffix,
     group: result.group,
     entityUpdateTotal,
-    wholeUpdateTotal,
-    barTotal: restOfTick ? wholeUpdateTotal : entityUpdateTotal,
-    barRunMeans: (result.runs.get(restOfTick ? MetricEnum.WHOLE_UPDATE.name : MetricEnum.ENTITY_UPDATE.name) ?? [])
-      .map(run => nanoToMicro(run.average)),
+    entityUpdateRunMeans: (result.runs.get(MetricEnum.ENTITY_UPDATE.name) ?? []).map(run => nanoToMicro(run.average)),
     metricValues: childValues,
   };
 };
@@ -126,10 +109,9 @@ export const createEntityBreakdownChartConfiguration = (
     .getChildrenOf(MetricEnum.ENTITY_UPDATE.name)
     .map(m => m.name);
 
-  const restOfTick = options.restOfTick ?? false;
-  const rawChartData = results.map(result => mapEntityBreakdownData(result, allEntityChildren, restOfTick));
+  const rawChartData = results.map(result => mapEntityBreakdownData(result, allEntityChildren));
 
-  const compareRows = rowComparator<EntityBreakdownChartData>(options.sort ?? "total", d => d.barTotal);
+  const compareRows = rowComparator<EntityBreakdownChartData>(options.sort ?? "total", d => d.entityUpdateTotal);
   if (options.sortBy !== "preserve") {
     rawChartData.sort(compareRows);
   }
@@ -190,9 +172,7 @@ export const createEntityBreakdownChartConfiguration = (
       inputSuffix: data.inputSuffix,
       group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
-      wholeUpdateTotal: data.wholeUpdateTotal,
-      barTotal: data.barTotal,
-      barRunMeans: data.barRunMeans,
+      entityUpdateRunMeans: data.entityUpdateRunMeans,
       metricValues: [
         ...displayedValues,
         {
@@ -200,11 +180,6 @@ export const createEntityBreakdownChartConfiguration = (
           metricDescription: OTHER_ENTITY_DESCRIPTION,
           average: otherAvg,
         },
-        ...(restOfTick ? [{
-          metricName: REST_OF_TICK_NAME,
-          metricDescription: REST_OF_TICK_DESCRIPTION,
-          average: Math.max(0, data.wholeUpdateTotal - data.entityUpdateTotal),
-        }] : []),
       ],
     };
   });
@@ -220,18 +195,17 @@ export const createEntityBreakdownChartConfiguration = (
   const rowName = (idx: number): string =>
     isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
 
-  // Spread of the per-run means of each bar's total.
+  // Spread of the per-run means of the entity update.
   const errorBarMode = isDelta ? undefined : options.errorBars;
   const errorBars: (ErrorBar | null)[] = errorBarMode
-    ? chartData.map(data => computeErrorBar(data.barRunMeans, errorBarMode, data.barTotal))
+    ? chartData.map(data => computeErrorBar(data.entityUpdateRunMeans, errorBarMode, data.entityUpdateTotal))
     : [];
 
   // Datasets — one stacked dataset per displayed child + one for "other".
-  const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME, ...(restOfTick ? [REST_OF_TICK_NAME] : [])];
+  const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME];
   const datasetDescriptions = new Map<string, string>([
     ...displayedChildren.map(name => [name, MetricRegistryInstance.getOrThrow(name).description] as [string, string]),
     [OTHER_ENTITY_NAME, OTHER_ENTITY_DESCRIPTION],
-    [REST_OF_TICK_NAME, REST_OF_TICK_DESCRIPTION],
   ]);
 
   // Build interleaved row structure: group header spacers + data rows.
@@ -260,7 +234,7 @@ export const createEntityBreakdownChartConfiguration = (
           label: pairLabelOf(data),
           session: data.inputSuffix!,
           group: data.group,
-          total: data.barTotal,
+          total: data.entityUpdateTotal,
           segments: new Map(data.metricValues.map(mv => [mv.metricName, mv.average])),
         })),
         datasetOrder.map(name => ({ name, description: datasetDescriptions.get(name)! })),
@@ -270,7 +244,7 @@ export const createEntityBreakdownChartConfiguration = (
           sort: options.sort ?? "total",
           singleBar: false,
           digits: 2,
-          totalLabel: restOfTick ? "Whole Update" : "Entity Update",
+          totalLabel: "Entity Update",
           spacerPrefix: SPACER_PREFIX,
         },
       )
@@ -314,7 +288,7 @@ export const createEntityBreakdownChartConfiguration = (
     description: datasetDescriptions.get(name)!,
   }));
 
-  const totalLabel = restOfTick ? "Whole Update" : "Entity Update";
+  const totalLabel = "Entity Update";
 
   // Baseline table: the segments are changes against the baseline row, plus the total's percent
   // change and its absolute value.
@@ -334,9 +308,9 @@ export const createEntityBreakdownChartConfiguration = (
         values: [
           rowName(idx),
           ...deltas,
-          formatSignedChange(data.barTotal - base.barTotal),
-          formatPercentChange(base.barTotal, data.barTotal),
-          parseFloat(data.barTotal.toFixed(2)),
+          formatSignedChange(data.entityUpdateTotal - base.entityUpdateTotal),
+          formatPercentChange(base.entityUpdateTotal, data.entityUpdateTotal),
+          parseFloat(data.entityUpdateTotal.toFixed(2)),
         ],
       };
     });
@@ -349,7 +323,6 @@ export const createEntityBreakdownChartConfiguration = (
       "Save File",
       ...tableHeaderMetrics.map(m => m.description),
       "Entity Update Total",
-      ...(restOfTick ? ["Whole Update Total"] : []),
       "vs Prev",
       "vs Best",
       ...(errorBarMode ? errorBarColumns(errorBarMode, totalLabel) : []),
@@ -358,11 +331,11 @@ export const createEntityBreakdownChartConfiguration = (
     // "Best" is the first row, which is the fastest unless --sort changed the order.
     const bestIdx = (options.sort ?? "total") === "total"
       ? 0
-      : chartData.reduce((best, data, idx) => data.barTotal < chartData[best].barTotal ? idx : best, 0);
+      : chartData.reduce((best, data, idx) => data.entityUpdateTotal < chartData[best].entityUpdateTotal ? idx : best, 0);
     const totalStats = chartData.map((data, idx) => {
-      const currentValue = data.barTotal;
-      const previousValue = idx > 0 ? chartData[idx - 1].barTotal : null;
-      const bestValue = chartData[bestIdx].barTotal;
+      const currentValue = data.entityUpdateTotal;
+      const previousValue = idx > 0 ? chartData[idx - 1].entityUpdateTotal : null;
+      const bestValue = chartData[bestIdx].entityUpdateTotal;
       return {
         currentValue,
         slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
@@ -382,7 +355,6 @@ export const createEntityBreakdownChartConfiguration = (
           data.displayName,
           ...metricValues,
           parseFloat(data.entityUpdateTotal.toFixed(2)),
-          ...(restOfTick ? [parseFloat(data.wholeUpdateTotal.toFixed(2))] : []),
           stats.slowdownFromPrevious,
           stats.slowdownFromBest,
           ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[idx - 1], errorBars[idx])] : []),
@@ -438,7 +410,7 @@ export const createEntityBreakdownChartConfiguration = (
   const xAxisLabel = isDelta
     ? `Change in ${totalLabel} time vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (left of zero is faster)`
     : `${totalLabel} time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`;
-  const titleSuffix = `${restOfTick ? " and Rest of Tick" : ""}${isDelta ? " vs Baseline" : ""}`;
+  const titleSuffix = isDelta ? " vs Baseline" : "";
   const title = options.titleOverride ?? (options.isPerRun
     ? `${aggregationStrategyLabel} Per Tick Entity Breakdown${titleSuffix} (Per Run)`
     : `${aggregationStrategyLabel} Per Tick Entity Breakdown${titleSuffix}`);

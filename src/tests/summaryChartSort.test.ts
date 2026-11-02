@@ -86,32 +86,23 @@ describe("entity chart row order", () => {
   });
 });
 
-describe("entity chart rest of tick", () => {
+describe("entity chart contents", () => {
   const withWhole = [
     makeResult("a", { wholeUpdate: 3000, entityUpdate: 1000, Inserter: 800 }),
     makeResult("b", { wholeUpdate: 2000, entityUpdate: 1500, Inserter: 1200 }),
   ];
-  const build = (restOfTick: boolean) =>
-    createEntityBreakdownChartConfiguration(withWhole, { aggregationStrategy: AggregationStrategy.AVERAGE, restOfTick });
+  const { config, table } = createEntityBreakdownChartConfiguration(withWhole, { aggregationStrategy: AggregationStrategy.AVERAGE });
 
-  it("ranks by entityUpdate without it, so the longer whole update ranks first", () => {
-    expect(build(false).config.data.labels).toEqual(["a", "b"]);
+  it("ranks and measures by entityUpdate only, whatever the whole update is", () => {
+    expect(config.data.labels).toEqual(["a", "b"]);
+    expect(table.header.slice(-3)).toEqual(["Entity Update Total", "vs Prev", "vs Best"]);
+    expect(table.rows[0].slice(-3)).toEqual([1000, "", ""]);
   });
 
-  it("adds a Rest of Tick segment of wholeUpdate - entityUpdate and ranks by the whole update", () => {
-    const { config, table } = build(true);
-    expect(config.data.labels).toEqual(["b", "a"]);
-    const rest = config.data.datasets.find(d => d.label === "Rest of Tick")!;
-    expect(rest.data).toEqual([500, 2000]);
-    expect(table.header.slice(-4)).toEqual(["Entity Update Total", "Whole Update Total", "vs Prev", "vs Best"]);
-    expect(table.rows[0].slice(-4)).toEqual([1500, 2000, "", ""]);
-  });
-
-  it("keeps each bar's segments summing to the whole update", () => {
-    const { config } = build(true);
+  it("keeps each bar's segments summing to the entity update", () => {
     config.data.labels!.forEach((_, row) => {
       const sum = config.data.datasets.reduce((total, d) => total + (d.data[row] as number), 0);
-      expect(sum).toBeCloseTo(row === 0 ? 2000 : 3000);
+      expect(sum).toBeCloseTo(row === 0 ? 1000 : 1500);
     });
   });
 });

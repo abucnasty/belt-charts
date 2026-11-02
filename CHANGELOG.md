@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--input "<glob>:<suffix>"` (repeatable, on every command) charts several results folders together; each input's labels get ` (suffix)` appended, so two sessions with the same file names no longer need symlinks and a names file.
 - `--include` / `--exclude` glob patterns choose which input files are charted.
 - `--sort <total|input|name>` on `summary`, `ups`, `entity-summary` and `boxplot` keeps a fixed row order (names file, `--include` or input order, or by label) instead of ranking by total; the default is unchanged.
-- `entity-summary --rest-of-tick` adds a "Rest of Tick" segment (whole update minus entity update), so the bar length is the whole update and the ranking matches UPS.
 - `--baseline <label>` and `--baseline-per-group <key=label,...>` on `summary`, `ups` and `entity-summary` draw each segment's change against a baseline row (µs, with percent change in the table) instead of absolute values; the exported table gets the delta columns.
 - `--error-bars <stddev|ci95|minmax>` on `summary`, `ups` and `entity-summary` draws the run-to-run spread of the per-run means on each bar, and adds it, with an "Overlaps Prev" flag, to the table.
 - `--paired` on `summary`, `ups` and `entity-summary` draws one row per save with one bar per input suffix side by side (stacked bars for segments), with a session legend, instead of one row per file.

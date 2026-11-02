@@ -165,7 +165,7 @@ belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "*
 | `--baseline <label>` | *(none)* | The row everything is compared against, named by its label (as shown in the chart, including any `--input` suffix) or its base name. Each segment is drawn as its change against the same segment of the baseline row, diverging from zero (µs; for `ups`, updates per second). The baseline row is marked `(baseline)` and is empty. It must match exactly one row; with `--group-by` it is looked up inside each group |
 | `--baseline-per-group <key=label,...>` | *(none)* | With `--group-by`: the baseline of each group, e.g. `"q1=Q1 As Saved,q2=Q2 As Saved"`. Takes precedence over `--baseline` for the listed groups. Labels cannot contain commas |
 
-The in-chart table and the exported `.csv`/`.md` show the same changes instead of absolute values: `summary` gets `Δ <segment>` columns, `Δ Whole %` and the absolute `Whole`; `entity-summary` gets `Δ <segment>` columns, `Δ Entity Update`, `Δ Entity Update %` and the absolute total; `ups` keeps `UPS` and adds `+/- vs Baseline` and `% vs Baseline`. Rows are ordered as usual (see Row Order); `--baseline` does not reorder them. Combine it with `entity-summary --rest-of-tick` to see that only the inserter segment moves.
+The in-chart table and the exported `.csv`/`.md` show the same changes instead of absolute values: `summary` gets `Δ <segment>` columns, `Δ Whole %` and the absolute `Whole`; `entity-summary` gets `Δ <segment>` columns, `Δ Entity Update`, `Δ Entity Update %` and the absolute total; `ups` keeps `UPS` and adds `+/- vs Baseline` and `% vs Baseline`. Rows are ordered as usual (see Row Order); `--baseline` does not reorder them.
 
 ```
 belt-charts entity-summary "results/*.csv" --baseline "4i-as-saved" --value-labels -o charts/inserter_delta.png
@@ -180,7 +180,7 @@ belt-charts summary "results/*.csv" --group-by "q1,q2" --baseline-per-group "q1=
 
 | Option | Default | Description |
 |---|---|---|
-| `--error-bars <stddev\|ci95\|minmax>` | *(off)* | `stddev`: ± the sample standard deviation (n − 1) of the run means. `ci95`: ± the 95% confidence interval of their mean (Student's t). `minmax`: from the smallest to the largest run mean. Drawn on the end of each bar (the whole update; the entity update for `entity-summary`, or the whole update with `--rest-of-tick`; updates per second for `ups`) |
+| `--error-bars <stddev\|ci95\|minmax>` | *(off)* | `stddev`: ± the sample standard deviation (n − 1) of the run means. `ci95`: ± the 95% confidence interval of their mean (Student's t). `minmax`: from the smallest to the largest run mean. Drawn on the end of each bar (the whole update; the entity update for `entity-summary`; updates per second for `ups`) |
 
 The table and the exported `.csv`/`.md` gain the spread (`± Std Dev`, `± 95% CI`, or `Min Run` and `Max Run`) and an `Overlaps Prev` column: `yes` when the row's interval overlaps the row above, i.e. the two cannot be told apart within run-to-run noise. A file with a single run has no `stddev` / `ci95` bar. Not available with `--baseline`, nor on the `-per-run` commands.
 
@@ -436,7 +436,7 @@ belt-charts render charts.json --dry-run   # print the command line of every cha
   },
   "charts": [
     { "command": "ups", "input": "results/*.csv", "output": "charts/ups.png", "sort": "input" },
-    { "command": "entity-summary", "input": "results/*.csv", "output": "charts/entity.png", "restOfTick": true, "valueLabels": true },
+    { "command": "entity-summary", "input": "results/*.csv", "output": "charts/entity.png", "valueLabels": true },
     {
       "command": "summary",
       "input": ["malloc/*.csv:malloc", { "path": "mimalloc/*.csv", "suffix": "mimalloc" }],
@@ -468,7 +468,6 @@ Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions.
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
 | `--group-by <keys>` | *(none)* | Same behaviour as in `summary` — see above |
-| `--rest-of-tick` | `false` | Add one more segment, `Rest of Tick` (`wholeUpdate - entityUpdate`), so every bar spans the whole update and rows are ranked by it (and `vs Prev` / `vs Best` follow). A build can have the longest entity segments and still the best UPS because its lead is outside entity update; this shows both in one chart. The table gains `Rest of Tick` and `Whole Update Total` columns. Also works on `entity-summary-per-run` |
 
 ```
 belt-charts entity-summary "results/my_amazing_map*.csv"

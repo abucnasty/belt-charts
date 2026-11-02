@@ -86,7 +86,6 @@ async function generateEntityBreakdown(
     baselinePerGroup: options.baselinePerGroup,
     errorBars: options.errorBars,
     paired: options.paired,
-    restOfTick: options.restOfTick,
   });
 
   console.log("Chart configuration created.");
@@ -149,19 +148,13 @@ const entitySummaryOptions: OptionBuilder = {
         },
         "total",
       )
-      .option(
-        "--rest-of-tick",
-        "Add a \"Rest of Tick\" segment (wholeUpdate - entityUpdate) so each bar spans the whole update and rows are ranked by it",
-        false,
-      )
       .addOption(new Option("--fish").hideHelp());
   },
 };
 
 function makeEntitySummaryAction(perRun: boolean) {
   return async (pattern: string, opts: any) => {
-    const restOfTick = opts.restOfTick ?? false;
-    const metrics = restOfTick ? [...DEFAULT_ENTITY_METRICS, MetricEnum.WHOLE_UPDATE] : DEFAULT_ENTITY_METRICS;
+    const metrics = DEFAULT_ENTITY_METRICS;
     const options: EntityBreakdownChartOptions = {
       width: opts.width,
       height: opts.height,
@@ -199,7 +192,6 @@ function makeEntitySummaryAction(perRun: boolean) {
       baselinePerGroup: opts.baselinePerGroup,
       errorBars: opts.errorBars,
       paired: opts.paired ?? false,
-      restOfTick,
     };
 
     validateAnimateOutput(options.output, options.animate);
