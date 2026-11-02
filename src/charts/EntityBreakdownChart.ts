@@ -12,6 +12,7 @@ import type { RowSort } from "../commands/types";
 import { colors, chartLayout } from "./constants";
 import { rowComparator } from "./rowOrder";
 import { getMetricPattern } from "./styles";
+import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, sessionsOf } from "./paired";
 import { createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
 
@@ -29,6 +30,8 @@ interface EntityBreakdownMetricValue {
 interface EntityBreakdownChartData {
   displayName: string;
   originalFileName: string;
+  /** Label suffix of the input this row came from (`--input <glob>:<suffix>`). */
+  inputSuffix?: string;
   group?: string;
   entityUpdateTotal: number;
   /** Whole update time (µs); 0 when wholeUpdate was not parsed. */
@@ -60,6 +63,8 @@ export interface EntityBreakdownChartOptions extends BaselineOptions {
   restOfTick?: boolean;
   /** Draws the run-to-run spread of the per-run means of the bar's total on each bar, and adds it to the table. Ignored with a baseline. */
   errorBars?: ErrorBarMode;
+  /** One row per save with one bar per input suffix ("session") side by side, instead of one row per file. */
+  paired?: boolean;
 }
 
 export interface EntityBreakdownChartResult {
@@ -98,6 +103,7 @@ const mapEntityBreakdownData = (
   return {
     displayName: result.displayName,
     originalFileName: result.originalFileName,
+    inputSuffix: result.inputSuffix,
     group: result.group,
     entityUpdateTotal,
     wholeUpdateTotal,
@@ -177,6 +183,7 @@ export const createEntityBreakdownChartConfiguration = (
     return {
       displayName: data.displayName,
       originalFileName: data.originalFileName,
+      inputSuffix: data.inputSuffix,
       group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
       wholeUpdateTotal: data.wholeUpdateTotal,
@@ -240,15 +247,52 @@ export const createEntityBreakdownChartConfiguration = (
   } else {
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
-  const chartLabels = rows.map(row =>
+
+  // Paired: one row per save, one bar per session (the input suffix), instead of one row per file.
+  const sessions = options.paired ? sessionsOf(results) : [];
+  const pairedLayout = options.paired
+    ? buildPaired(
+        chartData.map(data => ({
+          label: pairLabelOf(data),
+          session: data.inputSuffix!,
+          group: data.group,
+          total: data.barTotal,
+          segments: new Map(data.metricValues.map(mv => [mv.metricName, mv.average])),
+        })),
+        datasetOrder.map(name => ({ name, description: datasetDescriptions.get(name)! })),
+        {
+          sessions,
+          groupBy,
+          sort: options.sort ?? "total",
+          singleBar: false,
+          digits: 2,
+          totalLabel: restOfTick ? "Whole Update" : "Entity Update",
+          spacerPrefix: SPACER_PREFIX,
+        },
+      )
+    : null;
+
+  const chartLabels = pairedLayout ? pairedLayout.labels : rows.map(row =>
     row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : rowName(row.idx)
   );
 
-  const datasets = datasetOrder.map(name => ({
-    label: datasetDescriptions.get(name)!,
-    data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, name)),
-    backgroundColor: getMetricPattern(name),
-  }));
+  const datasets: any[] = pairedLayout
+    ? pairedLayout.datasets.map(d => ({
+        label: d.label,
+        stack: d.stack,
+        data: d.data,
+        backgroundColor: getMetricPattern(d.segmentName!),
+      }))
+    : datasetOrder.map(name => ({
+        label: datasetDescriptions.get(name)!,
+        data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, name)),
+        backgroundColor: getMetricPattern(name),
+      }));
+  // The first dataset of each session, where its name is drawn.
+  const firstDatasetBySession = new Map<number, string>();
+  pairedLayout?.datasets.forEach((d, i) => {
+    if (![...firstDatasetBySession.values()].includes(d.session)) firstDatasetBySession.set(i, d.session);
+  });
 
   const backgroundPlugin = {
     id: "customBackground",
@@ -345,7 +389,9 @@ export const createEntityBreakdownChartConfiguration = (
     return { header, rows, totalStats };
   };
 
-  const tableStats = computeTableStats();
+  const tableStats = pairedLayout
+    ? { header: pairedLayout.table.header, rows: pairedLayout.table.rows.map(values => ({ displayName: String(values[0]), values })) }
+    : computeTableStats();
 
   // Table is drawn one row per save file (not one column per save file) so it stays readable
   // no matter how many results are being compared or how long their names are.
@@ -356,7 +402,7 @@ export const createEntityBreakdownChartConfiguration = (
   const tableReservedHeightPx = tableReservedHeight(tableStats.rows.length);
   const padding = options.includeTable ? { bottom: tableReservedHeightPx } : undefined;
   const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX
-    + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX
+    + chartLabels.length * (pairedLayout ? sessions.length : 1) * chartLayout.MIN_BAR_ROW_HEIGHT_PX
     + (options.includeTable ? tableReservedHeightPx : 0);
   // The y-axis tick labels (bar row names) sit outside the table's plot area, but the table's
   // flex "Save File" column is drawn in that same blank strip (not inside the plot area), so
@@ -395,7 +441,7 @@ export const createEntityBreakdownChartConfiguration = (
 
   // Sort datasets so legend matches stack visual order (largest first looks cleaner).
   const datasetRankByName = new Map<string, number>(datasetOrder.map((name, idx) => [name, idx]));
-  datasets.sort((a, b) => {
+  if (!pairedLayout) datasets.sort((a, b) => {
     const aName = datasetOrder.find(n => datasetDescriptions.get(n) === a.label) ?? "";
     const bName = datasetOrder.find(n => datasetDescriptions.get(n) === b.label) ?? "";
     return (datasetRankByName.get(aName) ?? 0) - (datasetRankByName.get(bName) ?? 0);
@@ -425,6 +471,9 @@ export const createEntityBreakdownChartConfiguration = (
             // Pattern tile is 20×20; ensure swatch is tall enough to show a full repeat.
             boxHeight: 20,
             boxWidth: 40,
+            ...(pairedLayout
+              ? pairedLegendLabels(sessions, false, text => datasetOrder.findIndex(name => datasetDescriptions.get(name) === text))
+              : {}),
           },
         },
       },
@@ -453,7 +502,7 @@ export const createEntityBreakdownChartConfiguration = (
         },
       },
     },
-    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(rows.map(row => row.kind === "spacer" ? null : errorBars[row.idx]))].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(rows.map(row => row.kind === "spacer" ? null : errorBars[row.idx])), pairedLayout && createSessionLabelsPlugin(firstDatasetBySession)].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

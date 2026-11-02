@@ -13,6 +13,7 @@ import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type Erro
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
+import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, SESSION_COLORS, sessionsOf } from "./paired"
 import { backgroundPlugin, createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { rowComparator } from "./rowOrder"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
@@ -44,6 +45,8 @@ interface SummaryChartOptions extends BaselineOptions {
   valueLabels?: boolean;
   /** Draws the run-to-run spread of the per-run means of the total on each bar, and adds it to the table. Ignored with a baseline. */
   errorBars?: ErrorBarMode;
+  /** One row per save with one bar per input suffix ("session") side by side, instead of one row per file. */
+  paired?: boolean;
 }
 
 export interface SummaryChartResult {
@@ -152,11 +155,38 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   // The baseline row itself is all zeros, so mark it.
   const rowName = (idx: number): string =>
     isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
-  const chartLabels = rows.map(row =>
+
+  // Paired: one row per save, one bar per session (the input suffix), instead of one row per file.
+  const sessions = options.paired ? sessionsOf(results) : [];
+  const pairedLayout = options.paired
+    ? buildPaired(
+        chartData.map(data => ({
+          label: pairLabelOf(data),
+          session: data.inputSuffix!,
+          group: data.group,
+          total: toDisplayValue(data.totalAverage),
+          segments: new Map(data.metricValues.map(mv => [mv.metricName, toDisplayValue(mv.average)])),
+        })),
+        isSingleBar
+          ? []
+          : metrics.filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name).map(metric => ({ name: metric.name, description: metric.description })),
+        {
+          sessions,
+          groupBy,
+          sort: options.sort ?? "total",
+          singleBar: isSingleBar,
+          higherIsBetter: valueMode === "ups",
+          digits: 0,
+          totalLabel: valueMode === "ups" ? "UPS" : "Whole",
+          spacerPrefix: SPACER_PREFIX,
+        },
+      )
+    : null;
+  const chartLabels = pairedLayout ? pairedLayout.labels : rows.map(row =>
     row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : rowName(row.idx)
   );
 
-  const datasets = isSingleBar
+  const plainDatasets = isSingleBar
     ? [{
         label: valueMode === "ups" ? "Updates Per Second" : MetricEnum.WHOLE_UPDATE.description,
         data: rows.map(row => row.kind === "spacer" ? null : totalValue(row.idx)),
@@ -170,6 +200,20 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, metric.name)),
           backgroundColor: getMetricPattern(metric.name),
         }))
+
+  const datasets: any[] = pairedLayout
+    ? pairedLayout.datasets.map(d => ({
+        label: d.label,
+        stack: d.stack,
+        data: d.data,
+        backgroundColor: isSingleBar ? SESSION_COLORS[sessions.indexOf(d.session) % SESSION_COLORS.length] : getMetricPattern(d.segmentName!),
+      }))
+    : plainDatasets;
+  // The first dataset of each session, where its name is drawn.
+  const firstDatasetBySession = new Map<number, string>();
+  pairedLayout?.datasets.forEach((d, i) => {
+    if (![...firstDatasetBySession.values()].includes(d.session)) firstDatasetBySession.set(i, d.session);
+  });
 
   // Spread of the per-run means of the total, in the plotted unit (µs or UPS).
   const errorBars: (ErrorBar | null)[] = errorBarMode
@@ -285,7 +329,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     return { header, rows, wholeUpdateStats };
   };
 
-  const tableStats = computeTableStats();
+  const tableStats = pairedLayout
+    ? { header: pairedLayout.table.header, rows: pairedLayout.table.rows.map(values => ({ displayName: String(values[0]), values })) }
+    : computeTableStats();
 
   // Table is drawn one row per save file (not one column per save file) so it stays readable
   // no matter how many results are being compared or how long their names are.
@@ -295,7 +341,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const tableHeight = options.includeTable ? tableReservedHeight(tableStats.rows.length) : 0;
   const padding = options.includeTable ? { bottom: tableHeight } : undefined
-  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX + tableHeight;
+  const barsPerRow = pairedLayout ? sessions.length : 1;
+  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX + chartLabels.length * barsPerRow * chartLayout.MIN_BAR_ROW_HEIGHT_PX + tableHeight;
   // The y-axis tick labels (bar row names) sit outside the table's plot area, but the table's
   // flex "Save File" column is drawn in that same blank strip (not inside the plot area), so
   // only the wider of the two needs to be reserved once, not both added together.
@@ -304,7 +351,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData, tableRenderOptions.flexColumnHeader)
     : 0;
 
-  datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
+  if (!pairedLayout) datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
 
   let aggregationStrategyLabel = ""
   switch (options.aggregationStrategy) {
@@ -368,7 +415,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
             boxHeight: 20,
             boxWidth: 40,
             // order by supported metric order
-            sort: (a, b) => profileOrder(a.text) - profileOrder(b.text)
+            ...(pairedLayout
+              ? pairedLegendLabels(sessions, isSingleBar, profileOrder)
+              : { sort: (a: any, b: any) => profileOrder(a.text) - profileOrder(b.text) })
           },
         },
       },
@@ -400,7 +449,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(errorBarsByRow)].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(errorBarsByRow), pairedLayout && createSessionLabelsPlugin(firstDatasetBySession)].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

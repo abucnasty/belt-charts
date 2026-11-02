@@ -40,6 +40,11 @@ export type ErrorBarsOption = {
   errorBars?: ErrorBarMode;
 };
 
+// Draws one row per save with one bar per input suffix instead of one row per file
+export type PairedOption = {
+  paired?: boolean;
+};
+
 // Base options shared by all chart types
 export type BaseChartOptions = {
   width: number;
@@ -74,7 +79,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & PairedOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -112,7 +117,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & PairedOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

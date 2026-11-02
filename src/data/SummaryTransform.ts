@@ -17,6 +17,8 @@ export interface SummaryChartData {
   displayName: string;
   /** Base name of the source file; lets `--baseline` find a row by file name as well as label. */
   originalFileName: string;
+  /** Label suffix of the input this row came from (`--input <glob>:<suffix>`). */
+  inputSuffix?: string;
   group?: string;
   totalAverage: number;
   /** Per-run mean of wholeUpdate (µs), one value per run; empty for per-run (exploded) results. */
@@ -67,6 +69,7 @@ export function buildSummaryChartData(
     return {
       displayName: result.displayName,
       originalFileName: result.originalFileName,
+      inputSuffix: result.inputSuffix,
       group: result.group,
       metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
       metricValues,
@@ -97,6 +100,7 @@ export function buildSummaryChartData(
   return {
     displayName: result.displayName,
     originalFileName: result.originalFileName,
+    inputSuffix: result.inputSuffix,
     group: result.group,
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues,

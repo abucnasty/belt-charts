@@ -188,6 +188,24 @@ belt-charts ups "results/*.csv" --error-bars ci95 -o charts/ups.png
 
 ---
 
+### Paired Bars for Two Sessions
+
+Two sessions of the same saves (allocator, game version, machine) double the row count: 12 saves in two sessions make a 24-row chart. `--paired` draws one row per save instead, with one bar per session side by side. The session is the label suffix of its `--input`; the save is the label without that suffix.
+
+`summary`, `ups` and `entity-summary` support it.
+
+| Option | Default | Description |
+|---|---|---|
+| `--paired` | `false` | One row per save with one bar per session (stacked bars side by side for `summary` and `entity-summary`, one colored bar per session for `ups`). Needs at least two `--input "<glob>:<suffix>"`. Each bar is named with its session, and the legend lists the sessions. A save that is missing from a session just has no bar there. Rows are ranked by the first session (`--sort` applies, and so does `--group-by`). Not combined with `--baseline` or `--error-bars` |
+
+The table has one row per save: each session's total, then the change of every later session against the first (`+/- <session> vs <first>` and `% <session> vs <first>`).
+
+```
+belt-charts ups --input "results_malloc/*.csv:malloc" --input "results_mimalloc/*.csv:mimalloc" --paired --names-file names.txt -o charts/ups_paired.png
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.

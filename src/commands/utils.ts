@@ -285,8 +285,30 @@ export const errorBarsOption: OptionBuilder = {
   },
 };
 
-/** Exits early on baseline / error-bar arguments that cannot work, before any file is parsed. */
-export function validateBaselineOptions(options: { baseline?: string | null; baselinePerGroup?: Map<string, string>; groupBy: string[]; errorBars?: ErrorBarMode }): void {
+/**
+ * Adds `--paired`: one row per save with one bar per input suffix (session) side by side, instead of
+ * one row per file. Needs at least two `--input "<glob>:<suffix>"`.
+ */
+export const pairedOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option(
+      "--paired",
+      "One row per save with one bar per input suffix side by side (stacked bars for segments). Needs at least two --input \"<glob>:<suffix>\"",
+      false,
+    );
+  },
+};
+
+/** Exits early on baseline / error-bar / paired arguments that cannot work, before any file is parsed. */
+export function validateBaselineOptions(options: { baseline?: string | null; baselinePerGroup?: Map<string, string>; groupBy: string[]; errorBars?: ErrorBarMode; paired?: boolean; input: string[] }): void {
+  if (options.paired) {
+    if (options.input.map(parseInputSpec).filter(spec => spec.suffix !== undefined).length < 2) {
+      throw new UserError("--paired needs at least two inputs with label suffixes, e.g. --input \"a/*.csv:malloc\" --input \"b/*.csv:mimalloc\"");
+    }
+    if (options.errorBars || options.baseline || (options.baselinePerGroup?.size ?? 0) > 0) {
+      throw new UserError("--paired cannot be combined with --baseline or --error-bars");
+    }
+  }
   if ((options.baselinePerGroup?.size ?? 0) > 0 && options.groupBy.length === 0) {
     throw new UserError("--baseline-per-group needs --group-by");
   }
