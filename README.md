@@ -144,7 +144,7 @@ belt-charts summary "results/my_amazing_map*.csv"
 
 | Option | Default | Description |
 |---|---|---|
-| `--sort <total\|input\|name>` | `total` | `total`: ranked by total time (today's behaviour; `boxplot` ranks by mean, slowest first). `input`: the order of the `--include` patterns, then of the names file (and `--name` flags), then of the inputs; sessions of the same save stay next to each other. `name`: by the label shown in the chart, numbers compared as numbers. With `--group-by` the same order applies inside each group |
+| `--sort <total\|input\|name>` | `total` | `total`: ranked by total time (today's behaviour; `boxplot` ranks by mean, slowest first). `input`: the order of the `--include` patterns (saves matched by the same pattern follow the names file), then of the names file (and `--name` flags), then of the inputs (sorted by file name within each input); sessions of the same save stay next to each other. `name`: by the label shown in the chart, numbers compared as numbers. With `--group-by` the same order applies inside each group |
 
 When the rows are not ordered by total, the `vs Best` column still measures against the fastest row, and `vs Prev` against the row above.
 

@@ -64,8 +64,9 @@ export function filterInputs(
 /**
  * Orders inputs for `--sort input`. Inputs that share a base name (the same save in several
  * input globs) stay next to each other, so sessions of one save are read together. Base names are
- * ranked by: `--include` pattern order, then names-file/`--name` order, then first appearance.
- * Within one base name the order of the input globs is kept.
+ * ranked by: `--include` pattern order (saves matched by one pattern follow the names-file order),
+ * then names-file/`--name` order, then first appearance. Within one base name the order of the
+ * input globs is kept.
  */
 export function orderInputs(
   inputs: ChartInput[],
@@ -78,10 +79,16 @@ export function orderInputs(
   const rank = (baseName: string) => {
     if (!ranking.includes(baseName)) ranking.push(baseName);
   };
+  const nameIndex = (baseName: string) => {
+    const idx = nameOrder.indexOf(baseName);
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+  };
   for (const pattern of includePatterns) {
-    for (const input of inputs) {
-      if (candidatesOf(input).some((candidate) => minimatch(candidate, pattern, MATCH_OPTIONS))) rank(baseNameOf(input));
-    }
+    const matched = inputs
+      .filter((input) => candidatesOf(input).some((candidate) => minimatch(candidate, pattern, MATCH_OPTIONS)))
+      .map(baseNameOf);
+    // A wildcard pattern matches several saves: the names file orders them (stable, so ties keep input order).
+    [...matched].sort((a, b) => nameIndex(a) - nameIndex(b)).forEach(rank);
   }
   nameOrder.forEach((name) => {
     if (inputs.some((input) => baseNameOf(input) === name)) rank(name);

@@ -611,7 +611,8 @@ export async function resolveChartInputs(
   }
   let inputs: ChartInput[] = [];
   for (const spec of specs) {
-    const matched = globSync(spec.glob);
+    // glob returns files in no particular order; --sort input needs a repeatable one.
+    const matched = options.sort === "input" ? globSync(spec.glob).sort() : globSync(spec.glob);
     if (matched.length === 0) {
       console.error(`No files matched the given pattern ${spec.glob}`);
       process.exit(1);
