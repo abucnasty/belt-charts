@@ -390,6 +390,30 @@ belt-charts table "results/my_amazing_map*.csv"
 
 ---
 
+### `prune`
+
+Shrinks results files without changing any chart: verbose metrics files run to tens of MB a save, and most of the 100+ columns are zero in every file. `prune` drops the columns that are zero in **every** file of the set (so every pruned file has the identical header) and can compress the result. A dropped column reads as zero, exactly as before, so the exported tables and images are unchanged.
+
+| Option | Default | Description |
+|---|---|---|
+| `<glob-pattern>` | *(required)* | Results files to prune (`.csv`, `.csv.gz`, `.csv.zst`) |
+| `--out-dir <dir>` | *(none)* | Write the pruned files to this directory; the originals stay |
+| `--in-place` | `false` | Replace the files where they are (a file that changes its name, e.g. by compressing, is replaced by the new one). One of `--out-dir` and `--in-place` is required, so nothing is overwritten by accident |
+| `--keep-only-charted` | `false` | Also drop columns no chart command reads. Kept: `tick`, `run`, `wholeUpdate`, the summary categories, `entityUpdate` and every entity type. `line` / `bar` with `--metrics` naming another column, or `table` (which exports every metric), would no longer find it |
+| `--compress <gz\|zst\|none>` | *(as the input)* | Write `.csv.gz`, `.csv.zst` or plain `.csv` |
+| `--dry-run` | `false` | Only report which columns would be dropped |
+
+`tick`, `run` and `wholeUpdate` are always kept. Files are streamed, so memory use stays flat however large they are.
+
+Every command reads `.csv.gz` and `.csv.zst` transparently, so a compressed folder charts like the original (`belt-charts summary "results/*.csv.gz"`; labels and `--names-file` keys use the base name without the extension). Reading and writing `.zst` uses Node's built-in zstd support, which needs **Node.js 22.15 or newer** (gzip works everywhere).
+
+```
+belt-charts prune "results/*.csv" --keep-only-charted --compress zst --out-dir results_small
+belt-charts summary "results_small/*.csv.zst" -o charts/summary.png
+```
+
+---
+
 ### `entity-summary`
 
 Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions. Requires Factorio verbose metrics CSVs that include the PascalCase per-entity columns (e.g. `Inserter`, `AssemblingMachine`).
@@ -542,7 +566,7 @@ PNG is the default when no extension is specified or when `.png` is used.
 
 ## Requirements
 
-- Node.js >= 14.0.0
+- Node.js >= 14.0.0 (reading and writing `.csv.zst` needs Node.js >= 22.15)
 - npm or yarn
 
 ## License

@@ -1,10 +1,9 @@
-import path from "path";
 import { MetricName } from "./Metric";
 import { MetricEnum } from "./MetricEnum";
 import { metricsFromColumns } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
-import { readCsv } from "./csvReader";
+import { readCsv, resultsFileBaseName } from "./csvReader";
 import { MetricSamples } from "./MetricSamples";
 
 export type MetricAggregate = {
@@ -45,7 +44,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     metrics: MetricEnum[],
     runsToRemove: Set<number>
 ): Promise<BenchmarkAggregateRunResult> => {
-    const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
+    const baseName = resultsFileBaseName(filePath);
     // Samples per run, indexed in the same order as `metrics`.
     const samplesPerRun: Map<number, MetricSamples[]> = new Map()
 

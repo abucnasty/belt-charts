@@ -15,6 +15,7 @@ import { assignToGroup } from "../utils";
 import { BaseChartOptions, RowSort } from "./types";
 import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
+import { resultsFileBaseName } from "../data/csvReader";
 import { parseBaselinePerGroup } from "../data/baseline";
 import { ERROR_BAR_MODES, ErrorBarMode } from "../data/errorBars";
 import { UserError } from "../utils";
@@ -23,7 +24,7 @@ import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from
 export type { ChartInput } from "./inputs";
 
 export function getBaseName(file: string): string {
-  return path.basename(file, ".csv").replace("_verbose_metrics", "");
+  return resultsFileBaseName(file);
 }
 
 export function applyTrimPrefix<T extends { displayName: string }>(result: T, trimPrefix: string): T {

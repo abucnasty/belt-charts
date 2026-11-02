@@ -1,10 +1,9 @@
-import path from "path";
 import { MetricName } from "./Metric";
 import { MetricRegistryInstance } from "./MetricRegistry";
 import { average, max, median, min, standardDeviation } from "../utils";
 import { MetricEnum } from "./MetricEnum";
 import { AggregationStrategy } from "./AggregationStrategy";
-import { readCsv } from "./csvReader";
+import { readCsv, resultsFileBaseName } from "./csvReader";
 
 export type BenchmarkResultRaw = Record<MetricName, number> & {
     tick: number;
@@ -97,7 +96,7 @@ export const parseBenchmarkAveragePerTickResultFromCsv = async (
     maxTicks?: number,
     metricNames?: Set<MetricName>,
 ): Promise<BenchmarkTickResult> => {
-    const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
+    const baseName = resultsFileBaseName(filePath);
     let metrics: MetricEnum[] = [];
     // Only the selected metric values are kept per tick, flattened as [run0 m0..mN, run1 m0..mN, ...].
     // Retaining whole parsed rows (every CSV column, as strings) exhausts the heap on large files.

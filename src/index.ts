@@ -16,6 +16,7 @@ import {
   createBarCommand,
   createBoxPlotCommand,
   createTableCommand,
+  createPruneCommand,
   createEntitySummaryCommand,
   createEntitySummaryPerRunCommand,
   createEntityMatrixCommand,
@@ -61,6 +62,7 @@ if (!isMainThread) {
   program.addCommand(createBarCommand());
   program.addCommand(createBoxPlotCommand());
   program.addCommand(createTableCommand());
+  program.addCommand(createPruneCommand());
   program.addCommand(createEntitySummaryCommand());
   program.addCommand(createEntitySummaryPerRunCommand());
   program.addCommand(createEntityMatrixCommand());
