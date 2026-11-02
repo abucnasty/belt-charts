@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -138,7 +138,7 @@ export function createSummaryPerRunCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,

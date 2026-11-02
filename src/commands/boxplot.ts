@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, sortOption, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
@@ -75,7 +75,7 @@ export function createBoxPlotCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,

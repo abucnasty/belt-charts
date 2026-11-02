@@ -8,6 +8,7 @@ import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import type { RowSort } from "../commands/types";
 import { rowComparator } from "./rowOrder";
+import { scaled } from "./fonts";
 
 export interface BoxChartOptions {
     /**
@@ -88,7 +89,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
                     text: title,
                     color: colors.white,
                     font: {
-                        size: 18
+                        size: scaled(18)
                     },
                     padding: {
                         top: 10,
@@ -115,7 +116,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
                         color: colors.white,
                         text: axisLabel,
                         font: {
-                            size: 14
+                            size: scaled(14)
                         }
                     },
                     min: roundTo(minimum, 1),

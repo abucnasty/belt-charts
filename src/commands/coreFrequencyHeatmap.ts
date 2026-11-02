@@ -12,7 +12,7 @@ import {
   mergeCustomNames,
   parseNamesFile,
   resolveChartInputs,
-  inputOptionsFrom,
+  commonOptionsFrom,
   type ChartInput,
 } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
@@ -107,7 +107,7 @@ export function createCoreFrequencyHeatmapCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         trimPrefix: opts.trimPrefix,
         trimSubstrings: opts.trimSubstring ?? [],
         customNames: opts.name ?? new Map(),

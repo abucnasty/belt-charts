@@ -17,6 +17,7 @@ import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
 import { resultsFileBaseName } from "../data/csvReader";
 import { parseBaselinePerGroup } from "../data/baseline";
+import { setFontScale } from "../charts/fontScale";
 import { ERROR_BAR_MODES, ErrorBarMode } from "../data/errorBars";
 import { UserError } from "../utils";
 import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
@@ -335,6 +336,12 @@ export const baseOptions: OptionBuilder = {
         800,
       )
       .option<number>(
+        "--font-scale <factor>",
+        "Multiplies the size of all text (titles, legends, axis labels, value labels, tables) and the layout measures that fit it, independent of -w, -h and --scale. 1 = default",
+        parseFontScale,
+        1,
+      )
+      .option<number>(
         "--scale <factor>",
         "Integer output pixel multiplier for higher-resolution images. -w/-h still set the layout size, so -w 1000 --scale 2 renders a 2000px-wide image with identical layout",
         parseScale,
@@ -553,26 +560,37 @@ export function validateAnimateOutput(output: string, animate: boolean): void {
   }
 }
 
-/** The options every command passes through to choose its input files; spread into a command's options literal. */
-export function inputOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "include" | "exclude"> {
+/** The options every command shares beyond the chart's own (inputs, text size); spread into a command's options literal. */
+export function commonOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "include" | "exclude" | "fontScale"> {
   return {
     input: opts.input ?? [],
     include: opts.include ?? [],
     exclude: opts.exclude ?? [],
+    fontScale: opts.fontScale ?? 1,
   };
+}
+
+export function parseFontScale(value: string): number {
+  const scale = Number(value);
+  if (!Number.isFinite(scale) || scale <= 0) {
+    throw new UserError(`Invalid --font-scale value: ${value}. Must be a positive number.`);
+  }
+  return scale;
 }
 
 /**
  * Resolves the positional glob and every `--input` to matched files (each remembering its label
  * suffix), applies `--include` / `--exclude`, orders them for `--sort input`, merges the names file
  * into `options.customNames`, loads run outlier filters, and ensures the output directory exists.
+ * It also applies `--font-scale` for the chart about to be rendered, since every command calls it first.
  * Shared by all command action handlers.
  */
 export async function resolveChartInputs(
   pattern: string | undefined,
-  options: Pick<BaseChartOptions, "aggregateFile" | "stddevFilter" | "output" | "input" | "include" | "exclude" | "namesFile" | "customNames" | "trimPrefix" | "titleCase" | "trimSubstrings"> & { sort?: RowSort },
+  options: Pick<BaseChartOptions, "aggregateFile" | "stddevFilter" | "output" | "input" | "include" | "exclude" | "namesFile" | "customNames" | "trimPrefix" | "titleCase" | "trimSubstrings" | "fontScale"> & { sort?: RowSort },
 ): Promise<{ files: string[]; inputs: ChartInput[]; runsToRemove: Map<string, Set<number>> }> {
   // The positional pattern is taken whole (it never carries a suffix), as before.
+  setFontScale(options.fontScale);
   const specs: InputSpec[] = [...(pattern ? [{ glob: pattern }] : []), ...options.input.map(parseInputSpec)];
   if (specs.length === 0) {
     console.error("No input given: pass a glob pattern or at least one --input <glob>[:<suffix>]");

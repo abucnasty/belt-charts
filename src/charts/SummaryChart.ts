@@ -13,6 +13,7 @@ import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type Erro
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
+import { scaled } from "./fonts"
 import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, SESSION_COLORS, sessionsOf } from "./paired"
 import { backgroundPlugin, createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { rowComparator } from "./rowOrder"
@@ -405,7 +406,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           text: title,
           color: colors.white,
           font: {
-            size: 18
+            size: scaled(18)
           },
         },
         legend: {
@@ -436,8 +437,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX) ? colors.sky_blue : colors.white,
             font: (ctx: any) =>
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX)
-                ? { weight: "bold" as const, size: 13 }
-                : { size: 12 },
+                ? { weight: "bold" as const, size: scaled(13) }
+                : { size: scaled(12) },
             callback: (value: any) => {
               const label = chartLabels[value] ?? "";
               return label.startsWith(SPACER_PREFIX) ? `▸ ${label.slice(1)}` : label;

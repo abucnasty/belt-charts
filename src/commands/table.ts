@@ -6,7 +6,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { applyLabel, warnUnmatchedNames, resolveChartInputs, resolveMetrics, inputOptions, inputOptionsFrom, type ChartInput } from "./utils";
+import { applyLabel, warnUnmatchedNames, resolveChartInputs, resolveMetrics, inputOptions, commonOptionsFrom, type ChartInput } from "./utils";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
@@ -139,7 +139,7 @@ export function createTableCommand(): Command {
         height: opts.height,
         scale: 1,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,

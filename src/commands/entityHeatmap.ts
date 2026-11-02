@@ -8,7 +8,7 @@ import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResu
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { EntityHeatmapChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveMetrics, resolveChartInputs, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveMetrics, resolveChartInputs, commonOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
@@ -94,7 +94,7 @@ export function createEntityHeatmapCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,

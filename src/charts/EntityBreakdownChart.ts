@@ -12,6 +12,7 @@ import type { RowSort } from "../commands/types";
 import { colors, chartLayout } from "./constants";
 import { rowComparator } from "./rowOrder";
 import { getMetricPattern } from "./styles";
+import { scaled } from "./fonts";
 import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, sessionsOf } from "./paired";
 import { createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
@@ -463,7 +464,7 @@ export const createEntityBreakdownChartConfiguration = (
           display: true,
           text: title,
           color: colors.white,
-          font: { size: 18 },
+          font: { size: scaled(18) },
         },
         legend: {
           labels: {
@@ -491,8 +492,8 @@ export const createEntityBreakdownChartConfiguration = (
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX) ? colors.sky_blue : colors.white,
             font: (ctx: any) =>
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX)
-                ? { weight: "bold" as const, size: 13 }
-                : { size: 12 },
+                ? { weight: "bold" as const, size: scaled(13) }
+                : { size: scaled(12) },
             callback: (value: any) => {
               const label = chartLabels[value] ?? "";
               return label.startsWith(SPACER_PREFIX) ? `▸ ${label.slice(1)}` : label;

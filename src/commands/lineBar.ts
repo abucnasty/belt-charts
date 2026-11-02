@@ -5,7 +5,7 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { revealTimeseriesForAnimation } from "../charts/animation";
@@ -135,7 +135,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
-        ...inputOptionsFrom(opts),
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,

@@ -76,6 +76,8 @@ export type BaseChartOptions = {
   include: string[];
   /** `--exclude` glob patterns: inputs whose base name or label matches one are skipped. */
   exclude: string[];
+  /** `--font-scale` factor for titles, legends, axis labels, value labels and tables. 1 = default. */
+  fontScale: number;
 };
 
 // Summary chart specific options
@@ -149,7 +151,7 @@ export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
   "width" | "height" | "scale" | "output" | "trimPrefix" | "customNames" | "namesFile" |
   "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride" |
-  "input" | "include" | "exclude"
+  "input" | "include" | "exclude" | "fontScale"
 > & {
   aggregateStrategy: AggregationStrategy;
   normalize: "global" | "column" | "row";

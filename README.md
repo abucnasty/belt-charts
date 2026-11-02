@@ -43,6 +43,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `-w, --width <px>` | `1400` | Chart width in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `-h, --height <px>` | `800` | Chart height in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `--scale <factor>` | `1` | Integer output pixel multiplier for higher-resolution PNG/MP4 output — see “High-resolution output” below. Ignored for `.svg` |
+| `--font-scale <factor>` | `1` | Multiplies the size of all text — titles, legends, axis labels, value labels and the in-chart table — together with the layout measures that fit it (table row height, minimum bar row height), independent of `-w`, `-h` and `--scale`. Charts that auto-grow (see “Auto-sizing”) grow to fit the larger text; `-w` / `-h` stay the floor. e.g. `--font-scale 1.5` for slides |
 | `--remove-first-ticks <n>` | `1` | Skip the first N ticks (removes benchmark warm-up spikes) |
 | `--max-ticks <n>` | `0` | Only include ticks up to N. `0` = no limit |
 | `--trim-prefix <string>` | `""` | Strip a common prefix from all file names in chart labels |

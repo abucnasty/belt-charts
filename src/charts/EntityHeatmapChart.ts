@@ -7,7 +7,7 @@ import { AggregationStrategy } from "../data/AggregationStrategy";
 import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
-import { FONT_FAMILY } from "./fonts";
+import { font, scaled } from "./fonts";
 
 export type { HeatmapNormalizeMode };
 
@@ -35,16 +35,15 @@ export interface EntityHeatmapChartOptions {
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
 
-const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
-const BOLD_FONT = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
-const SMALL_FONT = `10px ${FONT_FAMILY}`;
+const labelFont = () => font(12);
+const boldFont = () => font(12, true);
+const smallFont = () => font(10);
 
-const MIN_ROW_HEIGHT = 24;
-const MIN_COL_WIDTH = 60;
-const LEGEND_BAR_WIDTH = 20;
-const LEGEND_MARGIN = 12;
-const LEGEND_LABEL_WIDTH = 52;
+const BASE_MIN_ROW_HEIGHT = 24;
+const BASE_MIN_COL_WIDTH = 60;
+const BASE_LEGEND_BAR_WIDTH = 20;
+const BASE_LEGEND_MARGIN = 12;
+const BASE_LEGEND_LABEL_WIDTH = 52;
 
 interface HeatRow {
   metricName: string;
@@ -149,17 +148,24 @@ export function renderEntityHeatmapChart(
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
+  // Fixed measures follow --font-scale, like the text they hold.
+  const MIN_ROW_HEIGHT = scaled(BASE_MIN_ROW_HEIGHT);
+  const MIN_COL_WIDTH = scaled(BASE_MIN_COL_WIDTH);
+  const LEGEND_BAR_WIDTH = scaled(BASE_LEGEND_BAR_WIDTH);
+  const LEGEND_MARGIN = scaled(BASE_LEGEND_MARGIN);
+  const LEGEND_LABEL_WIDTH = scaled(BASE_LEGEND_LABEL_WIDTH);
+
   const ctx = canvas.getContext("2d");
 
-  ctx.font = LABEL_FONT;
-  const leftMargin = Math.ceil(Math.max(...rows.map(r => ctx.measureText(r.description).width)) + 24);
+  ctx.font = labelFont();
+  const leftMargin = Math.ceil(Math.max(...rows.map(r => ctx.measureText(r.description).width)) + scaled(24));
 
   // Column header height: 45° rotation, so label length ≈ diagonal height
   const maxColLabelChars = Math.max(...results.map(r => r.displayName.length));
-  const colLabelHeight = Math.min(140, maxColLabelChars * 6 + 16);
-  const bottomMargin = colLabelHeight + 12;
+  const colLabelHeight = Math.min(scaled(140), maxColLabelChars * scaled(6) + scaled(16));
+  const bottomMargin = colLabelHeight + scaled(12);
 
-  const topMargin = 50;
+  const topMargin = scaled(50);
   const rightMargin = LEGEND_BAR_WIDTH + LEGEND_MARGIN + LEGEND_LABEL_WIDTH;
 
   const plotWidth  = canvas.width  - leftMargin - rightMargin;
@@ -200,11 +206,11 @@ export function renderEntityHeatmapChart(
     options.titleOverride ??
     `Entity Update Heatmap — ${strategyLabel[options.aggregationStrategy]} [µs] (${normalizeLabel[options.normalize]})`;
 
-  ctx.font = `bold 16px ${FONT_FAMILY}`;
+  ctx.font = font(16, true);
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, 28);
+  ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, scaled(28));
 
   // ── Grid cells ────────────────────────────────────────────────────────────
 
@@ -213,11 +219,11 @@ export function renderEntityHeatmapChart(
     const rowTop = topMargin + ri * rowHeight;
 
     // Row label
-    ctx.font          = row.metricName === OTHER_ENTITY_NAME ? BOLD_FONT : LABEL_FONT;
+    ctx.font          = row.metricName === OTHER_ENTITY_NAME ? boldFont() : labelFont();
     ctx.fillStyle     = colors.white;
     ctx.textAlign     = "right";
     ctx.textBaseline  = "middle";
-    ctx.fillText(row.description, leftMargin - 8, rowTop + rowHeight / 2);
+    ctx.fillText(row.description, leftMargin - scaled(8), rowTop + rowHeight / 2);
 
     for (let ci = 0; ci < nCols; ci++) {
       const value = row.values[ci];
@@ -237,7 +243,7 @@ export function renderEntityHeatmapChart(
       // Optional value text
       if (options.showValues && !isNaN(value) && value > 0) {
         const label = value >= 100 ? value.toFixed(0) : value.toFixed(1);
-        ctx.font         = SMALL_FONT;
+        ctx.font         = smallFont();
         ctx.textAlign    = "center";
         ctx.textBaseline = "middle";
         if (ctx.measureText(label).width < colWidth - 4) {
@@ -251,8 +257,8 @@ export function renderEntityHeatmapChart(
 
   // ── Column headers (rotated –45°) ─────────────────────────────────────────
 
-  const headerBaseY = topMargin + rowHeight * nRows + 8;
-  ctx.font         = LABEL_FONT;
+  const headerBaseY = topMargin + rowHeight * nRows + scaled(8);
+  ctx.font         = labelFont();
   ctx.fillStyle    = colors.white;
   ctx.textAlign    = "right";
   ctx.textBaseline = "middle";
@@ -284,7 +290,7 @@ export function renderEntityHeatmapChart(
   ctx.lineWidth   = 1;
   ctx.strokeRect(legendX, legendY, LEGEND_BAR_WIDTH, legendH);
 
-  ctx.font         = SMALL_FONT;
+  ctx.font         = smallFont();
   ctx.fillStyle    = colors.white;
   ctx.textAlign    = "left";
   ctx.textBaseline = "middle";
@@ -298,13 +304,13 @@ export function renderEntityHeatmapChart(
       ? `${(t * globalMax).toFixed(1)} µs`
       : `${(t * 100).toFixed(0)}%`;
 
-    ctx.fillText(label, legendX + LEGEND_BAR_WIDTH + 5, y);
+    ctx.fillText(label, legendX + LEGEND_BAR_WIDTH + scaled(5), y);
 
     ctx.strokeStyle = colors.dark_grey;
     ctx.lineWidth   = 1;
     ctx.beginPath();
     ctx.moveTo(legendX + LEGEND_BAR_WIDTH, y);
-    ctx.lineTo(legendX + LEGEND_BAR_WIDTH + 4, y);
+    ctx.lineTo(legendX + LEGEND_BAR_WIDTH + scaled(4), y);
     ctx.stroke();
   }
 

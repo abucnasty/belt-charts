@@ -2,7 +2,7 @@
  * Shared Chart.js plugin definitions used across multiple chart types.
  */
 import { colors } from "./constants";
-import { FONT_FAMILY } from "./fonts";
+import { font, scaled } from "./fonts";
 import { anchorPatternToRect } from "./styles";
 import type { ErrorBar } from "../data/errorBars";
 
@@ -13,7 +13,7 @@ export const valueLabelsPlugin = {
   afterDatasetsDraw(chart: any) {
     const { ctx } = chart;
     ctx.save();
-    ctx.font = `bold 12px ${FONT_FAMILY}`;
+    ctx.font = font(12, true);
     ctx.fillStyle = colors.white;
     ctx.strokeStyle = colors.black;
     ctx.lineWidth = 1;
@@ -54,7 +54,7 @@ export const createErrorBarsPlugin = (barsByRow: (ErrorBar | null)[]) => ({
   afterDatasetsDraw(chart: any) {
     const { ctx, scales } = chart;
     const meta = chart.getDatasetMeta(0);
-    const capHalf = 6;
+    const capHalf = scaled(6);
     ctx.save();
     ctx.lineCap = "butt";
     const draw = (width: number, color: string, y: number, x1: number, x2: number) => {
@@ -92,7 +92,7 @@ export const patternAnchorPlugin = {
     const legend = chart.legend;
     if (!legend?.options?.display || !legend.legendItems) return;
     const labels = legend.options.labels;
-    const fontSize = labels.font?.size ?? 12;
+    const fontSize = labels.font?.size ?? scaled(12);
     const boxWidth = labels.boxWidth || fontSize;
     const boxHeight = labels.boxHeight || fontSize;
     legend.legendItems.forEach((item: any, i: number) => {

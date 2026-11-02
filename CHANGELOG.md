@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--error-bars <stddev|ci95|minmax>` on `summary`, `ups` and `entity-summary` draws the run-to-run spread of the per-run means on each bar, and adds it, with an "Overlaps Prev" flag, to the table.
 - `--paired` on `summary`, `ups` and `entity-summary` draws one row per save with one bar per input suffix side by side (stacked bars for segments), with a session legend, instead of one row per file.
 - Every command reads `.csv.gz` and `.csv.zst` results files (zstd needs Node.js 22.15 or newer).
+- `--font-scale <factor>` makes all text (titles, legends, axis labels, value labels, tables) larger or smaller independent of `-w`, `-h` and `--scale`.
 - `belt-charts prune <glob>` drops columns that are zero in every file (and, with `--keep-only-charted`, columns no chart reads) and can compress the result (`--compress gz|zst`), writing to `--out-dir` or `--in-place`; every chart renders the same afterwards.
 
 ## [1.24.1] - 2026-10-30

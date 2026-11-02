@@ -3,7 +3,7 @@ import type { RowSort } from "../commands/types";
 import { formatPercentChange, formatSigned } from "../data/baseline";
 import { UserError } from "../utils";
 import { colors } from "./constants";
-import { FONT_FAMILY } from "./fonts";
+import { font } from "./fonts";
 import { rowComparator } from "./rowOrder";
 
 /** Colors of the sessions in a single-bar paired chart (UPS), in input order. */
@@ -183,7 +183,7 @@ export const createSessionLabelsPlugin = (firstDatasetBySession: Map<number, str
   afterDatasetsDraw(chart: any) {
     const { ctx, scales } = chart;
     ctx.save();
-    ctx.font = `bold 11px ${FONT_FAMILY}`;
+    ctx.font = font(11, true);
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillStyle = colors.white;
