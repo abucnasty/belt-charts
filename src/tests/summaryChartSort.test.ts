@@ -85,3 +85,33 @@ describe("entity chart row order", () => {
     expect(labels("name")).toEqual(["a", "b", "c"]);
   });
 });
+
+describe("entity chart rest of tick", () => {
+  const withWhole = [
+    makeResult("a", { wholeUpdate: 3000, entityUpdate: 1000, Inserter: 800 }),
+    makeResult("b", { wholeUpdate: 2000, entityUpdate: 1500, Inserter: 1200 }),
+  ];
+  const build = (restOfTick: boolean) =>
+    createEntityBreakdownChartConfiguration(withWhole, { aggregationStrategy: AggregationStrategy.AVERAGE, restOfTick });
+
+  it("ranks by entityUpdate without it, so the longer whole update ranks first", () => {
+    expect(build(false).config.data.labels).toEqual(["a", "b"]);
+  });
+
+  it("adds a Rest of Tick segment of wholeUpdate - entityUpdate and ranks by the whole update", () => {
+    const { config, table } = build(true);
+    expect(config.data.labels).toEqual(["b", "a"]);
+    const rest = config.data.datasets.find(d => d.label === "Rest of Tick")!;
+    expect(rest.data).toEqual([500, 2000]);
+    expect(table.header.slice(-4)).toEqual(["Entity Update Total", "Whole Update Total", "vs Prev", "vs Best"]);
+    expect(table.rows[0].slice(-4)).toEqual([1500, 2000, "", ""]);
+  });
+
+  it("keeps each bar's segments summing to the whole update", () => {
+    const { config } = build(true);
+    config.data.labels!.forEach((_, row) => {
+      const sum = config.data.datasets.reduce((total, d) => total + (d.data[row] as number), 0);
+      expect(sum).toBeCloseTo(row === 0 ? 2000 : 3000);
+    });
+  });
+});

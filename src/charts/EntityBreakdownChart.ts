@@ -15,6 +15,8 @@ import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableRes
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
+const REST_OF_TICK_NAME = "restOfTick";
+const REST_OF_TICK_DESCRIPTION = "Rest of Tick";
 
 interface EntityBreakdownMetricValue {
   metricName: string;
@@ -26,6 +28,10 @@ interface EntityBreakdownChartData {
   displayName: string;
   group?: string;
   entityUpdateTotal: number;
+  /** Whole update time (µs); 0 when wholeUpdate was not parsed. */
+  wholeUpdateTotal: number;
+  /** Length of the bar: the whole update when the rest of the tick is shown, otherwise the entity update. */
+  barTotal: number;
   metricValues: EntityBreakdownMetricValue[];
 }
 
@@ -42,6 +48,11 @@ export interface EntityBreakdownChartOptions {
   isPerRun?: boolean;
   groupBy?: string[];
   valueLabels?: boolean;
+  /**
+   * Adds a "Rest of Tick" segment (wholeUpdate - entityUpdate) so the bar spans the whole update and
+   * rows are ranked by it. Needs wholeUpdate in the parsed results.
+   */
+  restOfTick?: boolean;
 }
 
 export interface EntityBreakdownChartResult {
@@ -58,9 +69,12 @@ export interface EntityBreakdownChartResult {
 const mapEntityBreakdownData = (
   result: BenchmarkAggregateRunResult,
   entityChildren: MetricName[],
+  restOfTick: boolean,
 ): EntityBreakdownChartData => {
   const entityUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.ENTITY_UPDATE.name);
   const entityUpdateTotal = entityUpdateAgg ? nanoToMicro(entityUpdateAgg.average) : 0;
+  const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name);
+  const wholeUpdateTotal = wholeUpdateAgg ? nanoToMicro(wholeUpdateAgg.average) : 0;
 
   const childValues = entityChildren.flatMap(name => {
     const agg = result.all.get(name);
@@ -78,6 +92,8 @@ const mapEntityBreakdownData = (
     displayName: result.displayName,
     group: result.group,
     entityUpdateTotal,
+    wholeUpdateTotal,
+    barTotal: restOfTick ? wholeUpdateTotal : entityUpdateTotal,
     metricValues: childValues,
   };
 };
@@ -90,9 +106,10 @@ export const createEntityBreakdownChartConfiguration = (
     .getChildrenOf(MetricEnum.ENTITY_UPDATE.name)
     .map(m => m.name);
 
-  const rawChartData = results.map(result => mapEntityBreakdownData(result, allEntityChildren));
+  const restOfTick = options.restOfTick ?? false;
+  const rawChartData = results.map(result => mapEntityBreakdownData(result, allEntityChildren, restOfTick));
 
-  const compareRows = rowComparator<EntityBreakdownChartData>(options.sort ?? "total", d => d.entityUpdateTotal);
+  const compareRows = rowComparator<EntityBreakdownChartData>(options.sort ?? "total", d => d.barTotal);
   if (options.sortBy !== "preserve") {
     rawChartData.sort(compareRows);
   }
@@ -151,6 +168,8 @@ export const createEntityBreakdownChartConfiguration = (
       displayName: data.displayName,
       group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
+      wholeUpdateTotal: data.wholeUpdateTotal,
+      barTotal: data.barTotal,
       metricValues: [
         ...displayedValues,
         {
@@ -158,15 +177,21 @@ export const createEntityBreakdownChartConfiguration = (
           metricDescription: OTHER_ENTITY_DESCRIPTION,
           average: otherAvg,
         },
+        ...(restOfTick ? [{
+          metricName: REST_OF_TICK_NAME,
+          metricDescription: REST_OF_TICK_DESCRIPTION,
+          average: Math.max(0, data.wholeUpdateTotal - data.entityUpdateTotal),
+        }] : []),
       ],
     };
   });
 
   // Datasets — one stacked dataset per displayed child + one for "other".
-  const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME];
+  const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME, ...(restOfTick ? [REST_OF_TICK_NAME] : [])];
   const datasetDescriptions = new Map<string, string>([
     ...displayedChildren.map(name => [name, MetricRegistryInstance.getOrThrow(name).description] as [string, string]),
     [OTHER_ENTITY_NAME, OTHER_ENTITY_DESCRIPTION],
+    [REST_OF_TICK_NAME, REST_OF_TICK_DESCRIPTION],
   ]);
 
   // Build interleaved row structure: group header spacers + data rows.
@@ -217,6 +242,7 @@ export const createEntityBreakdownChartConfiguration = (
       "Save File",
       ...tableHeaderMetrics.map(m => m.description),
       "Entity Update Total",
+      ...(restOfTick ? ["Whole Update Total"] : []),
       "vs Prev",
       "vs Best",
     ];
@@ -224,11 +250,11 @@ export const createEntityBreakdownChartConfiguration = (
     // "Best" is the first row, which is the fastest unless --sort changed the order.
     const bestIdx = (options.sort ?? "total") === "total"
       ? 0
-      : chartData.reduce((best, data, idx) => data.entityUpdateTotal < chartData[best].entityUpdateTotal ? idx : best, 0);
+      : chartData.reduce((best, data, idx) => data.barTotal < chartData[best].barTotal ? idx : best, 0);
     const totalStats = chartData.map((data, idx) => {
-      const currentValue = data.entityUpdateTotal;
-      const previousValue = idx > 0 ? chartData[idx - 1].entityUpdateTotal : null;
-      const bestValue = chartData[bestIdx].entityUpdateTotal;
+      const currentValue = data.barTotal;
+      const previousValue = idx > 0 ? chartData[idx - 1].barTotal : null;
+      const bestValue = chartData[bestIdx].barTotal;
       return {
         currentValue,
         slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
@@ -248,6 +274,7 @@ export const createEntityBreakdownChartConfiguration = (
           data.displayName,
           ...metricValues,
           parseFloat(data.entityUpdateTotal.toFixed(2)),
+          ...(restOfTick ? [parseFloat(data.wholeUpdateTotal.toFixed(2))] : []),
           stats.slowdownFromPrevious,
           stats.slowdownFromBest,
         ],
@@ -297,10 +324,10 @@ export const createEntityBreakdownChartConfiguration = (
       break;
   }
 
-  const xAxisLabel = `Entity Update time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`;
+  const xAxisLabel = `${restOfTick ? "Whole Update" : "Entity Update"} time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`;
   const title = options.titleOverride ?? (options.isPerRun
-    ? `${aggregationStrategyLabel} Per Tick Entity Breakdown (Per Run)`
-    : `${aggregationStrategyLabel} Per Tick Entity Breakdown`);
+    ? `${aggregationStrategyLabel} Per Tick Entity Breakdown${restOfTick ? " and Rest of Tick" : ""} (Per Run)`
+    : `${aggregationStrategyLabel} Per Tick Entity Breakdown${restOfTick ? " and Rest of Tick" : ""}`);
 
   // Sort datasets so legend matches stack visual order (largest first looks cleaner).
   const datasetRankByName = new Map<string, number>(datasetOrder.map((name, idx) => [name, idx]));

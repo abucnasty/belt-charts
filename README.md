@@ -350,6 +350,7 @@ Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions.
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` |
 | `--group-by <keys>` | *(none)* | Same behaviour as in `summary` — see above |
+| `--rest-of-tick` | `false` | Add one more segment, `Rest of Tick` (`wholeUpdate - entityUpdate`), so every bar spans the whole update and rows are ranked by it (and `vs Prev` / `vs Best` follow). A build can have the longest entity segments and still the best UPS because its lead is outside entity update; this shows both in one chart. The table gains `Rest of Tick` and `Whole Update Total` columns. Also works on `entity-summary-per-run` |
 
 ```
 belt-charts entity-summary "results/my_amazing_map*.csv"

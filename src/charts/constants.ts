@@ -246,6 +246,8 @@ export const metricStyles: Record<string, MetricStyle> = {
     color: unfriendly_colors.rust,
     pattern: "dot",
   },
+  // Entity chart's wholeUpdate - entityUpdate segment (see --rest-of-tick); light grey so it stands apart from the dark grey "Other" segments
+  restOfTick: { color: "#B0B0B0" },
   // Catch-all for metrics not explicitly styled
   other: { color: colors.dark_grey },
 };

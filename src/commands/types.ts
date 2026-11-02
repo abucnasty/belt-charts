@@ -107,6 +107,8 @@ export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & 
   sortBy: "run" | "total";
   /** Print each stacked segment's value on the bar. */
   valueLabels: boolean;
+  /** Add a "Rest of Tick" segment (wholeUpdate - entityUpdate) so the bar spans the whole update. */
+  restOfTick: boolean;
 };
 
 // Entity matrix chart specific options
