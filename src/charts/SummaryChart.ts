@@ -14,6 +14,7 @@ import { type BaselineOptions, formatPercentChange, formatSigned as formatSigned
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
 import { scaled } from "./fonts"
+import { subtitleOptions } from "./subtitle"
 import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, SESSION_COLORS, sessionsOf } from "./paired"
 import { backgroundPlugin, createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { rowComparator } from "./rowOrder"
@@ -29,6 +30,8 @@ interface SummaryChartOptions extends BaselineOptions {
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
   sortBy?: "total" | "preserve";
   /** Row order (`--sort`): by total time (default), keep the incoming order, or by label. */
   sort?: RowSort;
@@ -409,6 +412,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
             size: scaled(18)
           },
         },
+        subtitle: subtitleOptions(options.subtitle),
         legend: {
           labels: {
             color: colors.white,

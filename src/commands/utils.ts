@@ -439,6 +439,12 @@ export const baseOptions: OptionBuilder = {
         "Override the chart's auto-generated title",
         (it: string) => it,
         null,
+      )
+      .option<string | null>(
+        "--subtitle <string>",
+        "Draw this text smaller under the title, e.g. run details (ticks measured, runs, game version) that would make the title long",
+        (it: string) => it,
+        null,
       );
   },
 };
@@ -561,12 +567,13 @@ export function validateAnimateOutput(output: string, animate: boolean): void {
 }
 
 /** The options every command shares beyond the chart's own (inputs, text size); spread into a command's options literal. */
-export function commonOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "include" | "exclude" | "fontScale"> {
+export function commonOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "include" | "exclude" | "fontScale" | "subtitle"> {
   return {
     input: opts.input ?? [],
     include: opts.include ?? [],
     exclude: opts.exclude ?? [],
     fontScale: opts.fontScale ?? 1,
+    subtitle: opts.subtitle ?? null,
   };
 }
 

@@ -11,6 +11,7 @@ import { colors, chartLayout } from "./constants"
 import { backgroundPlugin } from "./plugins";
 import type { ChartConfiguration } from "chart.js";
 import { getMetricColor } from "./styles";
+import { subtitleOptions } from "./subtitle";
 
 
 const supportedMetrics = toMetricRecord(MetricProfiles.LINE_CHART);
@@ -23,6 +24,8 @@ export interface LineChartOptions {
     tickWindow?: number,
     /** Metrics to render as stacked areas. When omitted the default top-level set is used. */
     metrics?: MetricEnum[],
+    /** Smaller text under the title. */
+    subtitle?: string | null,
 }
 
 const autoTickWindow = (maxTick: number): number => {
@@ -201,6 +204,7 @@ export const createLineChartForMetrics = (result: BenchmarkTickResult, options: 
                     text: result.displayName + " Timeseries Metrics",
                     color: colors.white,
                 },
+                subtitle: subtitleOptions(options.subtitle),
                 legend: {
                     labels: {
                         color: 'white'

@@ -56,6 +56,7 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
 | `--title-override <string>` | *(auto)* | Override the chart's auto-generated title |
+| `--subtitle <string>` | *(none)* | Draw this text smaller under the title (all chart commands except `table`), so run details such as ticks measured, runs, game version or allocator do not have to be appended to a long `--title-override`. The chart makes room for it |
 
 > **Several inputs** — chart two sessions of the same saves (two allocators, game versions or machines) without symlinks or a temporary names file:
 > ```bash

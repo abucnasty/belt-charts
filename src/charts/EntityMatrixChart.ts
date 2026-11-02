@@ -7,6 +7,7 @@ import { AggregationStrategy } from "../data/AggregationStrategy";
 import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
 import { font, scaled } from "./fonts";
+import { subtitleHeight } from "./subtitle";
 
 // Ordered design-column palette (cycles when more files than colors)
 const DESIGN_COLORS = [
@@ -37,6 +38,8 @@ export interface EntityMatrixChartOptions {
    */
   minPercent: number;
   titleOverride?: string | null;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
 }
 
 interface MatrixRow {
@@ -135,7 +138,8 @@ export function renderEntityMatrixChart(
   const bottomMargin = scaled(50);
 
   // Top margin: rotated design labels + title + legend
-  const topMargin = scaled(120); // title(24) + legend(32) + rotated label height(~64)
+  const subtitleSpace = subtitleHeight(options.subtitle);
+  const topMargin = scaled(120) + subtitleSpace; // title(24) + legend(32) + rotated label height(~64)
 
   const plotWidth = canvas.width - leftMargin - rightMargin;
   const plotAreaHeight = canvas.height - topMargin - bottomMargin;
@@ -182,6 +186,10 @@ export function renderEntityMatrixChart(
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.fillText(title, W / 2, scaled(22));
+  if (options.subtitle) {
+    ctx.font = font(13);
+    ctx.fillText(options.subtitle, W / 2, scaled(22) + scaled(18));
+  }
 
   // ── Legend ─────────────────────────────────────────────────────────────────
 
@@ -198,7 +206,7 @@ export function renderEntityMatrixChart(
   }));
   const totalLegendWidth = legendItems.reduce((sum, it) => sum + it.width + legendSpacing, 0) - legendSpacing;
   let lx = (W - totalLegendWidth) / 2;
-  const ly = scaled(36);
+  const ly = scaled(36) + subtitleSpace;
 
   for (const item of legendItems) {
     ctx.fillStyle = item.color;

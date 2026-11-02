@@ -74,6 +74,7 @@ async function generateLineOrBarCharts(
       aggregationStrategy: options.aggregateStrategy,
       tickWindow: options.tickWindowAggregation,
       metrics: options.metrics,
+      subtitle: options.subtitle,
     });
     // Inputs sharing file names are told apart by their suffix.
     const outputPath = `${fileNameWithoutExt}_${result.originalFileName}${result.inputSuffix ? `_${result.inputSuffix}` : ""}${ext}`;

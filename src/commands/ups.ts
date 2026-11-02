@@ -42,6 +42,7 @@ async function generateUps(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     groupBy: options.groupBy,
     valueMode: "ups",
     valueLabels: options.valueLabels,

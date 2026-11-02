@@ -74,6 +74,7 @@ async function generateEntityBreakdown(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     topN: options.topN,
     minPercent: options.minPercent,
     sortBy,

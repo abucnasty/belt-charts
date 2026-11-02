@@ -4,6 +4,7 @@ import { CpuFrequencyResult, RunCoreFrequencyProfile, getCoreFrequencyStatValue 
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
 import { font, scaled } from "./fonts";
+import { subtitleHeight } from "./subtitle";
 
 export type { HeatmapNormalizeMode };
 
@@ -20,6 +21,8 @@ export interface CoreFrequencyHeatmapChartOptions {
   /** Show numeric MHz values inside each cell. */
   showValues: boolean;
   titleOverride?: string | null;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
 }
 
 const labelFont = () => font(12);
@@ -129,7 +132,7 @@ export function renderCoreFrequencyHeatmapChart(
 
   const colLabelHeight = scaled(60); // "Core N" rotated -45°
   const bottomMargin = colLabelHeight + scaled(12);
-  const topMargin = scaled(50);
+  const topMargin = scaled(50) + subtitleHeight(options.subtitle);
   const rightMargin = LEGEND_BAR_WIDTH + LEGEND_MARGIN + LEGEND_LABEL_WIDTH;
 
   const plotWidth = canvas.width - leftMargin - rightMargin;
@@ -176,6 +179,10 @@ export function renderCoreFrequencyHeatmapChart(
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, scaled(28));
+  if (options.subtitle) {
+    ctx.font = font(13);
+    ctx.fillText(options.subtitle, leftMargin + (colWidth * nCols) / 2, scaled(28) + scaled(18));
+  }
 
   // ── Grid rows ────────────────────────────────────────────────────────────
 

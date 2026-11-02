@@ -13,6 +13,7 @@ import { colors, chartLayout } from "./constants";
 import { rowComparator } from "./rowOrder";
 import { getMetricPattern } from "./styles";
 import { scaled } from "./fonts";
+import { subtitleOptions } from "./subtitle";
 import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, sessionsOf } from "./paired";
 import { createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
@@ -49,6 +50,8 @@ export interface EntityBreakdownChartOptions extends BaselineOptions {
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
   topN?: number;
   minPercent?: number;
   sortBy?: "total" | "preserve";
@@ -466,6 +469,7 @@ export const createEntityBreakdownChartConfiguration = (
           color: colors.white,
           font: { size: scaled(18) },
         },
+        subtitle: subtitleOptions(options.subtitle),
         legend: {
           labels: {
             color: colors.white,

@@ -8,6 +8,7 @@ import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
 import { font, scaled } from "./fonts";
+import { subtitleHeight } from "./subtitle";
 
 export type { HeatmapNormalizeMode };
 
@@ -30,6 +31,8 @@ export interface EntityHeatmapChartOptions {
   /** Show numeric µs values inside each cell. */
   showValues: boolean;
   titleOverride?: string | null;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
 }
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
@@ -165,7 +168,7 @@ export function renderEntityHeatmapChart(
   const colLabelHeight = Math.min(scaled(140), maxColLabelChars * scaled(6) + scaled(16));
   const bottomMargin = colLabelHeight + scaled(12);
 
-  const topMargin = scaled(50);
+  const topMargin = scaled(50) + subtitleHeight(options.subtitle);
   const rightMargin = LEGEND_BAR_WIDTH + LEGEND_MARGIN + LEGEND_LABEL_WIDTH;
 
   const plotWidth  = canvas.width  - leftMargin - rightMargin;
@@ -211,6 +214,10 @@ export function renderEntityHeatmapChart(
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, scaled(28));
+  if (options.subtitle) {
+    ctx.font = font(13);
+    ctx.fillText(options.subtitle, leftMargin + (colWidth * nCols) / 2, scaled(28) + scaled(18));
+  }
 
   // ── Grid cells ────────────────────────────────────────────────────────────
 

@@ -33,6 +33,7 @@ async function generateBoxPlot(
     minUpdateTime: options.minUpdate,
     maxUpdateTime: options.maxUpdate,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     sort: options.sort,
   });
 

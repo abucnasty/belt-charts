@@ -9,6 +9,7 @@ import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import type { RowSort } from "../commands/types";
 import { rowComparator } from "./rowOrder";
 import { scaled } from "./fonts";
+import { subtitleOptions } from "./subtitle";
 
 export interface BoxChartOptions {
     /**
@@ -21,6 +22,8 @@ export interface BoxChartOptions {
     minUpdateTime: number | null;
     /** Override the chart's auto-generated title. */
     titleOverride?: string;
+    /** Smaller text under the title. */
+    subtitle?: string | null;
     /** Column order (`--sort`): by mean, slowest first (default), keep the incoming order, or by label. */
     sort?: RowSort;
 }
@@ -96,6 +99,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
                         bottom: 30
                     }
                 },
+                subtitle: subtitleOptions(options.subtitle),
                 legend: {
                     display: false
                 }

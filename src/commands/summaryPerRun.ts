@@ -70,6 +70,7 @@ async function generateSummaryPerRun(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     sortBy: options.sortBy === "run" ? "preserve" : "total",
     isPerRun: true,
     minPercent: options.minPercent,

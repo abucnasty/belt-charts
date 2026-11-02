@@ -44,6 +44,7 @@ async function generateSummary(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     minPercent: options.minPercent,
     maxUpdate: options.maxUpdate,
     groupBy: options.groupBy,

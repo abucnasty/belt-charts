@@ -43,6 +43,7 @@ async function generateEntityMatrix(
     topN: options.topN,
     minPercent: options.minPercent,
     titleOverride: options.titleOverride,
+    subtitle: options.subtitle,
   }, canvas);
 
   const imageBuffer = await canvas.toBuffer("png", { density: options.scale });

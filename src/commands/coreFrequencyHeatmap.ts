@@ -58,6 +58,7 @@ async function generateCoreFrequencyHeatmap(
     normalize: options.normalize,
     showValues: options.showValues,
     titleOverride: options.titleOverride,
+    subtitle: options.subtitle,
   }, canvas);
 
   const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
