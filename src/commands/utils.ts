@@ -16,6 +16,7 @@ import { BaseChartOptions, RowSort } from "./types";
 import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
 import { parseBaselinePerGroup } from "../data/baseline";
+import { ERROR_BAR_MODES, ErrorBarMode } from "../data/errorBars";
 import { UserError } from "../utils";
 import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
 
@@ -267,10 +268,30 @@ export const baselineOptions: OptionBuilder = {
   },
 };
 
-/** Exits early on baseline arguments that cannot work, before any file is parsed. */
-export function validateBaselineOptions(options: { baseline?: string | null; baselinePerGroup?: Map<string, string>; groupBy: string[] }): void {
+/**
+ * Adds `--error-bars`: draws the run-to-run spread, computed from the per-run means of the total
+ * (not from individual ticks), on each bar and adds it to the table.
+ */
+export const errorBarsOption: OptionBuilder = {
+  build(command: Command): Command {
+    return command.option<ErrorBarMode>(
+      "--error-bars <stddev | ci95 | minmax>",
+      "Draw the run-to-run spread of the per-run means on the total of each bar: sample standard deviation, 95% confidence interval of the mean, or min to max run mean. Also added to the table, with whether neighbouring rows overlap",
+      (it: string) => {
+        if ((ERROR_BAR_MODES as readonly string[]).includes(it)) return it as ErrorBarMode;
+        throw new UserError(`Invalid --error-bars value: ${it}. Must be one of ${ERROR_BAR_MODES.join(", ")}.`);
+      },
+    );
+  },
+};
+
+/** Exits early on baseline / error-bar arguments that cannot work, before any file is parsed. */
+export function validateBaselineOptions(options: { baseline?: string | null; baselinePerGroup?: Map<string, string>; groupBy: string[]; errorBars?: ErrorBarMode }): void {
   if ((options.baselinePerGroup?.size ?? 0) > 0 && options.groupBy.length === 0) {
     throw new UserError("--baseline-per-group needs --group-by");
+  }
+  if (options.errorBars && (options.baseline || (options.baselinePerGroup?.size ?? 0) > 0)) {
+    throw new UserError("--error-bars cannot be combined with --baseline: the spread of a difference is not drawn");
   }
 }
 

@@ -1,6 +1,7 @@
 import { MetricEnum } from "../data/MetricEnum";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { Easing } from "../charts/animation";
+import { ErrorBarMode } from "../data/errorBars";
 
 // Options for rendering a chart as an animated MP4 instead of a static image
 export type AnimationOptions = {
@@ -32,6 +33,11 @@ export type BaselineOption = {
   baseline?: string | null;
   /** With --group-by: baseline label or base name per group key. */
   baselinePerGroup?: Map<string, string>;
+};
+
+// Draws the run-to-run spread of the per-run means on each bar
+export type ErrorBarsOption = {
+  errorBars?: ErrorBarMode;
 };
 
 // Base options shared by all chart types
@@ -68,7 +74,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -106,7 +112,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

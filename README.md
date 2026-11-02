@@ -172,6 +172,22 @@ belt-charts summary "results/*.csv" --group-by "q1,q2" --baseline-per-group "q1=
 
 ---
 
+### Error Bars
+
+`summary`, `ups` and `entity-summary` can show how much a total varies from run to run, so claims like "these two builds can't be told apart" or "the gap is about 1%" can be read off the chart. The spread is computed from the **per-run means** of the total (each run's average over its ticks), not from individual ticks.
+
+| Option | Default | Description |
+|---|---|---|
+| `--error-bars <stddev\|ci95\|minmax>` | *(off)* | `stddev`: ± the sample standard deviation (n − 1) of the run means. `ci95`: ± the 95% confidence interval of their mean (Student's t). `minmax`: from the smallest to the largest run mean. Drawn on the end of each bar (the whole update; the entity update for `entity-summary`, or the whole update with `--rest-of-tick`; updates per second for `ups`) |
+
+The table and the exported `.csv`/`.md` gain the spread (`± Std Dev`, `± 95% CI`, or `Min Run` and `Max Run`) and an `Overlaps Prev` column: `yes` when the row's interval overlaps the row above, i.e. the two cannot be told apart within run-to-run noise. A file with a single run has no `stddev` / `ci95` bar. Not available with `--baseline`, nor on the `-per-run` commands.
+
+```
+belt-charts ups "results/*.csv" --error-bars ci95 -o charts/ups.png
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.

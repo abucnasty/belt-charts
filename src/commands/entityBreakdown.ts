@@ -12,7 +12,7 @@ import {
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { EntityBreakdownChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, inputOptionsFrom, sortOption, baselineOptions, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, inputOptionsFrom, sortOption, baselineOptions, errorBarsOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -83,6 +83,7 @@ async function generateEntityBreakdown(
     sort: options.sort,
     baseline: options.baseline,
     baselinePerGroup: options.baselinePerGroup,
+    errorBars: options.errorBars,
     restOfTick: options.restOfTick,
   });
 
@@ -194,6 +195,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       sort: opts.sort,
       baseline: opts.baseline,
       baselinePerGroup: opts.baselinePerGroup,
+      errorBars: opts.errorBars,
       restOfTick,
     };
 
@@ -218,6 +220,7 @@ export function createEntitySummaryCommand(): Command {
     .addOption(valueLabelsOption)
     .addOption(sortOption)
     .addOption(baselineOptions)
+    .addOption(errorBarsOption)
     .build()
     .action(makeEntitySummaryAction(false));
 }

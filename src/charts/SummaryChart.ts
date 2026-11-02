@@ -9,10 +9,11 @@ import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
+import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars"
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
-import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
+import { backgroundPlugin, createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
 import { rowComparator } from "./rowOrder"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
@@ -41,6 +42,8 @@ interface SummaryChartOptions extends BaselineOptions {
   /** "ups" renders a single bar of 1e6/wholeUpdate (updates per second) instead of the stacked per-component time breakdown. */
   valueMode?: "time" | "ups";
   valueLabels?: boolean;
+  /** Draws the run-to-run spread of the per-run means of the total on each bar, and adds it to the table. Ignored with a baseline. */
+  errorBars?: ErrorBarMode;
 }
 
 export interface SummaryChartResult {
@@ -91,6 +94,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   // With a baseline every segment is drawn as its change against the baseline row's segment.
   const baselineOf: number[] | null = hasBaseline(options) ? resolveBaselines(chartData, options) : null;
   const isDelta = baselineOf !== null;
+
+  const errorBarMode = isDelta ? undefined : options.errorBars;
 
   const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
@@ -166,6 +171,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           backgroundColor: getMetricPattern(metric.name),
         }))
 
+  // Spread of the per-run means of the total, in the plotted unit (µs or UPS).
+  const errorBars: (ErrorBar | null)[] = errorBarMode
+    ? chartData.map((data, idx) => computeErrorBar(data.wholeRunMeans.map(toDisplayValue), errorBarMode, totalValue(idx)))
+    : [];
+  const errorBarsByRow = rows.map(row => row.kind === "spacer" ? null : errorBars[row.idx]);
+
   // Compute shared statistics for both plugins
   // Baseline table: the segments are changes against the baseline row, plus the whole update's
   // percent change and its absolute value.
@@ -224,7 +235,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       "Save File",
       ...metrics.map(it => it.name === MetricEnum.WHOLE_UPDATE.name && valueMode === "ups" ? "UPS" : it.description),
       useSignedDelta ? "+/- vs Previous" : "vs Prev",
-      useSignedDelta ? "+/- vs Best" : "vs Best"
+      useSignedDelta ? "+/- vs Best" : "vs Best",
+      ...(errorBarMode ? errorBarColumns(errorBarMode, valueMode === "ups" ? "UPS" : "Whole") : []),
     ];
 
     // "Best" is the first row, which is the fastest unless --sort changed the order.
@@ -264,7 +276,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           data.displayName,
           ...metricValues,
           useSignedDelta ? formatSigned(stats.deltaFromPrevious) : stats.slowdownFromPrevious,
-          useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest
+          useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest,
+          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[idx - 1], errorBars[idx])] : []),
         ]
       };
     });
@@ -387,7 +400,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(errorBarsByRow)].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

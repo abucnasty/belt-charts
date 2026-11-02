@@ -19,6 +19,8 @@ export interface SummaryChartData {
   originalFileName: string;
   group?: string;
   totalAverage: number;
+  /** Per-run mean of wholeUpdate (µs), one value per run; empty for per-run (exploded) results. */
+  wholeRunMeans: number[];
   metrics: Array<MetricEnum>;
   metricValues: SummaryChartMetricValue[];
 }
@@ -56,6 +58,7 @@ export function buildSummaryChartData(
     .sort((a, b) => b.average - a.average);
 
   const sumOfParts = otherMetricAverages.reduce((sum, m) => sum + m.average, 0);
+  const wholeRunMeans = (result.runs.get(MetricEnum.WHOLE_UPDATE.name) ?? []).map(run => nanoToMicro(run.average));
 
   const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name);
   const metricValues: SummaryChartMetricValue[] = [...otherMetricAverages];
@@ -68,6 +71,7 @@ export function buildSummaryChartData(
       metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
       metricValues,
       totalAverage: sumOfParts,
+      wholeRunMeans,
     };
   }
 
@@ -97,5 +101,6 @@ export function buildSummaryChartData(
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues,
     totalAverage: wholeUpdateAverage,
+    wholeRunMeans,
   };
 }

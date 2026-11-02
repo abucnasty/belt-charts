@@ -4,7 +4,7 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, sortOption, baselineOptions, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, sortOption, baselineOptions, errorBarsOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -48,6 +48,7 @@ async function generateUps(
     sort: options.sort,
     baseline: options.baseline,
     baselinePerGroup: options.baselinePerGroup,
+    errorBars: options.errorBars,
   });
 
   console.log("Chart configuration created.");
@@ -75,6 +76,7 @@ export function createUpsCommand(): Command {
     .addOption(valueLabelsOption)
     .addOption(sortOption)
     .addOption(baselineOptions)
+    .addOption(errorBarsOption)
     .build()
     .option<boolean>(
       "--summary-table <boolean>",
@@ -129,6 +131,7 @@ export function createUpsCommand(): Command {
         sort: opts.sort,
         baseline: opts.baseline,
         baselinePerGroup: opts.baselinePerGroup,
+        errorBars: opts.errorBars,
       };
 
       validateAnimateOutput(options.output, options.animate);

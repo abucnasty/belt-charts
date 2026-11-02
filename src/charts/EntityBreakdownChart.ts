@@ -5,13 +5,14 @@ import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkA
 import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
+import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars";
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline";
 import { formatSlowdown, nanoToMicro } from "../utils";
 import type { RowSort } from "../commands/types";
 import { colors, chartLayout } from "./constants";
 import { rowComparator } from "./rowOrder";
 import { getMetricPattern } from "./styles";
-import { patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
+import { createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
 
 const OTHER_ENTITY_NAME = "otherEntityUpdate";
@@ -34,6 +35,8 @@ interface EntityBreakdownChartData {
   wholeUpdateTotal: number;
   /** Length of the bar: the whole update when the rest of the tick is shown, otherwise the entity update. */
   barTotal: number;
+  /** Per-run means (µs) of the bar's total, one value per run; empty for per-run (exploded) results. */
+  barRunMeans: number[];
   metricValues: EntityBreakdownMetricValue[];
 }
 
@@ -55,6 +58,8 @@ export interface EntityBreakdownChartOptions extends BaselineOptions {
    * rows are ranked by it. Needs wholeUpdate in the parsed results.
    */
   restOfTick?: boolean;
+  /** Draws the run-to-run spread of the per-run means of the bar's total on each bar, and adds it to the table. Ignored with a baseline. */
+  errorBars?: ErrorBarMode;
 }
 
 export interface EntityBreakdownChartResult {
@@ -97,6 +102,8 @@ const mapEntityBreakdownData = (
     entityUpdateTotal,
     wholeUpdateTotal,
     barTotal: restOfTick ? wholeUpdateTotal : entityUpdateTotal,
+    barRunMeans: (result.runs.get(restOfTick ? MetricEnum.WHOLE_UPDATE.name : MetricEnum.ENTITY_UPDATE.name) ?? [])
+      .map(run => nanoToMicro(run.average)),
     metricValues: childValues,
   };
 };
@@ -174,6 +181,7 @@ export const createEntityBreakdownChartConfiguration = (
       entityUpdateTotal: data.entityUpdateTotal,
       wholeUpdateTotal: data.wholeUpdateTotal,
       barTotal: data.barTotal,
+      barRunMeans: data.barRunMeans,
       metricValues: [
         ...displayedValues,
         {
@@ -200,6 +208,12 @@ export const createEntityBreakdownChartConfiguration = (
   // The baseline row itself is all zeros, so mark it.
   const rowName = (idx: number): string =>
     isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
+
+  // Spread of the per-run means of each bar's total.
+  const errorBarMode = isDelta ? undefined : options.errorBars;
+  const errorBars: (ErrorBar | null)[] = errorBarMode
+    ? chartData.map(data => computeErrorBar(data.barRunMeans, errorBarMode, data.barTotal))
+    : [];
 
   // Datasets — one stacked dataset per displayed child + one for "other".
   const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME, ...(restOfTick ? [REST_OF_TICK_NAME] : [])];
@@ -290,6 +304,7 @@ export const createEntityBreakdownChartConfiguration = (
       ...(restOfTick ? ["Whole Update Total"] : []),
       "vs Prev",
       "vs Best",
+      ...(errorBarMode ? errorBarColumns(errorBarMode, totalLabel) : []),
     ];
 
     // "Best" is the first row, which is the fastest unless --sort changed the order.
@@ -322,6 +337,7 @@ export const createEntityBreakdownChartConfiguration = (
           ...(restOfTick ? [parseFloat(data.wholeUpdateTotal.toFixed(2))] : []),
           stats.slowdownFromPrevious,
           stats.slowdownFromBest,
+          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[idx - 1], errorBars[idx])] : []),
         ],
       };
     });
@@ -437,7 +453,7 @@ export const createEntityBreakdownChartConfiguration = (
         },
       },
     },
-    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(rows.map(row => row.kind === "spacer" ? null : errorBars[row.idx]))].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName

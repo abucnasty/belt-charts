@@ -4,6 +4,7 @@
 import { colors } from "./constants";
 import { FONT_FAMILY } from "./fonts";
 import { anchorPatternToRect } from "./styles";
+import type { ErrorBar } from "../data/errorBars";
 
 // Originally attempted to just use chartjs-plugin-datalabels: that plugin has a known position bug in skia-canvas
 // https://github.com/chartjs/chartjs-plugin-datalabels/issues/416
@@ -42,6 +43,44 @@ export const valueLabelsPlugin = {
     ctx.restore();
   },
 };
+
+/**
+ * Draws a horizontal error bar at the end of each row's bar. `barsByRow` is indexed by chart row
+ * (category) and holds the interval in x-axis units, or null for rows without one (group headers).
+ * Drawn black-outlined white so it stays visible on every segment color.
+ */
+export const createErrorBarsPlugin = (barsByRow: (ErrorBar | null)[]) => ({
+  id: "errorBars",
+  afterDatasetsDraw(chart: any) {
+    const { ctx, scales } = chart;
+    const meta = chart.getDatasetMeta(0);
+    const capHalf = 6;
+    ctx.save();
+    ctx.lineCap = "butt";
+    const draw = (width: number, color: string, y: number, x1: number, x2: number) => {
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.moveTo(x1, y - capHalf);
+      ctx.lineTo(x1, y + capHalf);
+      ctx.moveTo(x2, y - capHalf);
+      ctx.lineTo(x2, y + capHalf);
+      ctx.stroke();
+    };
+    barsByRow.forEach((bar, index) => {
+      const element = meta.data[index];
+      if (!bar || !element) return;
+      const y = element.getProps(["y"], true).y;
+      const x1 = scales.x.getPixelForValue(bar.lower);
+      const x2 = scales.x.getPixelForValue(bar.upper);
+      draw(4, colors.black, y, x1, x2);
+      draw(2, colors.white, y, x1, x2);
+    });
+    ctx.restore();
+  },
+});
 
 /**
  * Re-anchors pattern fills (see `anchorPatternToRect`) to each bar and legend swatch so every
