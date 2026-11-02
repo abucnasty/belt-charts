@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `--group-by` help and README now say keys are matched against the file base name, not the label, and a key that matches no input file (or a grouping that leaves no rows) prints a warning instead of an empty chart.
+- With `--group-by`, the `vs Prev`, `vs Best` and `Overlaps Prev` table columns of `summary`, `ups` and `entity-summary` compare inside each group (empty on a group's first row, best row of the group) instead of across group boundaries and against the first row of the table; without groups `vs Best` is measured against the actual best row.
 
 ## [1.24.1] - 2026-10-30
 

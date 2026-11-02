@@ -6,6 +6,7 @@ import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars";
+import { comparisonRows } from "../data/comparison";
 import { groupLabel } from "../data/groupBy";
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline";
 import { formatSlowdown, nanoToMicro } from "../utils";
@@ -332,13 +333,12 @@ export const createEntityBreakdownChartConfiguration = (
       ...(errorBarMode ? errorBarColumns(errorBarMode, totalLabel) : []),
     ];
 
-    // "Best" is the first row, which is the fastest unless --sort changed the order.
-    const bestIdx = (options.sort ?? "total") === "total"
-      ? 0
-      : chartData.reduce((best, data, idx) => data.entityUpdateTotal < chartData[best].entityUpdateTotal ? idx : best, 0);
+    // Rows are compared with the row above and with the best row, both inside their group.
+    const compareWith = comparisonRows(chartData.map(data => data.entityUpdateTotal), groupBy.length > 0 ? chartData.map(data => data.group) : undefined);
     const totalStats = chartData.map((data, idx) => {
       const currentValue = data.entityUpdateTotal;
-      const previousValue = idx > 0 ? chartData[idx - 1].entityUpdateTotal : null;
+      const previousValue = compareWith.previous[idx] !== null ? chartData[compareWith.previous[idx]!].entityUpdateTotal : null;
+      const bestIdx = compareWith.best[idx];
       const bestValue = chartData[bestIdx].entityUpdateTotal;
       return {
         currentValue,
@@ -361,7 +361,7 @@ export const createEntityBreakdownChartConfiguration = (
           parseFloat(data.entityUpdateTotal.toFixed(2)),
           stats.slowdownFromPrevious,
           stats.slowdownFromBest,
-          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[idx - 1], errorBars[idx])] : []),
+          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[compareWith.previous[idx] ?? -1], errorBars[idx])] : []),
         ],
       };
     });

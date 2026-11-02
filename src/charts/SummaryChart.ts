@@ -10,6 +10,7 @@ import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
 import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars"
+import { comparisonRows } from "../data/comparison"
 import { groupLabel } from "../data/groupBy"
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
@@ -291,16 +292,15 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       ...(errorBarMode ? errorBarColumns(errorBarMode, valueMode === "ups" ? "UPS" : "Whole") : []),
     ];
 
-    // "Best" is the first row, which is the fastest unless --sort changed the order.
-    const bestIdx = (options.sort ?? "total") === "total"
-      ? 0
-      : chartData.reduce((best, data, idx) => data.totalAverage < chartData[best].totalAverage ? idx : best, 0);
+    // Rows are compared with the row above and with the best row, both inside their group.
+    const compareWith = comparisonRows(chartData.map(data => data.totalAverage), groupBy.length > 0 ? chartData.map(data => data.group) : undefined);
 
     // Pre-compute whole update values and stats
     const wholeUpdateStats = chartData.map((data, idx) => {
 
       const currentValue = toDisplayValue(data.totalAverage);
-      const previousValue = idx > 0 ? toDisplayValue(chartData[idx - 1].totalAverage) : null;
+      const previousValue = compareWith.previous[idx] !== null ? toDisplayValue(chartData[compareWith.previous[idx]!].totalAverage) : null;
+      const bestIdx = compareWith.best[idx];
       const bestValue = toDisplayValue(chartData[bestIdx].totalAverage);
 
       return {
@@ -329,7 +329,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           ...metricValues,
           useSignedDelta ? formatSigned(stats.deltaFromPrevious) : stats.slowdownFromPrevious,
           useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest,
-          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[idx - 1], errorBars[idx])] : []),
+          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[compareWith.previous[idx] ?? -1], errorBars[idx])] : []),
         ]
       };
     });
