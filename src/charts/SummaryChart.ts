@@ -4,13 +4,15 @@ import { MetricEnum } from "../data/MetricEnum"
 import { MetricRegistryInstance } from "../data/MetricRegistry"
 import { MetricProfiles, toMetricRecord } from "./metricProfiles"
 import { formatSlowdown } from "../utils"
+import type { RowSort } from "../commands/types"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
-import { buildSummaryChartData } from "../data/SummaryTransform"
+import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
 import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
+import { rowComparator } from "./rowOrder"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
@@ -24,6 +26,8 @@ interface SummaryChartOptions {
   csvTableExportName?: string;
   titleOverride?: string;
   sortBy?: "total" | "preserve";
+  /** Row order (`--sort`): by total time (default), keep the incoming order, or by label. */
+  sort?: RowSort;
   isPerRun?: boolean;
   /** Hide metrics whose max average across all results is below this % of wholeUpdate. 0 = no filter. */
   minPercent?: number;
@@ -41,6 +45,8 @@ interface SummaryChartOptions {
 export interface SummaryChartResult {
   config: ChartConfiguration<"bar">;
   exportTable: (() => Promise<void>) | null;
+  /** The table drawn under the chart and exported by `exportTable`. */
+  table: { header: string[]; rows: (string | number)[][] };
   /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
   recommendedHeight: number;
   /** Minimum canvas width (px) needed to fit the summary table's columns without squishing; use as a floor over the user-requested width. */
@@ -61,9 +67,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   }
 
   let chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
-  // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
+  // Sort data by "Whole Update" total time ascending by default (unless sortBy is "preserve")
+  const compareRows = rowComparator<SummaryChartData>(options.sort ?? "total", d => d.totalAverage);
   if (options.sortBy !== "preserve") {
-    chartData.sort((a, b) => a.totalAverage - b.totalAverage);
+    chartData.sort(compareRows);
   }
 
   const groupBy = options.groupBy ?? [];
@@ -76,7 +83,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       const ai = groupBy.indexOf(getGroup(a)!);
       const bi = groupBy.indexOf(getGroup(b)!);
       if (ai !== bi) return ai - bi;
-      return a.totalAverage - b.totalAverage;
+      return compareRows(a, b);
     });
   }
 
@@ -156,19 +163,24 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       useSignedDelta ? "+/- vs Best" : "vs Best"
     ];
 
+    // "Best" is the first row, which is the fastest unless --sort changed the order.
+    const bestIdx = (options.sort ?? "total") === "total"
+      ? 0
+      : chartData.reduce((best, data, idx) => data.totalAverage < chartData[best].totalAverage ? idx : best, 0);
+
     // Pre-compute whole update values and stats
     const wholeUpdateStats = chartData.map((data, idx) => {
 
       const currentValue = toDisplayValue(data.totalAverage);
       const previousValue = idx > 0 ? toDisplayValue(chartData[idx - 1].totalAverage) : null;
-      const bestValue = toDisplayValue(chartData[0].totalAverage);
+      const bestValue = toDisplayValue(chartData[bestIdx].totalAverage);
 
       return {
         currentValue,
         deltaFromPrevious: previousValue !== null ? Math.round(currentValue - previousValue) : null,
         deltaFromBest: Math.round(currentValue - bestValue),
         slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
-        slowdownFromBest: idx === 0 ? "" : formatSlowdown(bestValue, currentValue)
+        slowdownFromBest: idx === bestIdx ? "" : formatSlowdown(bestValue, currentValue)
       };
     });
 
@@ -326,6 +338,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       }
     : null;
 
-  return { config: configuration, exportTable, recommendedHeight, recommendedWidth };
+  return { config: configuration, exportTable, table: { header: tableStats.header, rows: tableStats.rows.map(row => row.values) }, recommendedHeight, recommendedWidth };
 
 }

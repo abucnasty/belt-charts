@@ -6,7 +6,9 @@ import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { formatSlowdown, nanoToMicro } from "../utils";
+import type { RowSort } from "../commands/types";
 import { colors, chartLayout } from "./constants";
+import { rowComparator } from "./rowOrder";
 import { getMetricPattern } from "./styles";
 import { patternAnchorPlugin, valueLabelsPlugin } from "./plugins";
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table";
@@ -35,6 +37,8 @@ export interface EntityBreakdownChartOptions {
   topN?: number;
   minPercent?: number;
   sortBy?: "total" | "preserve";
+  /** Row order (`--sort`): by total time (default), keep the incoming order, or by label. */
+  sort?: RowSort;
   isPerRun?: boolean;
   groupBy?: string[];
   valueLabels?: boolean;
@@ -43,6 +47,8 @@ export interface EntityBreakdownChartOptions {
 export interface EntityBreakdownChartResult {
   config: ChartConfiguration<"bar">;
   exportTable: (() => Promise<void>) | null;
+  /** The table drawn under the chart and exported by `exportTable`. */
+  table: { header: string[]; rows: (string | number)[][] };
   /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
   recommendedHeight: number;
   /** Minimum canvas width (px) needed to fit the summary table's columns without squishing; use as a floor over the user-requested width. */
@@ -86,8 +92,9 @@ export const createEntityBreakdownChartConfiguration = (
 
   const rawChartData = results.map(result => mapEntityBreakdownData(result, allEntityChildren));
 
+  const compareRows = rowComparator<EntityBreakdownChartData>(options.sort ?? "total", d => d.entityUpdateTotal);
   if (options.sortBy !== "preserve") {
-    rawChartData.sort((a, b) => a.entityUpdateTotal - b.entityUpdateTotal);
+    rawChartData.sort(compareRows);
   }
 
   const groupBy = options.groupBy ?? [];
@@ -99,7 +106,7 @@ export const createEntityBreakdownChartConfiguration = (
       const ai = groupBy.indexOf(getGroup(a)!);
       const bi = groupBy.indexOf(getGroup(b)!);
       if (ai !== bi) return ai - bi;
-      return a.entityUpdateTotal - b.entityUpdateTotal;
+      return compareRows(a, b);
     });
     rawChartData.length = 0;
     rawChartData.push(...filtered);
@@ -214,14 +221,18 @@ export const createEntityBreakdownChartConfiguration = (
       "vs Best",
     ];
 
+    // "Best" is the first row, which is the fastest unless --sort changed the order.
+    const bestIdx = (options.sort ?? "total") === "total"
+      ? 0
+      : chartData.reduce((best, data, idx) => data.entityUpdateTotal < chartData[best].entityUpdateTotal ? idx : best, 0);
     const totalStats = chartData.map((data, idx) => {
       const currentValue = data.entityUpdateTotal;
       const previousValue = idx > 0 ? chartData[idx - 1].entityUpdateTotal : null;
-      const bestValue = chartData[0].entityUpdateTotal;
+      const bestValue = chartData[bestIdx].entityUpdateTotal;
       return {
         currentValue,
         slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
-        slowdownFromBest: idx === 0 ? "" : formatSlowdown(bestValue, currentValue),
+        slowdownFromBest: idx === bestIdx ? "" : formatSlowdown(bestValue, currentValue),
       };
     });
 
@@ -371,5 +382,5 @@ export const createEntityBreakdownChartConfiguration = (
       }
     : null;
 
-  return { config, exportTable, recommendedHeight, recommendedWidth };
+  return { config, exportTable, table: { header: tableStats.header, rows: tableStats.rows.map(row => row.values) }, recommendedHeight, recommendedWidth };
 };

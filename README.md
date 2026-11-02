@@ -136,6 +136,24 @@ belt-charts summary "results/my_amazing_map*.csv"
 
 ---
 
+### Row Order
+
+`summary`, `ups`, `entity-summary` and `boxplot` order their rows by total time, so the same save lands in a different row from one chart to the next. `--sort` keeps a fixed order instead.
+
+| Option | Default | Description |
+|---|---|---|
+| `--sort <total\|input\|name>` | `total` | `total`: ranked by total time (today's behaviour; `boxplot` ranks by mean, slowest first). `input`: the order of the `--include` patterns, then of the names file (and `--name` flags), then of the inputs; sessions of the same save stay next to each other. `name`: by the label shown in the chart, numbers compared as numbers. With `--group-by` the same order applies inside each group |
+
+When the rows are not ordered by total, the `vs Best` column still measures against the fastest row, and `vs Prev` against the row above.
+
+```
+# Three charts over different subsets show the saves in the same order as the names file
+belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "4i-*" -o charts/ups_4i.png
+belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "*shuffled" -o charts/ups_shuffled.png
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.

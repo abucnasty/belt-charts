@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, inputOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
@@ -33,6 +33,7 @@ async function generateBoxPlot(
     minUpdateTime: options.minUpdate,
     maxUpdateTime: options.maxUpdate,
     titleOverride: options.titleOverride ?? undefined,
+    sort: options.sort,
   });
 
   console.log("Chart configuration created.");
@@ -54,6 +55,7 @@ export function createBoxPlotCommand(): Command {
     .setDescription("Generate boxplot charts showing distribution statistics")
     .addOption(baseOptions)
     .addOption(animationOptions)
+    .addOption(sortOption)
     .build()
     .option(
       "--min-update <number>",
@@ -94,6 +96,7 @@ export function createBoxPlotCommand(): Command {
         fps: opts.fps,
         easing: opts.easing,
         hold: opts.hold,
+        sort: opts.sort,
       };
 
       validateAnimateOutput(options.output, options.animate);

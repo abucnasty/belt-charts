@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `--input "<glob>:<suffix>"` (repeatable, on every command) charts several results folders together; each input's labels get ` (suffix)` appended, so two sessions with the same file names no longer need symlinks and a names file.
 - `--include` / `--exclude` glob patterns choose which input files are charted.
+- `--sort <total|input|name>` on `summary`, `ups`, `entity-summary` and `boxplot` keeps a fixed row order (names file, `--include` or input order, or by label) instead of ranking by total; the default is unchanged.
 
 ## [1.24.1] - 2026-10-30
 

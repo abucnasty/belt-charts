@@ -4,7 +4,7 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -45,6 +45,7 @@ async function generateUps(
     groupBy: options.groupBy,
     valueMode: "ups",
     valueLabels: options.valueLabels,
+    sort: options.sort,
   });
 
   console.log("Chart configuration created.");
@@ -70,6 +71,7 @@ export function createUpsCommand(): Command {
     .addOption(animationOptions)
     .addOption(staggerOption)
     .addOption(valueLabelsOption)
+    .addOption(sortOption)
     .build()
     .option<boolean>(
       "--summary-table <boolean>",
@@ -121,6 +123,7 @@ export function createUpsCommand(): Command {
         hold: opts.hold,
         stagger: opts.stagger ?? false,
         valueLabels: opts.valueLabels ?? false,
+        sort: opts.sort,
       };
 
       validateAnimateOutput(options.output, options.animate);

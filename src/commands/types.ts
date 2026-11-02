@@ -18,6 +18,14 @@ export type StaggerOption = {
   stagger: boolean;
 };
 
+// Row order of the bar charts: by total time, in input order (--include, names file, inputs), or by label
+export type RowSort = "total" | "input" | "name";
+
+// Row order option shared by the bar charts that sort their rows
+export type SortOption = {
+  sort?: RowSort;
+};
+
 // Base options shared by all chart types
 export type BaseChartOptions = {
   width: number;
@@ -52,7 +60,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -79,7 +87,7 @@ export type LineBarChartOptions = BaseChartOptions & AnimationOptions & {
 };
 
 // Boxplot chart specific options
-export type BoxPlotChartOptions = BaseChartOptions & AnimationOptions & {
+export type BoxPlotChartOptions = BaseChartOptions & AnimationOptions & SortOption & {
   minUpdate: number | null;
   maxUpdate: number | null;
 };
@@ -90,7 +98,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

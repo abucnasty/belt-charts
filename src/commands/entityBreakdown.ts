@@ -12,7 +12,7 @@ import {
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { EntityBreakdownChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, inputOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, inputOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -80,6 +80,7 @@ async function generateEntityBreakdown(
     isPerRun: options.perRun,
     groupBy: options.groupBy,
     valueLabels: options.valueLabels,
+    sort: options.sort,
   });
 
   console.log("Chart configuration created.");
@@ -181,6 +182,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       hold: opts.hold,
       stagger: opts.stagger ?? false,
       valueLabels: opts.valueLabels ?? false,
+      sort: opts.sort,
     };
 
     validateAnimateOutput(options.output, options.animate);
@@ -201,6 +203,7 @@ export function createEntitySummaryCommand(): Command {
     .addOption(animationOptions)
     .addOption(staggerOption)
     .addOption(valueLabelsOption)
+    .addOption(sortOption)
     .build()
     .action(makeEntitySummaryAction(false));
 }

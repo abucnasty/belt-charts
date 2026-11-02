@@ -6,6 +6,8 @@ import { average, max, median, milliToMicro, min, nanoToMicro, roundTo } from ".
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { IBoxPlot } from "@sgratzl/chartjs-chart-boxplot";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
+import type { RowSort } from "../commands/types";
+import { rowComparator } from "./rowOrder";
 
 export interface BoxChartOptions {
     /**
@@ -18,6 +20,8 @@ export interface BoxChartOptions {
     minUpdateTime: number | null;
     /** Override the chart's auto-generated title. */
     titleOverride?: string;
+    /** Column order (`--sort`): by mean, slowest first (default), keep the incoming order, or by label. */
+    sort?: RowSort;
 }
 
 export interface BoxPlotChartResult {
@@ -67,7 +71,7 @@ export const createBoxPlotChartConfiguration = (results: BenchmarkAggregateRunRe
 
     const title = options.titleOverride ?? `Whole Update Time Run Variance`
 
-    dataSets.sort((a, b) => b.stats.mean - a.stats.mean)
+    dataSets.sort(rowComparator<(typeof dataSets)[number]>(options.sort ?? "total", d => -d.stats.mean))
 
     const minimum = options.minUpdateTime !== null ? milliToMicro(options.minUpdateTime) : min(dataSets.map(it => it.stats.min)) * chartLayout.AXIS_SCALE_LOWER_PADDING
     const maximum = options.maxUpdateTime !== null ? milliToMicro(options.maxUpdateTime) : max(dataSets.map(it => it.stats.max)) * chartLayout.AXIS_SCALE_UPPER_PADDING

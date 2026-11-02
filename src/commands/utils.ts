@@ -12,7 +12,7 @@ import {
 import { MetricEnum } from "../data/MetricEnum";
 import { ensureOutputDir } from "../utils";
 import { assignToGroup } from "../utils";
-import { BaseChartOptions } from "./types";
+import { BaseChartOptions, RowSort } from "./types";
 import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
 import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
@@ -222,8 +222,6 @@ export const inputOptions: OptionBuilder = {
       );
   },
 };
-
-export type RowSort = "total" | "input" | "name";
 
 /**
  * Adds `--sort`, the row order of the bar charts. `total` (the default) ranks rows by their total
