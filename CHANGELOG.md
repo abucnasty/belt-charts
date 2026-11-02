@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every command reads `.csv.gz` and `.csv.zst` results files (zstd needs Node.js 22.15 or newer).
 - `--font-scale <factor>` makes all text (titles, legends, axis labels, value labels, tables) larger or smaller independent of `-w`, `-h` and `--scale`.
 - `--subtitle <text>` on every chart command draws a smaller line under the title, for run details that would otherwise make the title long.
+- `belt-charts render <config.json>` renders a whole chart set from one JSON file: shared defaults once, then a list of charts with their command, inputs, output and overrides, with paths relative to the config file (`--dry-run` prints the commands).
 - `belt-charts prune <glob>` drops columns that are zero in every file (and, with `--keep-only-charted`, columns no chart reads) and can compress the result (`--compress gz|zst`), writing to `--out-dir` or `--in-place`; every chart renders the same afterwards.
 
 ## [1.24.1] - 2026-10-30

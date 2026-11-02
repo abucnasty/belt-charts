@@ -24,6 +24,12 @@ import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from
 
 export type { ChartInput } from "./inputs";
 
+/** Process-wide behaviour switches; `render` runs several commands in one process. */
+export const runState = {
+  /** When true, commands that normally exit the process when they finish (`line` / `bar`) return instead. */
+  keepProcessAlive: false,
+};
+
 export function getBaseName(file: string): string {
   return resultsFileBaseName(file);
 }

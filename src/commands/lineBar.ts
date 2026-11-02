@@ -5,7 +5,7 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, runState, commonOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { revealTimeseriesForAnimation } from "../charts/animation";
@@ -98,7 +98,8 @@ async function generateLineOrBarCharts(
 
   // Exit immediately rather than letting Node drain the event loop naturally: tearing down
   // many worker threads after native addon (skia-canvas) usage can segfault on process exit.
-  process.exit(0);
+  // `render` keeps the process alive for its next chart and exits itself at the end.
+  if (!runState.keepProcessAlive) process.exit(0);
 }
 
 

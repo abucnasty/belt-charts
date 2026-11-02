@@ -416,6 +416,46 @@ belt-charts summary "results_small/*.csv.zst" -o charts/summary.png
 
 ---
 
+### `render`
+
+Renders a whole chart set from one JSON config file, so a benchmark's width, height, scale, trim, names file and aggregation are written once instead of on every command line.
+
+```
+belt-charts render charts.json
+belt-charts render charts.json --dry-run   # print the command line of every chart without rendering
+```
+
+```json
+{
+  "defaults": {
+    "width": 1400,
+    "scale": 2,
+    "removeFirstTicks": 1500,
+    "namesFile": "names.txt",
+    "subtitle": "Game 2.0.76, 15000 ticks measured, 10 runs"
+  },
+  "charts": [
+    { "command": "ups", "input": "results/*.csv", "output": "charts/ups.png", "sort": "input" },
+    { "command": "entity-summary", "input": "results/*.csv", "output": "charts/entity.png", "restOfTick": true, "valueLabels": true },
+    {
+      "command": "summary",
+      "input": ["malloc/*.csv:malloc", { "path": "mimalloc/*.csv", "suffix": "mimalloc" }],
+      "output": "charts/by_allocator.png",
+      "paired": true,
+      "metrics": ["wholeUpdate", "entityUpdate"]
+    }
+  ]
+}
+```
+
+- `defaults` apply to every chart whose command has that option (the others skip it); a chart's own value wins.
+- Each chart names its `command` (any chart command: `summary`, `ups`, `entity-summary`, `boxplot`, `line`, `bar`, `table`, ...), its `input` (a glob, or a list of globs; `"<glob>:<suffix>"` or `{ "path": ..., "suffix": ... }` for a label suffix) and its `output`. Any other key is a long option of that command, written camelCase (`removeFirstTicks`) or kebab-case (`remove-first-ticks`).
+- Flags take `true` / `false`; options that take a list (`metrics`, `groupBy`, ...) take a JSON array; repeatable options (`include`, `exclude`, `trimSubstring`) take an array too; `name` takes an object `{ "base_name": "Label" }`.
+- Paths (`input`, `output`, `namesFile`, `aggregateFile`) are resolved relative to the config file, so it works from any directory. Absolute paths are kept.
+- Charts are rendered one after another; an unknown option or a missing file stops the run with a message naming the chart. Only JSON is supported (no YAML, no comments).
+
+---
+
 ### `entity-summary`
 
 Stacked-bar chart decomposing `entityUpdate` into per-entity-type contributions. Requires Factorio verbose metrics CSVs that include the PascalCase per-entity columns (e.g. `Inserter`, `AssemblingMachine`).
