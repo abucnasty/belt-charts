@@ -26,6 +26,14 @@ export type SortOption = {
   sort?: RowSort;
 };
 
+// Draws each row's change against a baseline row instead of absolute values
+export type BaselineOption = {
+  /** Label or base name of the baseline row. */
+  baseline?: string | null;
+  /** With --group-by: baseline label or base name per group key. */
+  baselinePerGroup?: Map<string, string>;
+};
+
 // Base options shared by all chart types
 export type BaseChartOptions = {
   width: number;
@@ -60,7 +68,7 @@ export type BaseChartOptions = {
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -98,7 +106,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;

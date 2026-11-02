@@ -4,7 +4,7 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, sortOption, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, inputOptionsFrom, sortOption, baselineOptions, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -46,6 +46,8 @@ async function generateUps(
     valueMode: "ups",
     valueLabels: options.valueLabels,
     sort: options.sort,
+    baseline: options.baseline,
+    baselinePerGroup: options.baselinePerGroup,
   });
 
   console.log("Chart configuration created.");
@@ -72,6 +74,7 @@ export function createUpsCommand(): Command {
     .addOption(staggerOption)
     .addOption(valueLabelsOption)
     .addOption(sortOption)
+    .addOption(baselineOptions)
     .build()
     .option<boolean>(
       "--summary-table <boolean>",
@@ -124,9 +127,12 @@ export function createUpsCommand(): Command {
         stagger: opts.stagger ?? false,
         valueLabels: opts.valueLabels ?? false,
         sort: opts.sort,
+        baseline: opts.baseline,
+        baselinePerGroup: opts.baselinePerGroup,
       };
 
       validateAnimateOutput(options.output, options.animate);
+      validateBaselineOptions(options);
       const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
 

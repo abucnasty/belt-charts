@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--include` / `--exclude` glob patterns choose which input files are charted.
 - `--sort <total|input|name>` on `summary`, `ups`, `entity-summary` and `boxplot` keeps a fixed row order (names file, `--include` or input order, or by label) instead of ranking by total; the default is unchanged.
 - `entity-summary --rest-of-tick` adds a "Rest of Tick" segment (whole update minus entity update), so the bar length is the whole update and the ranking matches UPS.
+- `--baseline <label>` and `--baseline-per-group <key=label,...>` on `summary`, `ups` and `entity-summary` draw each segment's change against a baseline row (µs, with percent change in the table) instead of absolute values; the exported table gets the delta columns.
 
 ## [1.24.1] - 2026-10-30
 

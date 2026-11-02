@@ -25,6 +25,7 @@ import {
 import { runLineBarWorkerTask, type LineBarWorkerTask } from "./commands/lineBarWorkerTask";
 import { runAggregateParseWorkerTask, type AggregateParseTask } from "./commands/aggregateParseWorkerTask";
 import { registerFonts } from "./charts/fonts";
+import { UserError } from "./utils";
 
 Chart.register(
   BoxPlotController,
@@ -66,6 +67,13 @@ if (!isMainThread) {
   program.addCommand(createEntityHeatmapCommand());
   program.addCommand(createCoreFrequencyHeatmapCommand());
 
-  program.parse();
+  program.parseAsync().catch((error: unknown) => {
+    // Bad arguments are reported as a plain message; anything else keeps its stack trace.
+    if (error instanceof UserError) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    throw error;
+  });
 }
 

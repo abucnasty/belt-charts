@@ -15,6 +15,8 @@ export interface SummaryChartMetricValue {
 
 export interface SummaryChartData {
   displayName: string;
+  /** Base name of the source file; lets `--baseline` find a row by file name as well as label. */
+  originalFileName: string;
   group?: string;
   totalAverage: number;
   metrics: Array<MetricEnum>;
@@ -61,6 +63,7 @@ export function buildSummaryChartData(
   if (!wholeUpdateAgg) {
     return {
       displayName: result.displayName,
+      originalFileName: result.originalFileName,
       group: result.group,
       metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
       metricValues,
@@ -89,6 +92,7 @@ export function buildSummaryChartData(
 
   return {
     displayName: result.displayName,
+    originalFileName: result.originalFileName,
     group: result.group,
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues,

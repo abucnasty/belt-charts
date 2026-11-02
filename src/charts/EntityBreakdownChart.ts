@@ -5,6 +5,7 @@ import { BenchmarkAggregateRunResult, MetricAggregate } from "../data/BenchmarkA
 import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
+import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline";
 import { formatSlowdown, nanoToMicro } from "../utils";
 import type { RowSort } from "../commands/types";
 import { colors, chartLayout } from "./constants";
@@ -26,6 +27,7 @@ interface EntityBreakdownMetricValue {
 
 interface EntityBreakdownChartData {
   displayName: string;
+  originalFileName: string;
   group?: string;
   entityUpdateTotal: number;
   /** Whole update time (µs); 0 when wholeUpdate was not parsed. */
@@ -35,7 +37,7 @@ interface EntityBreakdownChartData {
   metricValues: EntityBreakdownMetricValue[];
 }
 
-export interface EntityBreakdownChartOptions {
+export interface EntityBreakdownChartOptions extends BaselineOptions {
   aggregationStrategy: AggregationStrategy;
   includeTable?: boolean;
   csvTableExportName?: string;
@@ -90,6 +92,7 @@ const mapEntityBreakdownData = (
 
   return {
     displayName: result.displayName,
+    originalFileName: result.originalFileName,
     group: result.group,
     entityUpdateTotal,
     wholeUpdateTotal,
@@ -166,6 +169,7 @@ export const createEntityBreakdownChartConfiguration = (
     const otherAvg = Math.max(0, data.entityUpdateTotal - sumDisplayed);
     return {
       displayName: data.displayName,
+      originalFileName: data.originalFileName,
       group: data.group,
       entityUpdateTotal: data.entityUpdateTotal,
       wholeUpdateTotal: data.wholeUpdateTotal,
@@ -185,6 +189,17 @@ export const createEntityBreakdownChartConfiguration = (
       ],
     };
   });
+
+  // With a baseline every segment is drawn as its change against the baseline row's segment.
+  const baselineOf: number[] | null = hasBaseline(options) ? resolveBaselines(chartData, options) : null;
+  const isDelta = baselineOf !== null;
+  const segmentValue = (idx: number, metricName: string): number => {
+    const of = (i: number) => chartData[i].metricValues.find(mv => mv.metricName === metricName)?.average ?? 0;
+    return of(idx) - (isDelta ? of(baselineOf![idx]) : 0);
+  };
+  // The baseline row itself is all zeros, so mark it.
+  const rowName = (idx: number): string =>
+    isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
 
   // Datasets — one stacked dataset per displayed child + one for "other".
   const datasetOrder = [...displayedChildren, OTHER_ENTITY_NAME, ...(restOfTick ? [REST_OF_TICK_NAME] : [])];
@@ -212,12 +227,12 @@ export const createEntityBreakdownChartConfiguration = (
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
   const chartLabels = rows.map(row =>
-    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : rowName(row.idx)
   );
 
   const datasets = datasetOrder.map(name => ({
     label: datasetDescriptions.get(name)!,
-    data: rows.map(row => row.kind === "spacer" ? null : (chartData[row.idx].metricValues.find(mv => mv.metricName === name)?.average ?? 0)),
+    data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, name)),
     backgroundColor: getMetricPattern(name),
   }));
 
@@ -237,7 +252,37 @@ export const createEntityBreakdownChartConfiguration = (
     description: datasetDescriptions.get(name)!,
   }));
 
+  const totalLabel = restOfTick ? "Whole Update" : "Entity Update";
+
+  // Baseline table: the segments are changes against the baseline row, plus the total's percent
+  // change and its absolute value.
+  const computeBaselineTableStats = () => {
+    const header = [
+      "Save File",
+      ...tableHeaderMetrics.map(m => `Δ ${m.description}`),
+      `Δ ${totalLabel}`,
+      `Δ ${totalLabel} %`,
+      `${totalLabel} Total`,
+    ];
+    const rows = chartData.map((data, idx) => {
+      const base = chartData[baselineOf![idx]];
+      const deltas = tableHeaderMetrics.map(m => formatSignedChange(segmentValue(idx, m.name)));
+      return {
+        displayName: data.displayName,
+        values: [
+          rowName(idx),
+          ...deltas,
+          formatSignedChange(data.barTotal - base.barTotal),
+          formatPercentChange(base.barTotal, data.barTotal),
+          parseFloat(data.barTotal.toFixed(2)),
+        ],
+      };
+    });
+    return { header, rows, totalStats: [] as unknown[] };
+  };
+
   const computeTableStats = () => {
+    if (isDelta) return computeBaselineTableStats();
     const header = [
       "Save File",
       ...tableHeaderMetrics.map(m => m.description),
@@ -324,10 +369,13 @@ export const createEntityBreakdownChartConfiguration = (
       break;
   }
 
-  const xAxisLabel = `${restOfTick ? "Whole Update" : "Entity Update"} time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`;
+  const xAxisLabel = isDelta
+    ? `Change in ${totalLabel} time vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (left of zero is faster)`
+    : `${totalLabel} time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`;
+  const titleSuffix = `${restOfTick ? " and Rest of Tick" : ""}${isDelta ? " vs Baseline" : ""}`;
   const title = options.titleOverride ?? (options.isPerRun
-    ? `${aggregationStrategyLabel} Per Tick Entity Breakdown${restOfTick ? " and Rest of Tick" : ""} (Per Run)`
-    : `${aggregationStrategyLabel} Per Tick Entity Breakdown${restOfTick ? " and Rest of Tick" : ""}`);
+    ? `${aggregationStrategyLabel} Per Tick Entity Breakdown${titleSuffix} (Per Run)`
+    : `${aggregationStrategyLabel} Per Tick Entity Breakdown${titleSuffix}`);
 
   // Sort datasets so legend matches stack visual order (largest first looks cleaner).
   const datasetRankByName = new Map<string, number>(datasetOrder.map((name, idx) => [name, idx]));

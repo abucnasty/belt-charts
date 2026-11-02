@@ -9,6 +9,7 @@ import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
+import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
 import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
@@ -19,7 +20,7 @@ const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 const profileOrder = (description: string) =>
   MetricProfiles.SUMMARY_CHART.findIndex(it => it.description == description);
 
-interface SummaryChartOptions {
+interface SummaryChartOptions extends BaselineOptions {
   aggregationStrategy: AggregationStrategy;
   metrics?: MetricEnum[];
   includeTable?: boolean;
@@ -87,6 +88,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     });
   }
 
+  // With a baseline every segment is drawn as its change against the baseline row's segment.
+  const baselineOf: number[] | null = hasBaseline(options) ? resolveBaselines(chartData, options) : null;
+  const isDelta = baselineOf !== null;
+
   const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
   // When the only requested metric is wholeUpdate, render it as a single white bar with no "Other".
@@ -99,6 +104,14 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   const isSingleBar = isWholeUpdateOnly || valueMode === "ups";
   const toDisplayValue = (microseconds: number): number =>
     valueMode === "ups" ? (microseconds > 0 ? 1_000_000 / microseconds : 0) : microseconds;
+  // Row total as plotted: absolute, or its change against the baseline row.
+  const totalValue = (idx: number): number =>
+    toDisplayValue(chartData[idx].totalAverage) - (isDelta ? toDisplayValue(chartData[baselineOf![idx]].totalAverage) : 0);
+  // One segment as plotted: absolute, or its change against the baseline row's segment.
+  const segmentValue = (idx: number, metricName: string): number => {
+    const of = (i: number) => chartData[i].metricValues.find(it => it.metricName === metricName)?.average || 0;
+    return of(idx) - (isDelta ? of(baselineOf![idx]) : 0);
+  };
 
   // Apply minPercent filter: hide metrics whose max average never exceeds minPercent% of wholeUpdate.
   const minPercent = options.minPercent ?? 0;
@@ -131,14 +144,17 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   } else {
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
+  // The baseline row itself is all zeros, so mark it.
+  const rowName = (idx: number): string =>
+    isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
   const chartLabels = rows.map(row =>
-    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : rowName(row.idx)
   );
 
   const datasets = isSingleBar
     ? [{
         label: valueMode === "ups" ? "Updates Per Second" : MetricEnum.WHOLE_UPDATE.description,
-        data: rows.map(row => row.kind === "spacer" ? null : toDisplayValue(chartData[row.idx].totalAverage)),
+        data: rows.map(row => row.kind === "spacer" ? null : totalValue(row.idx)),
         // UPS reuses the entityUpdate blue since it isn't part of the stacked time breakdown.
         backgroundColor: valueMode === "ups" ? colors.blue : colors.white,
       }]
@@ -146,12 +162,60 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
         .map(metric => ({
           label: metric.description,
-          data: rows.map(row => row.kind === "spacer" ? null : (chartData[row.idx].metricValues.find(it => it.metricName === metric.name)?.average || 0)),
+          data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, metric.name)),
           backgroundColor: getMetricPattern(metric.name),
         }))
 
   // Compute shared statistics for both plugins
+  // Baseline table: the segments are changes against the baseline row, plus the whole update's
+  // percent change and its absolute value.
+  const computeBaselineTableStats = () => {
+    const header = valueMode === "ups"
+      ? [...(groupBy.length > 0 ? ["Group"] : []), "Save File", "UPS", "+/- vs Baseline", "% vs Baseline"]
+      : [
+          ...(groupBy.length > 0 ? ["Group"] : []),
+          "Save File",
+          ...metrics.map(it => `Δ ${it.description}`),
+          "Δ Whole %",
+          "Whole",
+        ];
+    const rows = chartData.map((data, idx) => {
+      const base = chartData[baselineOf![idx]];
+      const total = toDisplayValue(data.totalAverage);
+      const baseTotal = toDisplayValue(base.totalAverage);
+      if (valueMode === "ups") {
+        return {
+          displayName: data.displayName,
+          values: [
+            ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+            rowName(idx),
+            Math.round(total),
+            formatSignedChange(total - baseTotal, 0),
+            formatPercentChange(baseTotal, total),
+          ],
+        };
+      }
+      const deltas = metrics.map(metric => {
+        const value = data.metricValues.find(mv => mv.metricName === metric.name);
+        const baseValue = base.metricValues.find(mv => mv.metricName === metric.name);
+        return value === undefined || baseValue === undefined ? "" : formatSignedChange(value.average - baseValue.average);
+      });
+      return {
+        displayName: data.displayName,
+        values: [
+          ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+          rowName(idx),
+          ...deltas,
+          formatPercentChange(baseTotal, total),
+          Math.round(total),
+        ],
+      };
+    });
+    return { header, rows, wholeUpdateStats: [] as unknown[] };
+  };
+
   const computeTableStats = () => {
+    if (isDelta) return computeBaselineTableStats();
     // UPS shows a raw +/- delta instead of a slowdown percent, since "slower" reads oddly for
     // a rate that can also increase.
     const useSignedDelta = valueMode === "ups";
@@ -248,14 +312,19 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   }
 
   const xAxisLabel = valueMode === "ups"
-    ? `Updates per second using ${aggregationStrategyLabel.toLowerCase()} per tick (higher is better)`
-    : `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
+    ? (isDelta
+      ? `Change in updates per second vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick (right of zero is faster)`
+      : `Updates per second using ${aggregationStrategyLabel.toLowerCase()} per tick (higher is better)`)
+    : (isDelta
+      ? `Change in time vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (left of zero is faster)`
+      : `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`)
 
+  const baselineTitleSuffix = isDelta ? " vs Baseline" : ""
   const title = options.titleOverride ?? (valueMode === "ups"
-    ? `${aggregationStrategyLabel} Updates Per Second${options.isPerRun ? " (Per Run)" : ""}`
+    ? `${aggregationStrategyLabel} Updates Per Second${baselineTitleSuffix}${options.isPerRun ? " (Per Run)" : ""}`
     : (options.isPerRun
-      ? `${aggregationStrategyLabel} Per Tick Metrics (Per Run)`
-      : `${aggregationStrategyLabel} Per Tick Metrics`))
+      ? `${aggregationStrategyLabel} Per Tick Metrics${baselineTitleSuffix} (Per Run)`
+      : `${aggregationStrategyLabel} Per Tick Metrics${baselineTitleSuffix}`))
 
 
   const configuration: ChartConfiguration<"bar"> = {
@@ -295,7 +364,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           stacked: true,
           ticks: { color: colors.white, },
           title: { display: true, text: xAxisLabel, color: "white" },
-          ...(options.maxUpdate != null ? { max: options.maxUpdate } : {}),
+          ...(options.maxUpdate != null && !isDelta ? { max: options.maxUpdate } : {}),
         },
         y: {
           stacked: true,

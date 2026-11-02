@@ -154,6 +154,24 @@ belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "*
 
 ---
 
+### Difference Against a Baseline
+
+`summary`, `ups` and `entity-summary` can draw differences instead of absolute values, so a claim such as "memory order saves 86-97 µs of inserter time" comes straight from the chart.
+
+| Option | Default | Description |
+|---|---|---|
+| `--baseline <label>` | *(none)* | The row everything is compared against, named by its label (as shown in the chart, including any `--input` suffix) or its base name. Each segment is drawn as its change against the same segment of the baseline row, diverging from zero (µs; for `ups`, updates per second). The baseline row is marked `(baseline)` and is empty. It must match exactly one row; with `--group-by` it is looked up inside each group |
+| `--baseline-per-group <key=label,...>` | *(none)* | With `--group-by`: the baseline of each group, e.g. `"q1=Q1 As Saved,q2=Q2 As Saved"`. Takes precedence over `--baseline` for the listed groups. Labels cannot contain commas |
+
+The in-chart table and the exported `.csv`/`.md` show the same changes instead of absolute values: `summary` gets `Δ <segment>` columns, `Δ Whole %` and the absolute `Whole`; `entity-summary` gets `Δ <segment>` columns, `Δ Entity Update`, `Δ Entity Update %` and the absolute total; `ups` keeps `UPS` and adds `+/- vs Baseline` and `% vs Baseline`. Rows are ordered as usual (see Row Order); `--baseline` does not reorder them. Combine it with `entity-summary --rest-of-tick` to see that only the inserter segment moves.
+
+```
+belt-charts entity-summary "results/*.csv" --baseline "4i-as-saved" --value-labels -o charts/inserter_delta.png
+belt-charts summary "results/*.csv" --group-by "q1,q2" --baseline-per-group "q1=q1_as_saved,q2=q2_as_saved" -o charts/delta_by_group.png
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.

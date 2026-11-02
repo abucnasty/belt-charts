@@ -15,6 +15,8 @@ import { assignToGroup } from "../utils";
 import { BaseChartOptions, RowSort } from "./types";
 import { Easing } from "../charts/animation";
 import { OptionBuilder } from "./commandBuilder";
+import { parseBaselinePerGroup } from "../data/baseline";
+import { UserError } from "../utils";
 import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
 
 export type { ChartInput } from "./inputs";
@@ -243,6 +245,34 @@ export const sortOption: OptionBuilder = {
     );
   },
 };
+
+/**
+ * Adds `--baseline` and `--baseline-per-group`: the chart then draws each segment's change against
+ * a baseline row (in the chart's unit, with the percent change in the table) instead of absolute values.
+ */
+export const baselineOptions: OptionBuilder = {
+  build(command: Command): Command {
+    return command
+      .option<string | null>(
+        "--baseline <label>",
+        "Draw each row's change against this row (its label or base name) instead of absolute values. With --group-by, the row is looked up inside each group",
+        (it: string) => it,
+        null,
+      )
+      .option<Map<string, string>>(
+        "--baseline-per-group <key=label,...>",
+        "With --group-by: the baseline row (label or base name) of each group, e.g. \"q1=Q1 As Saved,q2=Q2 As Saved\"",
+        (it: string) => parseBaselinePerGroup(it),
+      );
+  },
+};
+
+/** Exits early on baseline arguments that cannot work, before any file is parsed. */
+export function validateBaselineOptions(options: { baseline?: string | null; baselinePerGroup?: Map<string, string>; groupBy: string[] }): void {
+  if ((options.baselinePerGroup?.size ?? 0) > 0 && options.groupBy.length === 0) {
+    throw new UserError("--baseline-per-group needs --group-by");
+  }
+}
 
 export const baseOptions: OptionBuilder = {
   build(command: Command): Command {
