@@ -12,7 +12,7 @@ import {
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { EntityBreakdownChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, commonOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, commonOptionsFrom, groupByOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -80,6 +80,7 @@ async function generateEntityBreakdown(
     sortBy,
     isPerRun: options.perRun,
     groupBy: options.groupBy,
+    groupLabels: options.groupLabels,
     valueLabels: options.valueLabels,
     sort: options.sort,
     baseline: options.baseline,
@@ -179,7 +180,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       sortBy: opts.sortBy,
       minPercent: opts.minPercent,
       titleCase: opts.titleCase,
-      groupBy: opts.groupBy ?? [],
+      ...groupByOptionsFrom(opts),
       animate: opts.animate ?? false,
       duration: opts.duration,
       fps: opts.fps,

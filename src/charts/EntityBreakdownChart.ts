@@ -6,6 +6,7 @@ import { MetricName } from "../data/Metric";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars";
+import { groupLabel } from "../data/groupBy";
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline";
 import { formatSlowdown, nanoToMicro } from "../utils";
 import type { RowSort } from "../commands/types";
@@ -53,6 +54,8 @@ export interface EntityBreakdownChartOptions extends BaselineOptions {
   sort?: RowSort;
   isPerRun?: boolean;
   groupBy?: string[];
+  /** Heading per group key (`--group-by "key=Label"`) for the group headers; a key without one is shown as itself. */
+  groupLabels?: Map<string, string>;
   valueLabels?: boolean;
   /** Draws the run-to-run spread of the per-run means of the bar's total on each bar, and adds it to the table. Ignored with a baseline. */
   errorBars?: ErrorBarMode;
@@ -217,7 +220,7 @@ export const createEntityBreakdownChartConfiguration = (
     chartData.forEach((data, idx) => {
       const group = getGroup(data)!;
       if (group !== lastGroup) {
-        rows.push({ kind: "spacer", groupLabel: group });
+        rows.push({ kind: "spacer", groupLabel: groupLabel(options.groupLabels, group) });
         lastGroup = group;
       }
       rows.push({ kind: "data", idx });
@@ -241,6 +244,7 @@ export const createEntityBreakdownChartConfiguration = (
         {
           sessions,
           groupBy,
+          groupLabels: options.groupLabels,
           sort: options.sort ?? "total",
           singleBar: false,
           digits: 2,

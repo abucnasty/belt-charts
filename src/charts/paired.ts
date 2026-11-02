@@ -1,6 +1,7 @@
 import { Chart } from "chart.js";
 import type { RowSort } from "../commands/types";
 import { formatPercentChange, formatSigned } from "../data/baseline";
+import { groupLabel } from "../data/groupBy";
 import { UserError } from "../utils";
 import { colors } from "./constants";
 import { font } from "./fonts";
@@ -27,6 +28,8 @@ export type PairedOptions = {
   /** Session suffixes in input order; one bar per session in every row. */
   sessions: string[];
   groupBy: string[];
+  /** Heading per group key for the group headers and the table's Group column; a key without one is shown as itself. */
+  groupLabels?: Map<string, string>;
   sort: RowSort;
   /** One bar per session (UPS or wholeUpdate only) instead of stacked segments. */
   singleBar: boolean;
@@ -125,7 +128,7 @@ export function buildPaired(items: PairedItem[], segments: PairedSegment[], opti
   let lastGroup: string | null = null;
   for (const row of sorted) {
     if (options.groupBy.length > 0 && row.group !== lastGroup) {
-      chartRows.push({ kind: "spacer", label: row.group ?? "" });
+      chartRows.push({ kind: "spacer", label: groupLabel(options.groupLabels, row.group ?? "") });
       lastGroup = row.group ?? null;
     }
     chartRows.push({ kind: "data", row });
@@ -160,7 +163,7 @@ export function buildPaired(items: PairedItem[], segments: PairedSegment[], opti
   const tableRows = sorted.map(row => {
     const first = row.bySession.get(sessions[0])?.total ?? null;
     return [
-      ...(options.groupBy.length > 0 ? [row.group ?? ""] : []),
+      ...(options.groupBy.length > 0 ? [groupLabel(options.groupLabels, row.group ?? "")] : []),
       row.label,
       ...sessions.map(s => fmt(row.bySession.get(s)?.total ?? null)),
       ...sessions.slice(1).flatMap(s => {

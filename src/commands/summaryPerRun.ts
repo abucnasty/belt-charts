@@ -7,7 +7,7 @@ import {
   SingleRunAggregateResult,
 } from "../data/BenchmarkAggregateResult";
 import { SummaryPerRunChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, groupByOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -157,7 +157,7 @@ export function createSummaryPerRunCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         maxUpdate: null,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
         animate: opts.animate ?? false,
         duration: opts.duration,

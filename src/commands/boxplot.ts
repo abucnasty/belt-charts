@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, sortOption, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, groupByOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
@@ -90,7 +90,7 @@ export function createBoxPlotCommand(): Command {
         maxUpdate: opts.maxUpdate,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         titleOverride: opts.titleOverride,
         animate: opts.animate ?? false,
         duration: opts.duration,

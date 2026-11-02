@@ -12,7 +12,7 @@ import {
   mergeCustomNames,
   parseNamesFile,
   resolveChartInputs,
-  commonOptionsFrom,
+  commonOptionsFrom, groupByOptionsFrom,
   type ChartInput,
 } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
@@ -116,7 +116,7 @@ export function createCoreFrequencyHeatmapCommand(): Command {
         aggregateFile: opts.aggregateFile,
         stddevFilter: opts.stddevFilter,
         titleCase: opts.titleCase,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         aggregateStrategy: opts.aggregateStrategy,
         normalize: opts.normalize,
         showValues: opts.showValues,

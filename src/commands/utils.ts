@@ -20,6 +20,7 @@ import { parseBaselinePerGroup } from "../data/baseline";
 import { setFontScale } from "../charts/fontScale";
 import { ERROR_BAR_MODES, ErrorBarMode } from "../data/errorBars";
 import { UserError } from "../utils";
+import { parseGroupBy } from "../data/groupBy";
 import { ChartInput, filterInputs, InputSpec, orderInputs, parseInputSpec } from "./inputs";
 
 export type { ChartInput } from "./inputs";
@@ -457,7 +458,7 @@ export const baseOptions: OptionBuilder = {
       )
       .option<string[]>(
         "--group-by <keys>",
-        "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its file base name (the file name without .csv or _verbose_metrics; not the label shown in the chart). Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
+        "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its file base name (the file name without .csv or _verbose_metrics; not the label shown in the chart). Results not matching any key are excluded. An entry \"key=Label\" shows Label instead of the key in the group headings and the table, e.g. \"q1,q2,q2_lds\", \"clone_0,clone_1,clone_18\" or \"3i=3 Inserters,4i=4 Inserters\" (labels cannot contain commas)",
         (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
         [],
       )
@@ -602,6 +603,12 @@ export function commonOptionsFrom(opts: any): Pick<BaseChartOptions, "input" | "
     fontScale: opts.fontScale ?? 1,
     subtitle: opts.subtitle ?? null,
   };
+}
+
+/** `groupBy` (the keys) and `groupLabels` (the headings of `key=Label` entries) from the parsed `--group-by` entries. */
+export function groupByOptionsFrom(opts: any): Pick<BaseChartOptions, "groupBy" | "groupLabels"> {
+  const { keys, labels } = parseGroupBy(opts.groupBy ?? []);
+  return { groupBy: keys, groupLabels: labels };
 }
 
 export function parseFontScale(value: string): number {

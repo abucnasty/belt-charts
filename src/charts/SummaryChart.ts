@@ -10,6 +10,7 @@ import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
 import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
 import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars"
+import { groupLabel } from "../data/groupBy"
 import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
@@ -42,6 +43,8 @@ interface SummaryChartOptions extends BaselineOptions {
   maxUpdate?: number | null;
   /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
+  /** Heading per group key (`--group-by "key=Label"`) for the group headers and the table's Group column; a key without one is shown as itself. */
+  groupLabels?: Map<string, string>;
   /** When true, skip the MetricProfiles.SUMMARY_CHART filter and render any metric in `metrics`. */
   allowUnfilteredMetrics?: boolean;
   /** "ups" renders a single bar of 1e6/wholeUpdate (updates per second) instead of the stacked per-component time breakdown. */
@@ -148,7 +151,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     chartData.forEach((data, idx) => {
       const group = getGroup(data)!;
       if (group !== lastGroup) {
-        rows.push({ kind: "spacer", groupLabel: group });
+        rows.push({ kind: "spacer", groupLabel: groupLabel(options.groupLabels, group) });
         lastGroup = group;
       }
       rows.push({ kind: "data", idx });
@@ -177,6 +180,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         {
           sessions,
           groupBy,
+          groupLabels: options.groupLabels,
           sort: options.sort ?? "total",
           singleBar: isSingleBar,
           higherIsBetter: valueMode === "ups",
@@ -246,7 +250,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         return {
           displayName: data.displayName,
           values: [
-            ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+            ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
             rowName(idx),
             Math.round(total),
             formatSignedChange(total - baseTotal, 0),
@@ -262,7 +266,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       return {
         displayName: data.displayName,
         values: [
-          ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+          ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
           rowName(idx),
           ...deltas,
           formatPercentChange(baseTotal, total),
@@ -320,7 +324,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       return {
         displayName: data.displayName,
         values: [
-          ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+          ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
           data.displayName,
           ...metricValues,
           useSignedDelta ? formatSigned(stats.deltaFromPrevious) : stats.slowdownFromPrevious,

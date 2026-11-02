@@ -5,7 +5,7 @@ import { createLineChartForMetrics } from "../charts/LineChart";
 import type { BenchmarkTickResult } from "../data/BenchmarkTickResult";
 import { nanoToMicro } from "../utils";
 import { LineBarChartOptions } from "./types";
-import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, runState, commonOptionsFrom, type ChartInput } from "./utils";
+import { baseOptions, aggregateStrategyOption, getBaseName, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, runState, commonOptionsFrom, groupByOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { revealTimeseriesForAnimation } from "../charts/animation";
@@ -153,7 +153,7 @@ function createLineBarCommand(type: "line" | "bar"): Command {
         type,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         titleOverride: opts.titleOverride,
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
         animate: opts.animate ?? false,

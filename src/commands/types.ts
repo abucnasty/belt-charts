@@ -66,8 +66,10 @@ export type BaseChartOptions = {
   titleCase: boolean;
   /** List of substrings to remove from chart labels. Applied after --trim-prefix and before --title-case. */
   trimSubstrings: string[];
-  /** Comma-separated group keys. Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
+  /** Comma-separated group keys (the part before any `=` of a `--group-by` entry). Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
   groupBy: string[];
+  /** Heading per group key from `--group-by "key=Label"` entries; a key without an entry is shown as itself. */
+  groupLabels: Map<string, string>;
   /** Override the chart's auto-generated title. Null = use the chart's default title. */
   titleOverride: string | null;
   /** Repeatable `--input <glob>[:<label suffix>]` arguments, read in addition to the positional glob. */
@@ -150,7 +152,7 @@ export type EntityHeatmapChartOptions = BaseChartOptions & {
 export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
   "width" | "height" | "scale" | "output" | "trimPrefix" | "customNames" | "namesFile" |
-  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride" |
+  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "groupLabels" | "titleOverride" |
   "input" | "include" | "exclude" | "fontScale" | "subtitle"
 > & {
   aggregateStrategy: AggregationStrategy;

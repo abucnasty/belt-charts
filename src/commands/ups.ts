@@ -4,7 +4,7 @@ import { createSummaryChartConfiguration } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, resolveChartInputs, renderChartToFile, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, groupByOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -44,6 +44,7 @@ async function generateUps(
     titleOverride: options.titleOverride ?? undefined,
     subtitle: options.subtitle,
     groupBy: options.groupBy,
+    groupLabels: options.groupLabels,
     valueMode: "ups",
     valueLabels: options.valueLabels,
     sort: options.sort,
@@ -122,7 +123,7 @@ export function createUpsCommand(): Command {
         minPercent: 0,
         titleCase: opts.titleCase,
         maxUpdate: null,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         allowUnfilteredMetrics: false,
         animate: opts.animate ?? false,
         duration: opts.duration,

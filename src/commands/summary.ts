@@ -3,7 +3,7 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, groupByOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -48,6 +48,7 @@ async function generateSummary(
     minPercent: options.minPercent,
     maxUpdate: options.maxUpdate,
     groupBy: options.groupBy,
+    groupLabels: options.groupLabels,
     allowUnfilteredMetrics: options.allowUnfilteredMetrics,
     valueLabels: options.valueLabels,
     sort: options.sort,
@@ -133,7 +134,7 @@ export function createSummaryCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         maxUpdate: opts.maxUpdate,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
         animate: opts.animate ?? false,
         duration: opts.duration,

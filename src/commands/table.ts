@@ -6,7 +6,7 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { TableChartOptions } from "./types";
-import { applyLabel, warnUnmatchedNames, resolveChartInputs, resolveMetrics, inputOptions, commonOptionsFrom, type ChartInput } from "./utils";
+import { applyLabel, warnUnmatchedNames, resolveChartInputs, resolveMetrics, inputOptions, commonOptionsFrom, groupByOptionsFrom, type ChartInput } from "./utils";
 import { runInWorkerPool } from "./workerPool";
 import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
@@ -152,7 +152,7 @@ export function createTableCommand(): Command {
         aggregateStrategy: aggregationStrategyFromString(opts.aggregateStrategy),
         minPercent: opts.minPercent,
         titleCase: opts.titleCase ?? false,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         // table has no rendered chart title; this command exports CSV data only.
         titleOverride: null,
       };
