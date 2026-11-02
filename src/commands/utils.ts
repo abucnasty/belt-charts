@@ -140,6 +140,27 @@ export function warnUnmatchedNames(files: string[], customNames: Map<string, str
   }
 }
 
+/**
+ * Warns about `--group-by` keys that no input file is assigned to, and when no file is assigned to
+ * any key (the chart would have no rows). A key that is a substring of an input's base name but
+ * loses to a longer key is reported as such.
+ */
+export function warnUnmatchedGroups(files: string[], groupKeys: string[]): void {
+  if (groupKeys.length === 0) return;
+  const baseNames = [...new Set(files.map(getBaseName))];
+  const used = new Set(baseNames.map((name) => assignToGroup(name, groupKeys)).filter((key): key is string => key !== null));
+  for (const key of groupKeys) {
+    if (used.has(key)) continue;
+    const reason = baseNames.some((name) => name.includes(key))
+      ? "only matched files that a longer key takes"
+      : `did not match any input file (known base names: ${baseNames.join(", ")})`;
+    console.warn(`--group-by: key "${key}" ${reason}`);
+  }
+  if (used.size === 0) {
+    console.warn("--group-by: no input file matched any key, so the chart and table have no rows");
+  }
+}
+
 export async function loadRunFilters(
   aggregateFile: string,
   stddevFilter: number,
@@ -436,7 +457,7 @@ export const baseOptions: OptionBuilder = {
       )
       .option<string[]>(
         "--group-by <keys>",
-        "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its label. Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
+        "Comma-separated list of group keys. Each result is assigned to the longest key that is a substring of its file base name (the file name without .csv or _verbose_metrics; not the label shown in the chart). Results not matching any key are excluded. e.g. \"q1,q2,q2_lds\" or \"clone_0,clone_1,clone_18\"",
         (it: string) => it.split(",").map((s) => s.trim()).filter(Boolean),
         [],
       )

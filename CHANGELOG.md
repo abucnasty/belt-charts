@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `belt-charts render <config.json>` renders a whole chart set from one JSON file: shared defaults once, then a list of charts with their command, inputs, output and overrides, with paths relative to the config file (`--dry-run` prints the commands).
 - `belt-charts prune <glob>` drops columns that are zero in every file (and, with `--keep-only-charted`, columns no chart reads) and can compress the result (`--compress gz|zst`), writing to `--out-dir` or `--in-place`; every chart renders the same afterwards.
 
+### Fixed
+- `--group-by` help and README now say keys are matched against the file base name, not the label, and a key that matches no input file (or a grouping that leaves no rows) prints a warning instead of an empty chart.
+
 ## [1.24.1] - 2026-10-30
 
 ### Fixed

@@ -12,7 +12,7 @@ import {
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { EntityBreakdownChartOptions } from "./types";
-import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, commonOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, commonOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
@@ -199,6 +199,7 @@ function makeEntitySummaryAction(perRun: boolean) {
     const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
     if (opts.fish) enableInserterEasterEgg();
     warnUnmatchedNames(files, options.customNames);
+    warnUnmatchedGroups(files, options.groupBy);
 
     await generateEntityBreakdown(inputs, runsToRemove, options);
   };
