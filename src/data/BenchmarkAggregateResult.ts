@@ -1,10 +1,9 @@
-import path from "path";
 import { MetricName } from "./Metric";
 import { MetricEnum } from "./MetricEnum";
 import { metricsFromColumns } from "./BenchmarkTickResult";
 import { createObjectCsvWriter } from "csv-writer"
 import { AggregationStrategy } from "./AggregationStrategy";
-import { readCsv } from "./csvReader";
+import { readCsv, resultsFileBaseName } from "./csvReader";
 import { MetricSamples } from "./MetricSamples";
 
 export type MetricAggregate = {
@@ -26,6 +25,8 @@ export interface BenchmarkAggregateRunResult {
     displayName: string;
     /** Optional group key set by the command layer for chart clustering. Carried through label transforms via object spread. */
     group?: string;
+    /** Label suffix of the `--input <glob>:<suffix>` this result was read from. Already appended to `displayName` by the label pipeline. */
+    inputSuffix?: string;
     metrics: MetricEnum[]
     runs: Map<MetricName, MetricRunAggregate[]>
     all: Map<MetricName, MetricAggregate>
@@ -43,7 +44,7 @@ export const parseBenchmarkAggregatesPerRunResultFromCsv = async (
     metrics: MetricEnum[],
     runsToRemove: Set<number>
 ): Promise<BenchmarkAggregateRunResult> => {
-    const baseName = path.basename(filePath, ".csv").replace("_verbose_metrics", "");
+    const baseName = resultsFileBaseName(filePath);
     // Samples per run, indexed in the same order as `metrics`.
     const samplesPerRun: Map<number, MetricSamples[]> = new Map()
 
@@ -280,6 +281,7 @@ export const explodeIntoPerRunResults = (
             runs: new Map(), // Empty since chart only reads "all"
             all: all,
             group: result.group,
+            inputSuffix: result.inputSuffix,
             __singleRun: true,
         } as SingleRunAggregateResult;
     });

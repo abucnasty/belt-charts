@@ -4,26 +4,39 @@ import { MetricEnum } from "../data/MetricEnum"
 import { MetricRegistryInstance } from "../data/MetricRegistry"
 import { MetricProfiles, toMetricRecord } from "./metricProfiles"
 import { formatSlowdown } from "../utils"
+import type { RowSort } from "../commands/types"
 import { colors, chartLayout } from "./constants"
 import type { ChartConfiguration } from "chart.js";
 import { BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult"
-import { buildSummaryChartData } from "../data/SummaryTransform"
+import { buildSummaryChartData, type SummaryChartData } from "../data/SummaryTransform"
+import { computeErrorBar, errorBarCells, errorBarColumns, overlapCell, type ErrorBar, type ErrorBarMode } from "../data/errorBars"
+import { comparisonRows } from "../data/comparison"
+import { groupLabel } from "../data/groupBy"
+import { type BaselineOptions, formatPercentChange, formatSigned as formatSignedChange, hasBaseline, resolveBaselines } from "../data/baseline"
 import fsp from "node:fs/promises";
 import { getMetricPattern } from "./styles"
-import { backgroundPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
+import { scaled } from "./fonts"
+import { subtitleOptions } from "./subtitle"
+import { buildPaired, createSessionLabelsPlugin, pairedLegendLabels, pairLabelOf, SESSION_COLORS, sessionsOf } from "./paired"
+import { backgroundPlugin, createErrorBarsPlugin, patternAnchorPlugin, valueLabelsPlugin } from "./plugins"
+import { rowComparator } from "./rowOrder"
 import { createTableChartPlugin, estimateTableWidth, estimateTextWidth, tableReservedHeight } from "./Table"
 
 const supportedMetrics = toMetricRecord(MetricProfiles.SUMMARY_CHART);
 const profileOrder = (description: string) =>
   MetricProfiles.SUMMARY_CHART.findIndex(it => it.description == description);
 
-interface SummaryChartOptions {
+interface SummaryChartOptions extends BaselineOptions {
   aggregationStrategy: AggregationStrategy;
   metrics?: MetricEnum[];
   includeTable?: boolean;
   csvTableExportName?: string;
   titleOverride?: string;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
   sortBy?: "total" | "preserve";
+  /** Row order (`--sort`): by total time (default), keep the incoming order, or by label. */
+  sort?: RowSort;
   isPerRun?: boolean;
   /** Hide metrics whose max average across all results is below this % of wholeUpdate. 0 = no filter. */
   minPercent?: number;
@@ -31,16 +44,24 @@ interface SummaryChartOptions {
   maxUpdate?: number | null;
   /** Group keys for clustering bars. Each result is assigned to the longest matching key. Unmatched results are excluded. */
   groupBy?: string[];
+  /** Heading per group key (`--group-by "key=Label"`) for the group headers and the table's Group column; a key without one is shown as itself. */
+  groupLabels?: Map<string, string>;
   /** When true, skip the MetricProfiles.SUMMARY_CHART filter and render any metric in `metrics`. */
   allowUnfilteredMetrics?: boolean;
   /** "ups" renders a single bar of 1e6/wholeUpdate (updates per second) instead of the stacked per-component time breakdown. */
   valueMode?: "time" | "ups";
   valueLabels?: boolean;
+  /** Draws the run-to-run spread of the per-run means of the total on each bar, and adds it to the table. Ignored with a baseline. */
+  errorBars?: ErrorBarMode;
+  /** One row per save with one bar per input suffix ("session") side by side, instead of one row per file. */
+  paired?: boolean;
 }
 
 export interface SummaryChartResult {
   config: ChartConfiguration<"bar">;
   exportTable: (() => Promise<void>) | null;
+  /** The table drawn under the chart and exported by `exportTable`. */
+  table: { header: string[]; rows: (string | number)[][] };
   /** Minimum canvas height (px) needed to fit every row/table without squishing; use as a floor over the user-requested height. */
   recommendedHeight: number;
   /** Minimum canvas width (px) needed to fit the summary table's columns without squishing; use as a floor over the user-requested width. */
@@ -61,9 +82,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   }
 
   let chartData = results.map(result => buildSummaryChartData(result, configuredDisplayMetrics, options.aggregationStrategy));
-  // Sort data by "Whole Update" total time ascending (unless sortBy is "preserve")
+  // Sort data by "Whole Update" total time ascending by default (unless sortBy is "preserve")
+  const compareRows = rowComparator<SummaryChartData>(options.sort ?? "total", d => d.totalAverage);
   if (options.sortBy !== "preserve") {
-    chartData.sort((a, b) => a.totalAverage - b.totalAverage);
+    chartData.sort(compareRows);
   }
 
   const groupBy = options.groupBy ?? [];
@@ -76,9 +98,15 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       const ai = groupBy.indexOf(getGroup(a)!);
       const bi = groupBy.indexOf(getGroup(b)!);
       if (ai !== bi) return ai - bi;
-      return a.totalAverage - b.totalAverage;
+      return compareRows(a, b);
     });
   }
+
+  // With a baseline every segment is drawn as its change against the baseline row's segment.
+  const baselineOf: number[] | null = hasBaseline(options) ? resolveBaselines(chartData, options) : null;
+  const isDelta = baselineOf !== null;
+
+  const errorBarMode = isDelta ? undefined : options.errorBars;
 
   const allMetrics = Array.from(new Set(chartData.flatMap(it => it.metrics.map(metric => metric.name)))).map(metricName => MetricRegistryInstance.getOrThrow(metricName))
 
@@ -92,6 +120,14 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   const isSingleBar = isWholeUpdateOnly || valueMode === "ups";
   const toDisplayValue = (microseconds: number): number =>
     valueMode === "ups" ? (microseconds > 0 ? 1_000_000 / microseconds : 0) : microseconds;
+  // Row total as plotted: absolute, or its change against the baseline row.
+  const totalValue = (idx: number): number =>
+    toDisplayValue(chartData[idx].totalAverage) - (isDelta ? toDisplayValue(chartData[baselineOf![idx]].totalAverage) : 0);
+  // One segment as plotted: absolute, or its change against the baseline row's segment.
+  const segmentValue = (idx: number, metricName: string): number => {
+    const of = (i: number) => chartData[i].metricValues.find(it => it.metricName === metricName)?.average || 0;
+    return of(idx) - (isDelta ? of(baselineOf![idx]) : 0);
+  };
 
   // Apply minPercent filter: hide metrics whose max average never exceeds minPercent% of wholeUpdate.
   const minPercent = options.minPercent ?? 0;
@@ -116,7 +152,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     chartData.forEach((data, idx) => {
       const group = getGroup(data)!;
       if (group !== lastGroup) {
-        rows.push({ kind: "spacer", groupLabel: group });
+        rows.push({ kind: "spacer", groupLabel: groupLabel(options.groupLabels, group) });
         lastGroup = group;
       }
       rows.push({ kind: "data", idx });
@@ -124,14 +160,45 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   } else {
     chartData.forEach((_, idx) => rows.push({ kind: "data", idx }));
   }
-  const chartLabels = rows.map(row =>
-    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : chartData[row.idx].displayName
+  // The baseline row itself is all zeros, so mark it.
+  const rowName = (idx: number): string =>
+    isDelta && baselineOf![idx] === idx ? `${chartData[idx].displayName} (baseline)` : chartData[idx].displayName;
+
+  // Paired: one row per save, one bar per session (the input suffix), instead of one row per file.
+  const sessions = options.paired ? sessionsOf(results) : [];
+  const pairedLayout = options.paired
+    ? buildPaired(
+        chartData.map(data => ({
+          label: pairLabelOf(data),
+          session: data.inputSuffix!,
+          group: data.group,
+          total: toDisplayValue(data.totalAverage),
+          segments: new Map(data.metricValues.map(mv => [mv.metricName, toDisplayValue(mv.average)])),
+        })),
+        isSingleBar
+          ? []
+          : metrics.filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name).map(metric => ({ name: metric.name, description: metric.description })),
+        {
+          sessions,
+          groupBy,
+          groupLabels: options.groupLabels,
+          sort: options.sort ?? "total",
+          singleBar: isSingleBar,
+          higherIsBetter: valueMode === "ups",
+          digits: 0,
+          totalLabel: valueMode === "ups" ? "UPS" : "Whole",
+          spacerPrefix: SPACER_PREFIX,
+        },
+      )
+    : null;
+  const chartLabels = pairedLayout ? pairedLayout.labels : rows.map(row =>
+    row.kind === "spacer" ? SPACER_PREFIX + row.groupLabel : rowName(row.idx)
   );
 
-  const datasets = isSingleBar
+  const plainDatasets = isSingleBar
     ? [{
         label: valueMode === "ups" ? "Updates Per Second" : MetricEnum.WHOLE_UPDATE.description,
-        data: rows.map(row => row.kind === "spacer" ? null : toDisplayValue(chartData[row.idx].totalAverage)),
+        data: rows.map(row => row.kind === "spacer" ? null : totalValue(row.idx)),
         // UPS reuses the entityUpdate blue since it isn't part of the stacked time breakdown.
         backgroundColor: valueMode === "ups" ? colors.blue : colors.white,
       }]
@@ -139,12 +206,80 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         .filter(metric => metric.name != MetricEnum.WHOLE_UPDATE.name) // Exclude wholeUpdate from stacked bars
         .map(metric => ({
           label: metric.description,
-          data: rows.map(row => row.kind === "spacer" ? null : (chartData[row.idx].metricValues.find(it => it.metricName === metric.name)?.average || 0)),
+          data: rows.map(row => row.kind === "spacer" ? null : segmentValue(row.idx, metric.name)),
           backgroundColor: getMetricPattern(metric.name),
         }))
 
+  const datasets: any[] = pairedLayout
+    ? pairedLayout.datasets.map(d => ({
+        label: d.label,
+        stack: d.stack,
+        data: d.data,
+        backgroundColor: isSingleBar ? SESSION_COLORS[sessions.indexOf(d.session) % SESSION_COLORS.length] : getMetricPattern(d.segmentName!),
+      }))
+    : plainDatasets;
+  // The first dataset of each session, where its name is drawn.
+  const firstDatasetBySession = new Map<number, string>();
+  pairedLayout?.datasets.forEach((d, i) => {
+    if (![...firstDatasetBySession.values()].includes(d.session)) firstDatasetBySession.set(i, d.session);
+  });
+
+  // Spread of the per-run means of the total, in the plotted unit (µs or UPS).
+  const errorBars: (ErrorBar | null)[] = errorBarMode
+    ? chartData.map((data, idx) => computeErrorBar(data.wholeRunMeans.map(toDisplayValue), errorBarMode, totalValue(idx)))
+    : [];
+  const errorBarsByRow = rows.map(row => row.kind === "spacer" ? null : errorBars[row.idx]);
+
   // Compute shared statistics for both plugins
+  // Baseline table: the segments are changes against the baseline row, plus the whole update's
+  // percent change and its absolute value.
+  const computeBaselineTableStats = () => {
+    const header = valueMode === "ups"
+      ? [...(groupBy.length > 0 ? ["Group"] : []), "Save File", "UPS", "+/- vs Baseline", "% vs Baseline"]
+      : [
+          ...(groupBy.length > 0 ? ["Group"] : []),
+          "Save File",
+          ...metrics.map(it => `Δ ${it.description}`),
+          "Δ Whole %",
+          "Whole",
+        ];
+    const rows = chartData.map((data, idx) => {
+      const base = chartData[baselineOf![idx]];
+      const total = toDisplayValue(data.totalAverage);
+      const baseTotal = toDisplayValue(base.totalAverage);
+      if (valueMode === "ups") {
+        return {
+          displayName: data.displayName,
+          values: [
+            ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
+            rowName(idx),
+            Math.round(total),
+            formatSignedChange(total - baseTotal, 0),
+            formatPercentChange(baseTotal, total),
+          ],
+        };
+      }
+      const deltas = metrics.map(metric => {
+        const value = data.metricValues.find(mv => mv.metricName === metric.name);
+        const baseValue = base.metricValues.find(mv => mv.metricName === metric.name);
+        return value === undefined || baseValue === undefined ? "" : formatSignedChange(value.average - baseValue.average);
+      });
+      return {
+        displayName: data.displayName,
+        values: [
+          ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
+          rowName(idx),
+          ...deltas,
+          formatPercentChange(baseTotal, total),
+          Math.round(total),
+        ],
+      };
+    });
+    return { header, rows, wholeUpdateStats: [] as unknown[] };
+  };
+
   const computeTableStats = () => {
+    if (isDelta) return computeBaselineTableStats();
     // UPS shows a raw +/- delta instead of a slowdown percent, since "slower" reads oddly for
     // a rate that can also increase.
     const useSignedDelta = valueMode === "ups";
@@ -153,22 +288,27 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       "Save File",
       ...metrics.map(it => it.name === MetricEnum.WHOLE_UPDATE.name && valueMode === "ups" ? "UPS" : it.description),
       useSignedDelta ? "+/- vs Previous" : "vs Prev",
-      useSignedDelta ? "+/- vs Best" : "vs Best"
+      useSignedDelta ? "+/- vs Best" : "vs Best",
+      ...(errorBarMode ? errorBarColumns(errorBarMode, valueMode === "ups" ? "UPS" : "Whole") : []),
     ];
+
+    // Rows are compared with the row above and with the best row, both inside their group.
+    const compareWith = comparisonRows(chartData.map(data => data.totalAverage), groupBy.length > 0 ? chartData.map(data => data.group) : undefined);
 
     // Pre-compute whole update values and stats
     const wholeUpdateStats = chartData.map((data, idx) => {
 
       const currentValue = toDisplayValue(data.totalAverage);
-      const previousValue = idx > 0 ? toDisplayValue(chartData[idx - 1].totalAverage) : null;
-      const bestValue = toDisplayValue(chartData[0].totalAverage);
+      const previousValue = compareWith.previous[idx] !== null ? toDisplayValue(chartData[compareWith.previous[idx]!].totalAverage) : null;
+      const bestIdx = compareWith.best[idx];
+      const bestValue = toDisplayValue(chartData[bestIdx].totalAverage);
 
       return {
         currentValue,
         deltaFromPrevious: previousValue !== null ? Math.round(currentValue - previousValue) : null,
         deltaFromBest: Math.round(currentValue - bestValue),
         slowdownFromPrevious: formatSlowdown(previousValue, currentValue),
-        slowdownFromBest: idx === 0 ? "" : formatSlowdown(bestValue, currentValue)
+        slowdownFromBest: idx === bestIdx ? "" : formatSlowdown(bestValue, currentValue)
       };
     });
 
@@ -184,11 +324,12 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       return {
         displayName: data.displayName,
         values: [
-          ...(groupBy.length > 0 ? [data.group ?? ""] : []),
+          ...(groupBy.length > 0 ? [groupLabel(options.groupLabels, data.group ?? "")] : []),
           data.displayName,
           ...metricValues,
           useSignedDelta ? formatSigned(stats.deltaFromPrevious) : stats.slowdownFromPrevious,
-          useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest
+          useSignedDelta ? formatSigned(stats.deltaFromBest) : stats.slowdownFromBest,
+          ...(errorBarMode ? [...errorBarCells(errorBars[idx], errorBarMode), overlapCell(errorBars[compareWith.previous[idx] ?? -1], errorBars[idx])] : []),
         ]
       };
     });
@@ -196,7 +337,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     return { header, rows, wholeUpdateStats };
   };
 
-  const tableStats = computeTableStats();
+  const tableStats = pairedLayout
+    ? { header: pairedLayout.table.header, rows: pairedLayout.table.rows.map(values => ({ displayName: String(values[0]), values })) }
+    : computeTableStats();
 
   // Table is drawn one row per save file (not one column per save file) so it stays readable
   // no matter how many results are being compared or how long their names are.
@@ -206,7 +349,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
 
   const tableHeight = options.includeTable ? tableReservedHeight(tableStats.rows.length) : 0;
   const padding = options.includeTable ? { bottom: tableHeight } : undefined
-  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX + rows.length * chartLayout.MIN_BAR_ROW_HEIGHT_PX + tableHeight;
+  const barsPerRow = pairedLayout ? sessions.length : 1;
+  const recommendedHeight = chartLayout.BAR_CHART_CHROME_HEIGHT_PX + chartLabels.length * barsPerRow * chartLayout.MIN_BAR_ROW_HEIGHT_PX + tableHeight;
   // The y-axis tick labels (bar row names) sit outside the table's plot area, but the table's
   // flex "Save File" column is drawn in that same blank strip (not inside the plot area), so
   // only the wider of the two needs to be reserved once, not both added together.
@@ -215,7 +359,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
     ? yAxisLabelWidth + chartLayout.TABLE_WIDTH_CHROME_PX + estimateTableWidth(tableData, tableRenderOptions.flexColumnHeader)
     : 0;
 
-  datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
+  if (!pairedLayout) datasets.sort((a, b) => profileOrder(a.label) - profileOrder(b.label))
 
   let aggregationStrategyLabel = ""
   switch (options.aggregationStrategy) {
@@ -236,14 +380,19 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
   }
 
   const xAxisLabel = valueMode === "ups"
-    ? `Updates per second using ${aggregationStrategyLabel.toLowerCase()} per tick (higher is better)`
-    : `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`
+    ? (isDelta
+      ? `Change in updates per second vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick (right of zero is faster)`
+      : `Updates per second using ${aggregationStrategyLabel.toLowerCase()} per tick (higher is better)`)
+    : (isDelta
+      ? `Change in time vs baseline, using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (left of zero is faster)`
+      : `Average Time using ${aggregationStrategyLabel.toLowerCase()} per tick [microseconds] (lower is better)`)
 
+  const baselineTitleSuffix = isDelta ? " vs Baseline" : ""
   const title = options.titleOverride ?? (valueMode === "ups"
-    ? `${aggregationStrategyLabel} Updates Per Second${options.isPerRun ? " (Per Run)" : ""}`
+    ? `${aggregationStrategyLabel} Updates Per Second${baselineTitleSuffix}${options.isPerRun ? " (Per Run)" : ""}`
     : (options.isPerRun
-      ? `${aggregationStrategyLabel} Per Tick Metrics (Per Run)`
-      : `${aggregationStrategyLabel} Per Tick Metrics`))
+      ? `${aggregationStrategyLabel} Per Tick Metrics${baselineTitleSuffix} (Per Run)`
+      : `${aggregationStrategyLabel} Per Tick Metrics${baselineTitleSuffix}`))
 
 
   const configuration: ChartConfiguration<"bar"> = {
@@ -264,9 +413,10 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           text: title,
           color: colors.white,
           font: {
-            size: 18
+            size: scaled(18)
           },
         },
+        subtitle: subtitleOptions(options.subtitle),
         legend: {
           labels: {
             color: colors.white,
@@ -274,7 +424,9 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
             boxHeight: 20,
             boxWidth: 40,
             // order by supported metric order
-            sort: (a, b) => profileOrder(a.text) - profileOrder(b.text)
+            ...(pairedLayout
+              ? pairedLegendLabels(sessions, isSingleBar, profileOrder)
+              : { sort: (a: any, b: any) => profileOrder(a.text) - profileOrder(b.text) })
           },
         },
       },
@@ -283,7 +435,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
           stacked: true,
           ticks: { color: colors.white, },
           title: { display: true, text: xAxisLabel, color: "white" },
-          ...(options.maxUpdate != null ? { max: options.maxUpdate } : {}),
+          ...(options.maxUpdate != null && !isDelta ? { max: options.maxUpdate } : {}),
         },
         y: {
           stacked: true,
@@ -293,8 +445,8 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX) ? colors.sky_blue : colors.white,
             font: (ctx: any) =>
               chartLabels[ctx.index]?.startsWith(SPACER_PREFIX)
-                ? { weight: "bold" as const, size: 13 }
-                : { size: 12 },
+                ? { weight: "bold" as const, size: scaled(13) }
+                : { size: scaled(12) },
             callback: (value: any) => {
               const label = chartLabels[value] ?? "";
               return label.startsWith(SPACER_PREFIX) ? `▸ ${label.slice(1)}` : label;
@@ -306,7 +458,7 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
         },
       },
     },
-    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin].filter(Boolean) as any[],
+    plugins: [backgroundPlugin, patternAnchorPlugin, options.includeTable && tablePlugin, options.valueLabels && valueLabelsPlugin, errorBarMode && createErrorBarsPlugin(errorBarsByRow), pairedLayout && createSessionLabelsPlugin(firstDatasetBySession)].filter(Boolean) as any[],
   };
 
   const exportTable = options.csvTableExportName
@@ -326,6 +478,6 @@ export const createSummaryChartConfiguration = (results: BenchmarkAggregateRunRe
       }
     : null;
 
-  return { config: configuration, exportTable, recommendedHeight, recommendedWidth };
+  return { config: configuration, exportTable, table: { header: tableStats.header, rows: tableStats.rows.map(row => row.values) }, recommendedHeight, recommendedWidth };
 
 }

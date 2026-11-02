@@ -15,8 +15,14 @@ export interface SummaryChartMetricValue {
 
 export interface SummaryChartData {
   displayName: string;
+  /** Base name of the source file; lets `--baseline` find a row by file name as well as label. */
+  originalFileName: string;
+  /** Label suffix of the input this row came from (`--input <glob>:<suffix>`). */
+  inputSuffix?: string;
   group?: string;
   totalAverage: number;
+  /** Per-run mean of wholeUpdate (µs), one value per run; empty for per-run (exploded) results. */
+  wholeRunMeans: number[];
   metrics: Array<MetricEnum>;
   metricValues: SummaryChartMetricValue[];
 }
@@ -54,6 +60,7 @@ export function buildSummaryChartData(
     .sort((a, b) => b.average - a.average);
 
   const sumOfParts = otherMetricAverages.reduce((sum, m) => sum + m.average, 0);
+  const wholeRunMeans = (result.runs.get(MetricEnum.WHOLE_UPDATE.name) ?? []).map(run => nanoToMicro(run.average));
 
   const wholeUpdateAgg: MetricAggregate | undefined = result.all.get(MetricEnum.WHOLE_UPDATE.name);
   const metricValues: SummaryChartMetricValue[] = [...otherMetricAverages];
@@ -61,10 +68,13 @@ export function buildSummaryChartData(
   if (!wholeUpdateAgg) {
     return {
       displayName: result.displayName,
+      originalFileName: result.originalFileName,
+      inputSuffix: result.inputSuffix,
       group: result.group,
       metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
       metricValues,
       totalAverage: sumOfParts,
+      wholeRunMeans,
     };
   }
 
@@ -89,9 +99,12 @@ export function buildSummaryChartData(
 
   return {
     displayName: result.displayName,
+    originalFileName: result.originalFileName,
+    inputSuffix: result.inputSuffix,
     group: result.group,
     metrics: metricValues.map(it => MetricRegistryInstance.getOrThrow(it.metricName)),
     metricValues,
     totalAverage: wholeUpdateAverage,
+    wholeRunMeans,
   };
 }

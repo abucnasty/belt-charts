@@ -6,7 +6,8 @@ import { MetricRegistryInstance } from "../data/MetricRegistry";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { nanoToMicro } from "../utils";
 import { colors } from "./constants";
-import { FONT_FAMILY } from "./fonts";
+import { font, scaled } from "./fonts";
+import { subtitleHeight } from "./subtitle";
 
 // Ordered design-column palette (cycles when more files than colors)
 const DESIGN_COLORS = [
@@ -23,10 +24,9 @@ const OTHER_ENTITY_NAME = "otherEntityUpdate";
 const OTHER_ENTITY_DESCRIPTION = "Other Entity Update";
 
 const MIN_ROW_HEIGHT = 22; // px — prevents unreadable rows at --top-n 0
-const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
-const BOLD_FONT = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
-const SMALL_FONT = `10px ${FONT_FAMILY}`;
+const labelFont = () => font(12);
+const boldFont = () => font(12, true);
+const smallFont = () => font(10);
 
 export interface EntityMatrixChartOptions {
   aggregationStrategy: AggregationStrategy;
@@ -38,6 +38,8 @@ export interface EntityMatrixChartOptions {
    */
   minPercent: number;
   titleOverride?: string | null;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
 }
 
 interface MatrixRow {
@@ -124,19 +126,20 @@ export function renderEntityMatrixChart(
   const ctx = canvas.getContext("2d");
 
   // Left margin: widest entity label
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont();
   const leftMargin = Math.ceil(
-    Math.max(...rows.map(r => ctx.measureText(r.description).width)) + 24,
+    Math.max(...rows.map(r => ctx.measureText(r.description).width)) + scaled(24),
   );
 
   // Right margin: enough for value labels ("12345 µs")
-  const rightMargin = 90;
+  const rightMargin = scaled(90);
 
   // Bottom margin: x-axis ticks + label
-  const bottomMargin = 50;
+  const bottomMargin = scaled(50);
 
   // Top margin: rotated design labels + title + legend
-  const topMargin = 120; // title(24) + legend(32) + rotated label height(~64)
+  const subtitleSpace = subtitleHeight(options.subtitle);
+  const topMargin = scaled(120) + subtitleSpace; // title(24) + legend(32) + rotated label height(~64)
 
   const plotWidth = canvas.width - leftMargin - rightMargin;
   const plotAreaHeight = canvas.height - topMargin - bottomMargin;
@@ -144,8 +147,8 @@ export function renderEntityMatrixChart(
   // Auto-fit row height; enforce minimum
   let rowHeight = Math.floor(plotAreaHeight / nRows);
   let actualCanvasHeight = canvas.height;
-  if (rowHeight < MIN_ROW_HEIGHT) {
-    rowHeight = MIN_ROW_HEIGHT;
+  if (rowHeight < scaled(MIN_ROW_HEIGHT)) {
+    rowHeight = scaled(MIN_ROW_HEIGHT);
     actualCanvasHeight = topMargin + nRows * rowHeight + bottomMargin;
   }
 
@@ -179,17 +182,21 @@ export function renderEntityMatrixChart(
   };
   const title = options.titleOverride ?? `Entity Update Breakdown by Save File — ${strategyLabel[options.aggregationStrategy]} [µs]`;
 
-  ctx.font = `bold 16px ${FONT_FAMILY}`;
+  ctx.font = font(16, true);
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
-  ctx.fillText(title, W / 2, 22);
+  ctx.fillText(title, W / 2, scaled(22));
+  if (options.subtitle) {
+    ctx.font = font(13);
+    ctx.fillText(options.subtitle, W / 2, scaled(22) + scaled(18));
+  }
 
   // ── Legend ─────────────────────────────────────────────────────────────────
 
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont();
   ctx.textAlign = "left";
-  const legendSwatchSize = 14;
-  const legendSpacing = 16;
+  const legendSwatchSize = scaled(14);
+  const legendSpacing = scaled(16);
 
   // Measure total legend width to centre it
   const legendItems = results.map((r, i) => ({
@@ -199,7 +206,7 @@ export function renderEntityMatrixChart(
   }));
   const totalLegendWidth = legendItems.reduce((sum, it) => sum + it.width + legendSpacing, 0) - legendSpacing;
   let lx = (W - totalLegendWidth) / 2;
-  const ly = 36;
+  const ly = scaled(36) + subtitleSpace;
 
   for (const item of legendItems) {
     ctx.fillStyle = item.color;
@@ -214,7 +221,7 @@ export function renderEntityMatrixChart(
   const axisY = topMargin + nRows * rowHeight;
   const nTicks = 5;
 
-  ctx.font = SMALL_FONT;
+  ctx.font = smallFont();
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
 
@@ -227,21 +234,21 @@ export function renderEntityMatrixChart(
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x, topMargin);
-    ctx.lineTo(x, axisY + 6);
+    ctx.lineTo(x, axisY + scaled(6));
     ctx.stroke();
 
     // Label
-    ctx.fillText(`${v.toFixed(2)} µs`, x, axisY + 20);
+    ctx.fillText(`${v.toFixed(2)} µs`, x, axisY + scaled(20));
   }
 
   // X-axis label
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont();
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.fillText(
     `${strategyLabel[options.aggregationStrategy]} per tick [microseconds] (lower is better)`,
     leftMargin + plotWidth / 2,
-    axisY + 40,
+    axisY + scaled(40),
   );
 
   // ── Rows ──────────────────────────────────────────────────────────────────
@@ -270,11 +277,11 @@ export function renderEntityMatrixChart(
     ctx.stroke();
 
     // Entity name
-    ctx.font = row.metricName === OTHER_ENTITY_NAME ? BOLD_FONT : LABEL_FONT;
+    ctx.font = row.metricName === OTHER_ENTITY_NAME ? boldFont() : labelFont();
     ctx.fillStyle = colors.white;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    ctx.fillText(row.description, leftMargin - 8, rowMid);
+    ctx.fillText(row.description, leftMargin - scaled(8), rowMid);
 
     // Bars (one per design)
     for (let di = 0; di < nDesigns; di++) {
@@ -292,7 +299,7 @@ export function renderEntityMatrixChart(
       const labelX = barX + barW + 4;
       const labelY = barY + barHeight / 2;
       if (labelX + 60 < W - 4) {
-        ctx.font = SMALL_FONT;
+        ctx.font = smallFont();
         ctx.fillStyle = colors.white;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";

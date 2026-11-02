@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2026-11-02
+
+### Added
+- `--input "<glob>:<suffix>"` (repeatable, on every command) charts several results folders together; each input's labels get ` (suffix)` appended, so two sessions with the same file names no longer need symlinks and a names file.
+- `--include` / `--exclude` glob patterns choose which input files are charted.
+- `--sort <total|input|name>` on `summary`, `ups`, `entity-summary` and `boxplot` keeps a fixed row order (names file, `--include` or input order, or by label) instead of ranking by total; the default is unchanged.
+- `--baseline <label>` and `--baseline-per-group <key=label,...>` on `summary`, `ups` and `entity-summary` draw each segment's change against a baseline row (µs, with percent change in the table) instead of absolute values; the exported table gets the delta columns.
+- `--error-bars <stddev|ci95|minmax>` on `summary`, `ups` and `entity-summary` draws the run-to-run spread of the per-run means on each bar, and adds it, with an "Overlaps Prev" flag, to the table.
+- `--paired` on `summary`, `ups` and `entity-summary` draws one row per save with one bar per input suffix side by side (stacked bars for segments), with a session legend, instead of one row per file.
+- Every command reads `.csv.gz` and `.csv.zst` results files (zstd needs Node.js 22.15 or newer).
+- `--font-scale <factor>` makes all text (titles, legends, axis labels, value labels, tables) larger or smaller independent of `-w`, `-h` and `--scale`.
+- `--subtitle <text>` on every chart command draws a smaller line under the title, for run details that would otherwise make the title long.
+- `belt-charts render <config.json>` renders a whole chart set from one JSON file: shared defaults once, then a list of charts with their command, inputs, output and overrides, with paths relative to the config file (`--dry-run` prints the commands).
+- `belt-charts prune <glob>` drops columns that are zero in every file (and, with `--keep-only-charted`, columns no chart reads) and can compress the result (`--compress gz|zst`), writing to `--out-dir` or `--in-place`; every chart renders the same afterwards.
+- `--group-by "key=Label,..."` shows `Label` instead of the key in the chart's group headings and the exported table's Group column; entries without `=` work as before.
+
+### Fixed
+- `--group-by` help and README now say keys are matched against the file base name, not the label, and a key that matches no input file (or a grouping that leaves no rows) prints a warning instead of an empty chart.
+- With `--group-by`, the `vs Prev`, `vs Best` and `Overlaps Prev` table columns of `summary`, `ups` and `entity-summary` compare inside each group (empty on a group's first row, best row of the group) instead of across group boundaries and against the first row of the table; without groups `vs Best` is measured against the actual best row.
+
 ## [1.24.1] - 2026-10-30
 
 ### Fixed

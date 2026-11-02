@@ -1,5 +1,4 @@
 import path from "path";
-import { globSync } from "glob";
 import { Command, Option } from "commander";
 import { Canvas } from "skia-canvas";
 import { Chart } from "chart.js";
@@ -12,35 +11,26 @@ import {
 } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { ensureOutputDir } from "../utils";
 import { EntityBreakdownChartOptions } from "./types";
-import { baseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, resolveChartInputs, commonOptionsFrom, groupByOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder, OptionBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
 
 async function generateEntityBreakdown(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: EntityBreakdownChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: options.metrics.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, options.metrics.map((m) => m.name));
 
-  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, rawResult) => {
       const group = options.groupBy.length > 0 ? assignToGroup(rawResult.originalFileName, options.groupBy) : null;
@@ -84,12 +74,19 @@ async function generateEntityBreakdown(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     topN: options.topN,
     minPercent: options.minPercent,
     sortBy,
     isPerRun: options.perRun,
     groupBy: options.groupBy,
+    groupLabels: options.groupLabels,
     valueLabels: options.valueLabels,
+    sort: options.sort,
+    baseline: options.baseline,
+    baselinePerGroup: options.baselinePerGroup,
+    errorBars: options.errorBars,
+    paired: options.paired,
   });
 
   console.log("Chart configuration created.");
@@ -164,6 +161,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       height: opts.height,
       scale: opts.scale,
       output: opts.output,
+      ...commonOptionsFrom(opts),
       removeFirstTicks: opts.removeFirstTicks,
       maxTicks: opts.maxTicks,
       trimPrefix: opts.trimPrefix,
@@ -182,7 +180,7 @@ function makeEntitySummaryAction(perRun: boolean) {
       sortBy: opts.sortBy,
       minPercent: opts.minPercent,
       titleCase: opts.titleCase,
-      groupBy: opts.groupBy ?? [],
+      ...groupByOptionsFrom(opts),
       animate: opts.animate ?? false,
       duration: opts.duration,
       fps: opts.fps,
@@ -190,27 +188,21 @@ function makeEntitySummaryAction(perRun: boolean) {
       hold: opts.hold,
       stagger: opts.stagger ?? false,
       valueLabels: opts.valueLabels ?? false,
+      sort: opts.sort,
+      baseline: opts.baseline,
+      baselinePerGroup: opts.baselinePerGroup,
+      errorBars: opts.errorBars,
+      paired: opts.paired ?? false,
     };
 
     validateAnimateOutput(options.output, options.animate);
-    const files = globSync(pattern);
-    if (files.length === 0) {
-      console.error(`No files matched the given pattern ${pattern}`);
-      process.exit(1);
-    }
-
-    const runsToRemove = await loadRunFilters(
-      options.aggregateFile,
-      options.stddevFilter,
-    );
-    ensureOutputDir(path.resolve(process.cwd(), options.output));
+    validateBaselineOptions(options);
+    const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
     if (opts.fish) enableInserterEasterEgg();
-    if (options.namesFile) {
-      options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-    }
     warnUnmatchedNames(files, options.customNames);
+    warnUnmatchedGroups(files, options.groupBy);
 
-    await generateEntityBreakdown(files, runsToRemove, options);
+    await generateEntityBreakdown(inputs, runsToRemove, options);
   };
 }
 
@@ -223,6 +215,10 @@ export function createEntitySummaryCommand(): Command {
     .addOption(animationOptions)
     .addOption(staggerOption)
     .addOption(valueLabelsOption)
+    .addOption(sortOption)
+    .addOption(baselineOptions)
+    .addOption(errorBarsOption)
+    .addOption(pairedOption)
     .build()
     .action(makeEntitySummaryAction(false));
 }

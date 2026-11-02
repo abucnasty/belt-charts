@@ -3,29 +3,21 @@ import { AggregationStrategy, aggregationStrategyFromString } from "../data/Aggr
 import { createSummaryChartConfiguration, SummaryChartResult } from "../charts/SummaryChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { SummaryChartOptions } from "./types";
-import { baseOptions, getBaseName, applyLabel, assignToGroup, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption } from "./utils";
+import { baseOptions, applyLabel, assignToGroup, warnUnmatchedNames, warnUnmatchedGroups, resolveChartInputs, renderChartToFile, resolveMetrics, allowUnfilteredMetricsOption, warnAllowUnfilteredMetrics, animationOptions, validateAnimateOutput, staggerOption, valueLabelsOption, commonOptionsFrom, groupByOptionsFrom, sortOption, baselineOptions, errorBarsOption, pairedOption, validateBaselineOptions, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleCategoricalForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 async function generateSummary(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: SummaryChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: options.metrics.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, options.metrics.map((m) => m.name));
 
-  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, rawResult) => {
       // Group matching runs against the raw source filename (originalFileName). This ensures group
@@ -52,11 +44,18 @@ async function generateSummary(
       ? options.output.replace(/\.[^/.]+$/, "")
       : undefined,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
     minPercent: options.minPercent,
     maxUpdate: options.maxUpdate,
     groupBy: options.groupBy,
+    groupLabels: options.groupLabels,
     allowUnfilteredMetrics: options.allowUnfilteredMetrics,
     valueLabels: options.valueLabels,
+    sort: options.sort,
+    baseline: options.baseline,
+    baselinePerGroup: options.baselinePerGroup,
+    errorBars: options.errorBars,
+    paired: options.paired,
   });
 
   console.log("Chart configuration created.");
@@ -83,6 +82,10 @@ export function createSummaryCommand(): Command {
     .addOption(animationOptions)
     .addOption(staggerOption)
     .addOption(valueLabelsOption)
+    .addOption(sortOption)
+    .addOption(baselineOptions)
+    .addOption(errorBarsOption)
+    .addOption(pairedOption)
     .build()
     .option<boolean>(
       "--summary-table <boolean>",
@@ -114,6 +117,7 @@ export function createSummaryCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -130,7 +134,7 @@ export function createSummaryCommand(): Command {
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
         maxUpdate: opts.maxUpdate,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         allowUnfilteredMetrics: opts.allowUnfilteredMetrics ?? false,
         animate: opts.animate ?? false,
         duration: opts.duration,
@@ -139,16 +143,20 @@ export function createSummaryCommand(): Command {
         hold: opts.hold,
         stagger: opts.stagger ?? false,
         valueLabels: opts.valueLabels ?? false,
+        sort: opts.sort,
+        baseline: opts.baseline,
+        baselinePerGroup: opts.baselinePerGroup,
+        errorBars: opts.errorBars,
+        paired: opts.paired ?? false,
       };
 
       validateAnimateOutput(options.output, options.animate);
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      validateBaselineOptions(options);
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
+      warnUnmatchedGroups(files, options.groupBy);
       warnAllowUnfilteredMetrics(options.allowUnfilteredMetrics);
 
-      await generateSummary(files, runsToRemove, options);
+      await generateSummary(inputs, runsToRemove, options);
     });
 }

@@ -1,6 +1,6 @@
 import { Canvas } from "skia-canvas";
 import { colors, chartLayout } from "./constants";
-import { FONT_FAMILY } from "./fonts";
+import { font } from "./fonts";
 
 export interface TableRow {
   values: (string | number)[];
@@ -20,20 +20,21 @@ export interface TableRenderOptions {
   flexColumnHeader?: string;
 }
 
-const ROW_HEIGHT = chartLayout.TABLE_ROW_HEIGHT_PX;
-const COLUMN_PADDING = chartLayout.TABLE_COLUMN_PADDING_PX;
-const MIN_COLUMN_WIDTH_PX = chartLayout.TABLE_MIN_COLUMN_WIDTH_PX;
-const MAX_HEADER_COLUMN_WIDTH_PX = chartLayout.TABLE_MAX_HEADER_COLUMN_WIDTH_PX;
-const HEADER_LINE_HEIGHT_PX = chartLayout.TABLE_HEADER_LINE_HEIGHT_PX;
+// Sizes are read on every use (not captured once) because they follow --font-scale.
 const MAX_HEADER_LINES = 2;
-const HEADER_BLOCK_HEIGHT_PX = MAX_HEADER_LINES * HEADER_LINE_HEIGHT_PX;
-const HEADER_FONT = `bold 12px ${FONT_FAMILY}`;
-const ROW_FONT = `12px ${FONT_FAMILY}`;
-const FLEX_COLUMN_LEADING_INSET_PX = 4;
+const rowHeight = (): number => chartLayout.TABLE_ROW_HEIGHT_PX;
+const columnPadding = (): number => chartLayout.TABLE_COLUMN_PADDING_PX;
+const minColumnWidth = (): number => chartLayout.TABLE_MIN_COLUMN_WIDTH_PX;
+const maxHeaderColumnWidth = (): number => chartLayout.TABLE_MAX_HEADER_COLUMN_WIDTH_PX;
+const headerLineHeight = (): number => chartLayout.TABLE_HEADER_LINE_HEIGHT_PX;
+const headerBlockHeight = (): number => MAX_HEADER_LINES * headerLineHeight();
+const headerFont = (): string => font(12, true);
+const rowFont = (): string => font(12);
+const flexColumnLeadingInset = (): number => 4;
 
 /** Canvas height (px) needed to draw a table with `rowCount` data rows (plus its up-to-2-line header). */
 export const tableReservedHeight = (rowCount: number): number =>
-  HEADER_BLOCK_HEIGHT_PX + rowCount * ROW_HEIGHT + chartLayout.TABLE_BOTTOM_MARGIN_PX;
+  headerBlockHeight() + rowCount * rowHeight() + chartLayout.TABLE_BOTTOM_MARGIN_PX;
 
 // 1×1 throwaway canvas used only for `measureText` at pre-render layout time (before the real
 // chart canvas exists) — cached since constructing it isn't free and every estimate call needs one.
@@ -46,9 +47,9 @@ const getMeasureContext = (): any => {
 };
 
 /** Real (not heuristic) canvas text width (px) for `text` at the table's font size; use for layout sizing before the real chart canvas exists. */
-export const estimateTextWidth = (text: string, font: string = ROW_FONT): number => {
+export const estimateTextWidth = (text: string, textFont: string = rowFont()): number => {
   const ctx = getMeasureContext();
-  ctx.font = font;
+  ctx.font = textFont;
   return ctx.measureText(text).width;
 };
 
@@ -60,12 +61,12 @@ export const estimateTextWidth = (text: string, font: string = ROW_FONT): number
  * `createTableChartPlugin` (actual draw-time layout) so the two can't drift apart.
  */
 const measureNaturalColumnWidth = (ctx: any, data: TableData, colIdx: number): number => {
-  ctx.font = HEADER_FONT;
+  ctx.font = headerFont();
   let maxWidth = ctx.measureText(data.header[colIdx]).width;
   data.rows.forEach(row => {
     maxWidth = Math.max(maxWidth, ctx.measureText(String(row.values[colIdx] ?? "")).width);
   });
-  return maxWidth + COLUMN_PADDING;
+  return maxWidth + columnPadding();
 };
 
 /**
@@ -81,7 +82,7 @@ export const estimateTableWidth = (data: TableData, excludeColumn?: string): num
   const ctx = getMeasureContext();
   return data.header.reduce((sum, header, colIdx) => {
     if (header === excludeColumn) return sum;
-    return sum + Math.max(measureNaturalColumnWidth(ctx, data, colIdx), MIN_COLUMN_WIDTH_PX);
+    return sum + Math.max(measureNaturalColumnWidth(ctx, data, colIdx), minColumnWidth());
   }, 0);
 };
 
@@ -141,12 +142,12 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     ctx.save();
 
     // Baseline y for the last (bottom) header line; data rows start right below it.
-    const tableTop = height - tableReservedHeight(data.rows.length) + HEADER_BLOCK_HEIGHT_PX;
+    const tableTop = height - tableReservedHeight(data.rows.length) + headerBlockHeight();
     const availableWidth = right - left;
     const flexIdx = options.flexColumnHeader ? data.header.indexOf(options.flexColumnHeader) : -1;
     const otherIndices = data.header.map((_, colIdx) => colIdx).filter(colIdx => colIdx !== flexIdx);
 
-    const naturalWidths = data.header.map((_, colIdx) => Math.max(measureNaturalColumnWidth(ctx, data, colIdx), MIN_COLUMN_WIDTH_PX));
+    const naturalWidths = data.header.map((_, colIdx) => Math.max(measureNaturalColumnWidth(ctx, data, colIdx), minColumnWidth()));
     const otherNaturalWidths = otherIndices.map(colIdx => naturalWidths[colIdx]);
     const totalOtherNatural = otherNaturalWidths.reduce((sum, w) => sum + w, 0);
 
@@ -160,7 +161,7 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     } else {
       // Not enough room: cap header-driven width and let it ellipsis-truncate instead (data
       // cells, which are short numbers/percentages, are never capped).
-      const cappedWidths = otherNaturalWidths.map(w => Math.min(w, MAX_HEADER_COLUMN_WIDTH_PX));
+      const cappedWidths = otherNaturalWidths.map(w => Math.min(w, maxHeaderColumnWidth()));
       const totalCapped = cappedWidths.reduce((sum, w) => sum + w, 0);
       const scale = totalCapped > availableWidth ? availableWidth / totalCapped : 1;
       otherWidths = cappedWidths.map(w => w * scale);
@@ -169,7 +170,7 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     // The flex column lives in the blank strip left of the plot area (under the y-axis tick
     // labels) rather than inside `otherWidths`, reclaiming space instead of stealing it.
     const flexAreaLeft = chartLayout.TABLE_LEFT_MARGIN_PX;
-    const flexWidth = Math.max(left - flexAreaLeft, MIN_COLUMN_WIDTH_PX);
+    const flexWidth = Math.max(left - flexAreaLeft, minColumnWidth());
 
     const columnWidths = new Array(data.header.length).fill(0);
     const columnPositions = new Array(data.header.length).fill(0);
@@ -191,38 +192,38 @@ export const createTableChartPlugin = (data: TableData, options: TableRenderOpti
     ctx.globalAlpha = 0.2;
     data.rows.forEach((_, rowIdx) => {
       if (rowIdx % 2 === 1) {
-        ctx.fillRect(stripeLeft, tableTop + rowIdx * ROW_HEIGHT + ROW_HEIGHT * 0.3, right - stripeLeft, ROW_HEIGHT);
+        ctx.fillRect(stripeLeft, tableTop + rowIdx * rowHeight() + rowHeight() * 0.3, right - stripeLeft, rowHeight());
       }
     });
     ctx.globalAlpha = 1;
 
     const drawLine = (text: string, colIdx: number, y: number, bold: boolean) => {
-      ctx.font = bold ? HEADER_FONT : ROW_FONT;
+      ctx.font = bold ? headerFont() : rowFont();
       ctx.fillStyle = colors.white;
       if (colIdx === flexIdx) {
-        const cellWidth = columnWidths[colIdx] - FLEX_COLUMN_LEADING_INSET_PX;
+        const cellWidth = columnWidths[colIdx] - flexColumnLeadingInset();
         ctx.textAlign = "left";
-        ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + FLEX_COLUMN_LEADING_INSET_PX, y);
+        ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + flexColumnLeadingInset(), y);
       } else {
-        const cellWidth = columnWidths[colIdx] - COLUMN_PADDING;
+        const cellWidth = columnWidths[colIdx] - columnPadding();
         ctx.textAlign = "center";
         ctx.fillText(truncateToWidth(ctx, text, cellWidth), columnPositions[colIdx] + columnWidths[colIdx] / 2, y);
       }
     };
 
-    ctx.font = HEADER_FONT;
+    ctx.font = headerFont();
     data.header.forEach((text, colIdx) => {
-      const cellWidth = columnWidths[colIdx] - COLUMN_PADDING;
+      const cellWidth = columnWidths[colIdx] - columnPadding();
       const lines = wrapHeaderLines(ctx, text, cellWidth);
       // Bottom-align so the last line always sits right above the data rows, whether a header
       // wrapped to 2 lines or not.
       lines.forEach((line, lineIdx) => {
-        const y = tableTop - (lines.length - 1 - lineIdx) * HEADER_LINE_HEIGHT_PX;
+        const y = tableTop - (lines.length - 1 - lineIdx) * headerLineHeight();
         drawLine(line, colIdx, y, true);
       });
     });
     data.rows.forEach((row, rowIdx) => {
-      const y = tableTop + (rowIdx + 1) * ROW_HEIGHT;
+      const y = tableTop + (rowIdx + 1) * rowHeight();
       row.values.forEach((value, colIdx) => drawLine(String(value), colIdx, y, false));
     });
 

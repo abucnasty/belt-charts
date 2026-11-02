@@ -212,3 +212,5 @@ export function ensureOutputDir(path: string): void {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true})
  }
+/** An error caused by the user's arguments or inputs: the CLI prints its message without a stack trace and exits 1. */
+export class UserError extends Error {}

@@ -3,7 +3,8 @@ import { AggregationStrategy } from "../data/AggregationStrategy";
 import { CpuFrequencyResult, RunCoreFrequencyProfile, getCoreFrequencyStatValue } from "../data/CpuFrequencyResult";
 import { colors } from "./constants";
 import { heatColor, HeatmapNormalizeMode } from "./heatmapColor";
-import { FONT_FAMILY } from "./fonts";
+import { font, scaled } from "./fonts";
+import { subtitleHeight } from "./subtitle";
 
 export type { HeatmapNormalizeMode };
 
@@ -20,17 +21,18 @@ export interface CoreFrequencyHeatmapChartOptions {
   /** Show numeric MHz values inside each cell. */
   showValues: boolean;
   titleOverride?: string | null;
+  /** Smaller text under the title. */
+  subtitle?: string | null;
 }
 
-const FONT_SIZE = 12;
-const LABEL_FONT = `${FONT_SIZE}px ${FONT_FAMILY}`;
-const SMALL_FONT = `10px ${FONT_FAMILY}`;
+const labelFont = () => font(12);
+const smallFont = () => font(10);
 
-const MIN_ROW_HEIGHT = 24;
-const MIN_COL_WIDTH = 60;
-const LEGEND_BAR_WIDTH = 20;
-const LEGEND_MARGIN = 12;
-const LEGEND_LABEL_WIDTH = 60;
+const BASE_MIN_ROW_HEIGHT = 24;
+const BASE_MIN_COL_WIDTH = 60;
+const BASE_LEGEND_BAR_WIDTH = 20;
+const BASE_LEGEND_MARGIN = 12;
+const BASE_LEGEND_LABEL_WIDTH = 60;
 
 interface HeatmapRow {
   designLabel: string;
@@ -116,14 +118,21 @@ export function renderCoreFrequencyHeatmapChart(
 
   // ── Layout ───────────────────────────────────────────────────────────────
 
+  // Fixed measures follow --font-scale, like the text they hold.
+  const MIN_ROW_HEIGHT = scaled(BASE_MIN_ROW_HEIGHT);
+  const MIN_COL_WIDTH = scaled(BASE_MIN_COL_WIDTH);
+  const LEGEND_BAR_WIDTH = scaled(BASE_LEGEND_BAR_WIDTH);
+  const LEGEND_MARGIN = scaled(BASE_LEGEND_MARGIN);
+  const LEGEND_LABEL_WIDTH = scaled(BASE_LEGEND_LABEL_WIDTH);
+
   const ctx = canvas.getContext("2d");
 
-  ctx.font = LABEL_FONT;
-  const leftMargin = Math.ceil(Math.max(...rows.map(r => ctx.measureText(r.displayName).width)) + 24);
+  ctx.font = labelFont();
+  const leftMargin = Math.ceil(Math.max(...rows.map(r => ctx.measureText(r.displayName).width)) + scaled(24));
 
-  const colLabelHeight = 60; // "Core N" rotated -45°
-  const bottomMargin = colLabelHeight + 12;
-  const topMargin = 50;
+  const colLabelHeight = scaled(60); // "Core N" rotated -45°
+  const bottomMargin = colLabelHeight + scaled(12);
+  const topMargin = scaled(50) + subtitleHeight(options.subtitle);
   const rightMargin = LEGEND_BAR_WIDTH + LEGEND_MARGIN + LEGEND_LABEL_WIDTH;
 
   const plotWidth = canvas.width - leftMargin - rightMargin;
@@ -165,11 +174,15 @@ export function renderCoreFrequencyHeatmapChart(
     options.titleOverride ??
     `Core Frequency Heatmap \u2014 ${strategyLabel[options.aggregateStrategy]} [MHz] (${normalizeLabel[options.normalize]})`;
 
-  ctx.font = `bold 16px ${FONT_FAMILY}`;
+  ctx.font = font(16, true);
   ctx.fillStyle = colors.white;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, 28);
+  ctx.fillText(title, leftMargin + (colWidth * nCols) / 2, scaled(28));
+  if (options.subtitle) {
+    ctx.font = font(13);
+    ctx.fillText(options.subtitle, leftMargin + (colWidth * nCols) / 2, scaled(28) + scaled(18));
+  }
 
   // ── Grid rows ────────────────────────────────────────────────────────────
 
@@ -177,11 +190,11 @@ export function renderCoreFrequencyHeatmapChart(
     const row = rows[ri];
     const y = topMargin + ri * rowHeight;
 
-    ctx.font = LABEL_FONT;
+    ctx.font = labelFont();
     ctx.fillStyle = colors.white;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    ctx.fillText(row.displayName, leftMargin - 8, y + rowHeight / 2);
+    ctx.fillText(row.displayName, leftMargin - scaled(8), y + rowHeight / 2);
 
     for (let ci = 0; ci < nCols; ci++) {
       const value = row.cores[ci];
@@ -202,7 +215,7 @@ export function renderCoreFrequencyHeatmapChart(
 
       if (options.showValues && value !== undefined) {
         const label = `${Math.round(value)}`;
-        ctx.font = SMALL_FONT;
+        ctx.font = smallFont();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         if (ctx.measureText(label).width < colWidth - 4) {
@@ -216,8 +229,8 @@ export function renderCoreFrequencyHeatmapChart(
 
   // ── Column headers (rotated –45°) ─────────────────────────────────────────
 
-  const headerBaseY = topMargin + gridHeight + 8;
-  ctx.font = LABEL_FONT;
+  const headerBaseY = topMargin + gridHeight + scaled(8);
+  ctx.font = labelFont();
   ctx.fillStyle = colors.white;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
@@ -249,7 +262,7 @@ export function renderCoreFrequencyHeatmapChart(
   ctx.lineWidth = 1;
   ctx.strokeRect(legendX, legendY, LEGEND_BAR_WIDTH, legendH);
 
-  ctx.font = SMALL_FONT;
+  ctx.font = smallFont();
   ctx.fillStyle = colors.white;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
@@ -263,13 +276,13 @@ export function renderCoreFrequencyHeatmapChart(
       ? `${Math.round(globalMin + t * (globalMax - globalMin))} MHz`
       : `${(t * 100).toFixed(0)}%`;
 
-    ctx.fillText(label, legendX + LEGEND_BAR_WIDTH + 5, y2);
+    ctx.fillText(label, legendX + LEGEND_BAR_WIDTH + scaled(5), y2);
 
     ctx.strokeStyle = colors.dark_grey;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(legendX + LEGEND_BAR_WIDTH, y2);
-    ctx.lineTo(legendX + LEGEND_BAR_WIDTH + 4, y2);
+    ctx.lineTo(legendX + LEGEND_BAR_WIDTH + scaled(4), y2);
     ctx.stroke();
   }
 

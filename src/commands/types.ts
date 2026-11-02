@@ -1,6 +1,7 @@
 import { MetricEnum } from "../data/MetricEnum";
 import { AggregationStrategy } from "../data/AggregationStrategy";
 import { Easing } from "../charts/animation";
+import { ErrorBarMode } from "../data/errorBars";
 
 // Options for rendering a chart as an animated MP4 instead of a static image
 export type AnimationOptions = {
@@ -16,6 +17,32 @@ export type AnimationOptions = {
 // Only meaningful for categorical (one-row-per-save-file) bar charts.
 export type StaggerOption = {
   stagger: boolean;
+};
+
+// Row order of the bar charts: by total time, in input order (--include, names file, inputs), or by label
+export type RowSort = "total" | "input" | "name";
+
+// Row order option shared by the bar charts that sort their rows
+export type SortOption = {
+  sort?: RowSort;
+};
+
+// Draws each row's change against a baseline row instead of absolute values
+export type BaselineOption = {
+  /** Label or base name of the baseline row. */
+  baseline?: string | null;
+  /** With --group-by: baseline label or base name per group key. */
+  baselinePerGroup?: Map<string, string>;
+};
+
+// Draws the run-to-run spread of the per-run means on each bar
+export type ErrorBarsOption = {
+  errorBars?: ErrorBarMode;
+};
+
+// Draws one row per save with one bar per input suffix instead of one row per file
+export type PairedOption = {
+  paired?: boolean;
 };
 
 // Base options shared by all chart types
@@ -39,14 +66,26 @@ export type BaseChartOptions = {
   titleCase: boolean;
   /** List of substrings to remove from chart labels. Applied after --trim-prefix and before --title-case. */
   trimSubstrings: string[];
-  /** Comma-separated group keys. Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
+  /** Comma-separated group keys (the part before any `=` of a `--group-by` entry). Each result is assigned to the longest matching key that is a substring of its fileName. Results not matching any key are excluded. */
   groupBy: string[];
+  /** Heading per group key from `--group-by "key=Label"` entries; a key without an entry is shown as itself. */
+  groupLabels: Map<string, string>;
   /** Override the chart's auto-generated title. Null = use the chart's default title. */
   titleOverride: string | null;
+  /** Repeatable `--input <glob>[:<label suffix>]` arguments, read in addition to the positional glob. */
+  input: string[];
+  /** `--include` glob patterns: when non-empty, only inputs whose base name or label matches one are charted. */
+  include: string[];
+  /** `--exclude` glob patterns: inputs whose base name or label matches one are skipped. */
+  exclude: string[];
+  /** `--subtitle` text drawn smaller under the chart title. Null = none. */
+  subtitle: string | null;
+  /** `--font-scale` factor for titles, legends, axis labels, value labels and tables. 1 = default. */
+  fontScale: number;
 };
 
 // Summary chart specific options
-export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
+export type SummaryChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & PairedOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -73,7 +112,7 @@ export type LineBarChartOptions = BaseChartOptions & AnimationOptions & {
 };
 
 // Boxplot chart specific options
-export type BoxPlotChartOptions = BaseChartOptions & AnimationOptions & {
+export type BoxPlotChartOptions = BaseChartOptions & AnimationOptions & SortOption & {
   minUpdate: number | null;
   maxUpdate: number | null;
 };
@@ -84,7 +123,7 @@ export type TableChartOptions = BaseChartOptions & {
 };
 
 // Entity breakdown chart specific options
-export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & {
+export type EntityBreakdownChartOptions = BaseChartOptions & AnimationOptions & StaggerOption & SortOption & BaselineOption & ErrorBarsOption & PairedOption & {
   aggregateStrategy: AggregationStrategy;
   summaryTable: boolean;
   summaryTableFile: boolean;
@@ -113,7 +152,8 @@ export type EntityHeatmapChartOptions = BaseChartOptions & {
 export type CoreFrequencyHeatmapChartOptions = Pick<
   BaseChartOptions,
   "width" | "height" | "scale" | "output" | "trimPrefix" | "customNames" | "namesFile" |
-  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "titleOverride"
+  "aggregateFile" | "stddevFilter" | "titleCase" | "trimSubstrings" | "groupBy" | "groupLabels" | "titleOverride" |
+  "input" | "include" | "exclude" | "fontScale" | "subtitle"
 > & {
   aggregateStrategy: AggregationStrategy;
   normalize: "global" | "column" | "row";

@@ -35,11 +35,15 @@ All commands share a common set of **base options**, plus command-specific optio
 
 | Option | Default | Description |
 |---|---|---|
-| `<glob-pattern>` | *(required)* | Glob pattern for input CSV files, e.g. `"results/*.csv"` |
+| `[glob-pattern]` | *(see `--input`)* | Glob pattern for input CSV files, e.g. `"results/*.csv"`. Optional when `--input` is given |
+| `--input <glob>[:<suffix>]` | *(none)* | Results files to chart. Repeatable, and combined with the positional pattern. An optional `:suffix` is appended to the label of every file of that input as `<label> (suffix)` (after `--name` / `--names-file` and the other label transforms), so two folders with the same file names chart together in one command — see “Several inputs” below |
+| `--include <pattern>` | *(none)* | Only chart inputs whose base name or label matches this glob pattern. Repeatable (OR-matched) |
+| `--exclude <pattern>` | *(none)* | Skip inputs whose base name or label matches this glob pattern. Repeatable; applied after `--include` |
 | `-o, --output <file>` | `verbose_metrics.png` | Output file path. Use `.svg` for vector output |
 | `-w, --width <px>` | `1400` | Chart width in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `-h, --height <px>` | `800` | Chart height in pixels. Treated as a **minimum** by charts that auto-grow to fit their content — see “Auto-sizing” below |
 | `--scale <factor>` | `1` | Integer output pixel multiplier for higher-resolution PNG/MP4 output — see “High-resolution output” below. Ignored for `.svg` |
+| `--font-scale <factor>` | `1` | Multiplies the size of all text — titles, legends, axis labels, value labels and the in-chart table — together with the layout measures that fit it (table row height, minimum bar row height), independent of `-w`, `-h` and `--scale`. Charts that auto-grow (see “Auto-sizing”) grow to fit the larger text; `-w` / `-h` stay the floor. e.g. `--font-scale 1.5` for slides |
 | `--remove-first-ticks <n>` | `1` | Skip the first N ticks (removes benchmark warm-up spikes) |
 | `--max-ticks <n>` | `0` | Only include ticks up to N. `0` = no limit |
 | `--trim-prefix <string>` | `""` | Strip a common prefix from all file names in chart labels |
@@ -52,7 +56,17 @@ All commands share a common set of **base options**, plus command-specific optio
 | `--aggregate-file <path>` | `""` | Path to a run-results file for outlier filtering |
 | `--stddev-filter <n>` | `3` | Remove runs outside N standard deviations from the mean (requires `--aggregate-file`) |
 | `--title-override <string>` | *(auto)* | Override the chart's auto-generated title |
+| `--subtitle <string>` | *(none)* | Draw this text smaller under the title (all chart commands except `table`), so run details such as ticks measured, runs, game version or allocator do not have to be appended to a long `--title-override`. The chart makes room for it |
 
+> **Several inputs** — chart two sessions of the same saves (two allocators, game versions or machines) without symlinks or a temporary names file:
+> ```bash
+> belt-charts ups --input "results_malloc/*.csv:malloc" --input "results_mimalloc/*.csv:mimalloc" -o charts/ups.png
+> # rows: "4 Inserters, As Saved (malloc)", "4 Inserters, As Saved (mimalloc)", ...
+> ```
+> The suffix is whatever follows the last `:` of the argument (a Windows drive letter such as `C:\data\*.csv` is not mistaken for one). `--names-file` and `--name` keys still refer to the base name without the suffix. `--aggregate-file` run filters are matched by base name, so they apply to every input that has that file name. `bar` / `line` write one image per input file; the suffix is added to each file name (`timeseries_<name>_<suffix>.png`).
+>
+> `--include` / `--exclude` patterns are matched (shell-glob style, `*` and `?`) against the file's base name, its label, and its label with the suffix, e.g. `--exclude "*(mimalloc)"`.
+>
 > **Label pipeline** — transforms are applied in this order: `--name`/`--names-file` → `--trim-prefix` → `--trim-substring` → `--title-case`. If a `--name` match is found the custom label is used as-is and all remaining steps are skipped.
 >
 > **Auto-sizing** — `-w`/`-h` are a floor, not a fixed size, for charts whose content could otherwise be squished illegibly: `summary`, `summary-per-run`, `entity-summary`, and `entity-summary-per-run` grow **height** to fit every bar row plus the in-chart table (when enabled) and grow **width** to fit the in-chart table's columns; `boxplot` grows **width** to fit every category column; `entity-matrix` grows **height**; `entity-heatmap` and `core-freq-heatmap` grow both **width and height** to fit their grid. Charts that already have enough room are unaffected. `bar`/`line` never grow beyond the requested size, since their x-axis is continuous time rather than a discrete category count.
@@ -124,6 +138,76 @@ belt-charts summary "results/my_amazing_map*.csv"
 
 ---
 
+### Row Order
+
+`summary`, `ups`, `entity-summary` and `boxplot` order their rows by total time, so the same save lands in a different row from one chart to the next. `--sort` keeps a fixed order instead.
+
+| Option | Default | Description |
+|---|---|---|
+| `--sort <total\|input\|name>` | `total` | `total`: ranked by total time (today's behaviour; `boxplot` ranks by mean, slowest first). `input`: the order of the `--include` patterns (saves matched by the same pattern follow the names file), then of the names file (and `--name` flags), then of the inputs (sorted by file name within each input); sessions of the same save stay next to each other. `name`: by the label shown in the chart, numbers compared as numbers. With `--group-by` the same order applies inside each group |
+
+When the rows are not ordered by total, the `vs Best` column still measures against the fastest row, and `vs Prev` against the row above. With `--group-by` the comparisons stay inside each group: `vs Prev` (`+/- vs Previous` for `ups`) is empty on the first row of a group and otherwise compares with the row above it, `vs Best` compares with the best row of the group, and `Overlaps Prev` (with `--error-bars`) follows the same rule.
+
+```
+# Three charts over different subsets show the saves in the same order as the names file
+belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "4i-*" -o charts/ups_4i.png
+belt-charts ups "results/*.csv" --names-file names.txt --sort input --include "*shuffled" -o charts/ups_shuffled.png
+```
+
+---
+
+### Difference Against a Baseline
+
+`summary`, `ups` and `entity-summary` can draw differences instead of absolute values, so a claim such as "memory order saves 86-97 µs of inserter time" comes straight from the chart.
+
+| Option | Default | Description |
+|---|---|---|
+| `--baseline <label>` | *(none)* | The row everything is compared against, named by its label (as shown in the chart, including any `--input` suffix) or its base name. Each segment is drawn as its change against the same segment of the baseline row, diverging from zero (µs; for `ups`, updates per second). The baseline row is marked `(baseline)` and is empty. It must match exactly one row; with `--group-by` it is looked up inside each group |
+| `--baseline-per-group <key=label,...>` | *(none)* | With `--group-by`: the baseline of each group, e.g. `"q1=Q1 As Saved,q2=Q2 As Saved"`. Takes precedence over `--baseline` for the listed groups. Labels cannot contain commas |
+
+The in-chart table and the exported `.csv`/`.md` show the same changes instead of absolute values: `summary` gets `Δ <segment>` columns, `Δ Whole %` and the absolute `Whole`; `entity-summary` gets `Δ <segment>` columns, `Δ Entity Update`, `Δ Entity Update %` and the absolute total; `ups` keeps `UPS` and adds `+/- vs Baseline` and `% vs Baseline`. Rows are ordered as usual (see Row Order); `--baseline` does not reorder them.
+
+```
+belt-charts entity-summary "results/*.csv" --baseline "4i-as-saved" --value-labels -o charts/inserter_delta.png
+belt-charts summary "results/*.csv" --group-by "q1,q2" --baseline-per-group "q1=q1_as_saved,q2=q2_as_saved" -o charts/delta_by_group.png
+```
+
+---
+
+### Error Bars
+
+`summary`, `ups` and `entity-summary` can show how much a total varies from run to run, so claims like "these two builds can't be told apart" or "the gap is about 1%" can be read off the chart. The spread is computed from the **per-run means** of the total (each run's average over its ticks), not from individual ticks.
+
+| Option | Default | Description |
+|---|---|---|
+| `--error-bars <stddev\|ci95\|minmax>` | *(off)* | `stddev`: ± the sample standard deviation (n − 1) of the run means. `ci95`: ± the 95% confidence interval of their mean (Student's t). `minmax`: from the smallest to the largest run mean. Drawn on the end of each bar (the whole update; the entity update for `entity-summary`; updates per second for `ups`) |
+
+The table and the exported `.csv`/`.md` gain the spread (`± Std Dev`, `± 95% CI`, or `Min Run` and `Max Run`) and an `Overlaps Prev` column: `yes` when the row's interval overlaps the row above, i.e. the two cannot be told apart within run-to-run noise. A file with a single run has no `stddev` / `ci95` bar. Not available with `--baseline`, nor on the `-per-run` commands.
+
+```
+belt-charts ups "results/*.csv" --error-bars ci95 -o charts/ups.png
+```
+
+---
+
+### Paired Bars for Two Sessions
+
+Two sessions of the same saves (allocator, game version, machine) double the row count: 12 saves in two sessions make a 24-row chart. `--paired` draws one row per save instead, with one bar per session side by side. The session is the label suffix of its `--input`; the save is the label without that suffix.
+
+`summary`, `ups` and `entity-summary` support it.
+
+| Option | Default | Description |
+|---|---|---|
+| `--paired` | `false` | One row per save with one bar per session (stacked bars side by side for `summary` and `entity-summary`, one colored bar per session for `ups`). Needs at least two `--input "<glob>:<suffix>"`. Each bar is named with its session, and the legend lists the sessions. A save that is missing from a session just has no bar there. Rows are ranked by the first session (`--sort` applies, and so does `--group-by`). Not combined with `--baseline` or `--error-bars` |
+
+The table has one row per save: each session's total, then the change of every later session against the first (`+/- <session> vs <first>` and `% <session> vs <first>`).
+
+```
+belt-charts ups --input "results_malloc/*.csv:malloc" --input "results_mimalloc/*.csv:mimalloc" --paired --names-file names.txt -o charts/ups_paired.png
+```
+
+---
+
 ### `summary`
 
 Stacked-bar chart aggregating all metrics across input files, with an optional in-chart table.
@@ -134,7 +218,7 @@ Stacked-bar chart aggregating all metrics across input files, with an optional i
 | `--summary-table <bool>` | `true` | Render a stats table inside the chart |
 | `--summary-table-file <bool>` | `true` | Export the table as `.csv` and `.md` alongside the chart |
 | `--max-update <number>` | *(auto)* | Fix the maximum x-axis value (microseconds). Useful for comparing charts at a consistent scale |
-| `--group-by <keys>` | *(none)* | Comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its **original** file base name — matching happens before any label transforms, so `--trim-substring` and `--title-case` cannot break group assignment. Results that don't match any key are excluded. Matched results are clustered under bold group-header rows in the chart and table, sorted by key order |
+| `--group-by <keys>` | *(none)* | Comma-separated list of group keys (e.g. `clone_0,clone_1,clone_18`). Each result is assigned to the longest key that is a substring of its **original** file base name (the file name without `.csv` or `_verbose_metrics`) — matching happens before any label transforms, so `--trim-substring` and `--title-case` cannot break group assignment, and a label from `--names-file` or `--name` is not matched. A key that matches no input file prints a warning, and so does a grouping that leaves no rows. Results that don't match any key are excluded. Matched results are clustered under bold group-header rows in the chart and table, sorted by key order. Write an entry as `key=Label` to show `Label` instead of the key in the group headers and the table's Group column, e.g. `"3i-2to1=3 Inserters 2:1,3i-3to1=3 Inserters 3:1,4i=4 Inserters"`; entries without `=` show the key. Matching always uses the key, `--baseline-per-group` takes keys, and `--names-file` / `--name` entries do not apply to groups. Labels cannot contain commas |
 | `--allow-unfiltered-metrics` | `false` | **Advanced / opt-in.** Bypass the built-in `MetricProfiles.SUMMARY_CHART` filter so any metric passed via `--metrics` is rendered, even metrics outside the default profile. **Warning:** dataset ordering, legend ordering, and pattern/color assignment are tuned for the default profile; off-profile metrics may render or lay out unexpectedly. A warning is printed at run time |
 
 > **Why is there a metric profile in the first place?** The fixed profile is deliberate. belt-charts assigns a **stable, color-blind-friendly color to each metric** (e.g. `entityUpdate` is always the same blue everyone recognises at a glance), and non-color-blind-friendly hues are backed by distinguishing **pattern fills** so the chart still reads unambiguously in grayscale or for readers with color-vision deficiencies. Both the palette and the pattern set are only defined for metrics in the default profile — off-profile metrics fall back to whatever the underlying chart library picks, which may collide with other metrics' colors or lose their pattern. `--allow-unfiltered-metrics` intentionally opts out of that guarantee.
@@ -172,6 +256,8 @@ belt-charts summary "results/bm_*_clone_*.csv"
 ```
 
 The `--group-by` keys are matched against the original file base name (before any trim or title-case transforms), so `clone_0`, `clone_1`, and `clone_18` are still found in the name even though `--trim-substring` will later strip them from the visible label. Longest-match means `clone_18` files are correctly assigned to the `clone_18` group, not the `clone_1` group. When `--summary-table-file` is active the exported `.md`/`.csv` gains a **Group** column as its first column.
+
+To give the groups readable headings, add a label after the key: `--group-by "clone_0=No clones,clone_1=1 clone,clone_18=18 clones"`. The headings in the chart and the **Group** column then show the labels.
 
 ---
 
@@ -305,6 +391,70 @@ belt-charts table "results/my_amazing_map*.csv"
   -a average
   --trim-prefix "my_amazing_map_"
 ```
+
+---
+
+### `prune`
+
+Shrinks results files without changing any chart: verbose metrics files run to tens of MB a save, and most of the 100+ columns are zero in every file. `prune` drops the columns that are zero in **every** file of the set (so every pruned file has the identical header) and can compress the result. A dropped column reads as zero, exactly as before, so the exported tables and images are unchanged.
+
+| Option | Default | Description |
+|---|---|---|
+| `<glob-pattern>` | *(required)* | Results files to prune (`.csv`, `.csv.gz`, `.csv.zst`) |
+| `--out-dir <dir>` | *(none)* | Write the pruned files to this directory; the originals stay |
+| `--in-place` | `false` | Replace the files where they are (a file that changes its name, e.g. by compressing, is replaced by the new one). One of `--out-dir` and `--in-place` is required, so nothing is overwritten by accident |
+| `--keep-only-charted` | `false` | Also drop columns no chart command reads. Kept: `tick`, `run`, `wholeUpdate`, the summary categories, `entityUpdate` and every entity type. `line` / `bar` with `--metrics` naming another column, or `table` (which exports every metric), would no longer find it |
+| `--compress <gz\|zst\|none>` | *(as the input)* | Write `.csv.gz`, `.csv.zst` or plain `.csv` |
+| `--dry-run` | `false` | Only report which columns would be dropped |
+
+`tick`, `run` and `wholeUpdate` are always kept. Files are streamed, so memory use stays flat however large they are.
+
+Every command reads `.csv.gz` and `.csv.zst` transparently, so a compressed folder charts like the original (`belt-charts summary "results/*.csv.gz"`; labels and `--names-file` keys use the base name without the extension). Reading and writing `.zst` uses Node's built-in zstd support, which needs **Node.js 22.15 or newer** (gzip works everywhere).
+
+```
+belt-charts prune "results/*.csv" --keep-only-charted --compress zst --out-dir results_small
+belt-charts summary "results_small/*.csv.zst" -o charts/summary.png
+```
+
+---
+
+### `render`
+
+Renders a whole chart set from one JSON config file, so a benchmark's width, height, scale, trim, names file and aggregation are written once instead of on every command line.
+
+```
+belt-charts render charts.json
+belt-charts render charts.json --dry-run   # print the command line of every chart without rendering
+```
+
+```json
+{
+  "defaults": {
+    "width": 1400,
+    "scale": 2,
+    "removeFirstTicks": 1500,
+    "namesFile": "names.txt",
+    "subtitle": "Game 2.0.76, 15000 ticks measured, 10 runs"
+  },
+  "charts": [
+    { "command": "ups", "input": "results/*.csv", "output": "charts/ups.png", "sort": "input" },
+    { "command": "entity-summary", "input": "results/*.csv", "output": "charts/entity.png", "valueLabels": true },
+    {
+      "command": "summary",
+      "input": ["malloc/*.csv:malloc", { "path": "mimalloc/*.csv", "suffix": "mimalloc" }],
+      "output": "charts/by_allocator.png",
+      "paired": true,
+      "metrics": ["wholeUpdate", "entityUpdate"]
+    }
+  ]
+}
+```
+
+- `defaults` apply to every chart whose command has that option (the others skip it); a chart's own value wins.
+- Each chart names its `command` (any chart command: `summary`, `ups`, `entity-summary`, `boxplot`, `line`, `bar`, `table`, ...), its `input` (a glob, or a list of globs; `"<glob>:<suffix>"` or `{ "path": ..., "suffix": ... }` for a label suffix) and its `output`. Any other key is a long option of that command, written camelCase (`removeFirstTicks`) or kebab-case (`remove-first-ticks`).
+- Flags take `true` / `false`; options that take a list (`metrics`, `groupBy`, ...) take a JSON array; repeatable options (`include`, `exclude`, `trimSubstring`) take an array too; `name` takes an object `{ "base_name": "Label" }`.
+- Paths (`input`, `output`, `namesFile`, `aggregateFile`) are resolved relative to the config file, so it works from any directory. Absolute paths are kept.
+- Charts are rendered one after another; an unknown option or a missing file stops the run with a message naming the chart. Only JSON is supported (no YAML, no comments).
 
 ---
 
@@ -459,7 +609,7 @@ PNG is the default when no extension is specified or when `.png` is used.
 
 ## Requirements
 
-- Node.js >= 14.0.0
+- Node.js >= 14.0.0 (reading and writing `.csv.zst` needs Node.js >= 22.15)
 - npm or yarn
 
 ## License

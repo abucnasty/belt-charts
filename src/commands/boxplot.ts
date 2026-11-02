@@ -2,29 +2,21 @@ import { Command } from "commander";
 import { createBoxPlotChartConfiguration } from "../charts/BoxPlot";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { BoxPlotChartOptions } from "./types";
-import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveChartInputs, renderChartToFile, resolveMetrics, animationOptions, validateAnimateOutput, commonOptionsFrom, groupByOptionsFrom, sortOption, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { renderChartAnimationToFile } from "./videoEncoder";
 import { scaleBoxplotForAnimation } from "../charts/animation";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 async function generateBoxPlot(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: BoxPlotChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: options.metrics.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, options.metrics.map((m) => m.name));
 
-  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const aggregateResults: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, result) => {
       aggregateResults[task.fileIndex] = applyLabel(
@@ -41,6 +33,8 @@ async function generateBoxPlot(
     minUpdateTime: options.minUpdate,
     maxUpdateTime: options.maxUpdate,
     titleOverride: options.titleOverride ?? undefined,
+    subtitle: options.subtitle,
+    sort: options.sort,
   });
 
   console.log("Chart configuration created.");
@@ -62,6 +56,7 @@ export function createBoxPlotCommand(): Command {
     .setDescription("Generate boxplot charts showing distribution statistics")
     .addOption(baseOptions)
     .addOption(animationOptions)
+    .addOption(sortOption)
     .build()
     .option(
       "--min-update <number>",
@@ -81,6 +76,7 @@ export function createBoxPlotCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -94,22 +90,20 @@ export function createBoxPlotCommand(): Command {
         maxUpdate: opts.maxUpdate,
         minPercent: opts.minPercent,
         titleCase: opts.titleCase,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
         titleOverride: opts.titleOverride,
         animate: opts.animate ?? false,
         duration: opts.duration,
         fps: opts.fps,
         easing: opts.easing,
         hold: opts.hold,
+        sort: opts.sort,
       };
 
       validateAnimateOutput(options.output, options.animate);
-      const { files, runsToRemove } = await resolveChartInputs(pattern, options);
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       warnUnmatchedNames(files, options.customNames);
 
-      await generateBoxPlot(files, runsToRemove, options);
+      await generateBoxPlot(inputs, runsToRemove, options);
     });
 }

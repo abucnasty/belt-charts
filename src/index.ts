@@ -16,6 +16,8 @@ import {
   createBarCommand,
   createBoxPlotCommand,
   createTableCommand,
+  createPruneCommand,
+  createRenderCommand,
   createEntitySummaryCommand,
   createEntitySummaryPerRunCommand,
   createEntityMatrixCommand,
@@ -25,6 +27,7 @@ import {
 import { runLineBarWorkerTask, type LineBarWorkerTask } from "./commands/lineBarWorkerTask";
 import { runAggregateParseWorkerTask, type AggregateParseTask } from "./commands/aggregateParseWorkerTask";
 import { registerFonts } from "./charts/fonts";
+import { UserError } from "./utils";
 
 Chart.register(
   BoxPlotController,
@@ -60,12 +63,21 @@ if (!isMainThread) {
   program.addCommand(createBarCommand());
   program.addCommand(createBoxPlotCommand());
   program.addCommand(createTableCommand());
+  program.addCommand(createPruneCommand());
+  program.addCommand(createRenderCommand());
   program.addCommand(createEntitySummaryCommand());
   program.addCommand(createEntitySummaryPerRunCommand());
   program.addCommand(createEntityMatrixCommand());
   program.addCommand(createEntityHeatmapCommand());
   program.addCommand(createCoreFrequencyHeatmapCommand());
 
-  program.parse();
+  program.parseAsync().catch((error: unknown) => {
+    // Bad arguments are reported as a plain message; anything else keeps its stack trace.
+    if (error instanceof UserError) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    throw error;
+  });
 }
 

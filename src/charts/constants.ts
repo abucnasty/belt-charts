@@ -1,5 +1,6 @@
 import { CategoryMetricEnum, EntityMetricEnum, MetricEnum } from "../data/MetricEnum";
 import { darkenColor, lightenColor } from "./colorUtils";
+import { getFontScale } from "./fontScale";
 
 /**
  * Colorblind-friendly color palette
@@ -254,7 +255,7 @@ export const metricStyles: Record<string, MetricStyle> = {
  * Numeric layout constants shared across chart rendering.
  * Change these here rather than hunting for bare numbers in chart files.
  */
-export const chartLayout = {
+const baseChartLayout = {
   /** Factorio game ticks per real-world second. */
   TICKS_PER_SECOND: 60,
   /** Height of each row in the in-chart summary table (px). */
@@ -286,3 +287,18 @@ export const chartLayout = {
   /** Fixed horizontal space reserved for title/y-axis-label chrome in box-plot charts (px). */
   BOX_CHART_CHROME_WIDTH_PX: 140,
 } as const;
+
+// Measures that do not exist to fit text; everything else grows with --font-scale.
+const FONT_SCALE_INDEPENDENT: readonly string[] = ["TICKS_PER_SECOND", "AXIS_SCALE_LOWER_PADDING", "AXIS_SCALE_UPPER_PADDING", "TABLE_LEFT_MARGIN_PX"];
+
+/** The layout constants above, with the text-fitting ones multiplied by the current font scale on every read. */
+export const chartLayout: typeof baseChartLayout = (() => {
+  const layout = {} as Record<string, number>;
+  for (const [key, value] of Object.entries(baseChartLayout)) {
+    Object.defineProperty(layout, key, {
+      enumerable: true,
+      get: () => FONT_SCALE_INDEPENDENT.includes(key) ? value : value * getFontScale(),
+    });
+  }
+  return layout as typeof baseChartLayout;
+})();

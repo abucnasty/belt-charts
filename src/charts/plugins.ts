@@ -2,8 +2,9 @@
  * Shared Chart.js plugin definitions used across multiple chart types.
  */
 import { colors } from "./constants";
-import { FONT_FAMILY } from "./fonts";
+import { font, scaled } from "./fonts";
 import { anchorPatternToRect } from "./styles";
+import type { ErrorBar } from "../data/errorBars";
 
 // Originally attempted to just use chartjs-plugin-datalabels: that plugin has a known position bug in skia-canvas
 // https://github.com/chartjs/chartjs-plugin-datalabels/issues/416
@@ -12,7 +13,7 @@ export const valueLabelsPlugin = {
   afterDatasetsDraw(chart: any) {
     const { ctx } = chart;
     ctx.save();
-    ctx.font = `bold 12px ${FONT_FAMILY}`;
+    ctx.font = font(12, true);
     ctx.fillStyle = colors.white;
     ctx.strokeStyle = colors.black;
     ctx.lineWidth = 1;
@@ -44,6 +45,44 @@ export const valueLabelsPlugin = {
 };
 
 /**
+ * Draws a horizontal error bar at the end of each row's bar. `barsByRow` is indexed by chart row
+ * (category) and holds the interval in x-axis units, or null for rows without one (group headers).
+ * Drawn black-outlined white so it stays visible on every segment color.
+ */
+export const createErrorBarsPlugin = (barsByRow: (ErrorBar | null)[]) => ({
+  id: "errorBars",
+  afterDatasetsDraw(chart: any) {
+    const { ctx, scales } = chart;
+    const meta = chart.getDatasetMeta(0);
+    const capHalf = scaled(6);
+    ctx.save();
+    ctx.lineCap = "butt";
+    const draw = (width: number, color: string, y: number, x1: number, x2: number) => {
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.moveTo(x1, y - capHalf);
+      ctx.lineTo(x1, y + capHalf);
+      ctx.moveTo(x2, y - capHalf);
+      ctx.lineTo(x2, y + capHalf);
+      ctx.stroke();
+    };
+    barsByRow.forEach((bar, index) => {
+      const element = meta.data[index];
+      if (!bar || !element) return;
+      const y = element.getProps(["y"], true).y;
+      const x1 = scales.x.getPixelForValue(bar.lower);
+      const x2 = scales.x.getPixelForValue(bar.upper);
+      draw(4, colors.black, y, x1, x2);
+      draw(2, colors.white, y, x1, x2);
+    });
+    ctx.restore();
+  },
+});
+
+/**
  * Re-anchors pattern fills (see `anchorPatternToRect`) to each bar and legend swatch so every
  * shape shows the same, centered crop of the pattern instead of an arbitrary canvas-origin crop.
  */
@@ -53,7 +92,7 @@ export const patternAnchorPlugin = {
     const legend = chart.legend;
     if (!legend?.options?.display || !legend.legendItems) return;
     const labels = legend.options.labels;
-    const fontSize = labels.font?.size ?? 12;
+    const fontSize = labels.font?.size ?? scaled(12);
     const boxWidth = labels.boxWidth || fontSize;
     const boxHeight = labels.boxHeight || fontSize;
     legend.legendItems.forEach((item: any, i: number) => {

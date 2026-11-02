@@ -1,5 +1,4 @@
 import path from "path";
-import { globSync } from "glob";
 import { Command, Option } from "commander";
 import { Canvas } from "skia-canvas";
 import fsp from "node:fs/promises";
@@ -8,33 +7,24 @@ import { renderEntityMatrixChart } from "../charts/EntityMatrixChart";
 import { type BenchmarkAggregateRunResult } from "../data/BenchmarkAggregateResult";
 import { MetricEnum } from "../data/MetricEnum";
 import { MetricRegistryInstance } from "../data/MetricRegistry";
-import { ensureOutputDir } from "../utils";
 import { EntityMatrixChartOptions } from "./types";
-import { baseOptions, getBaseName, applyLabel, warnUnmatchedNames, mergeCustomNames, parseNamesFile, loadRunFilters, resolveMetrics } from "./utils";
+import { baseOptions, applyLabel, warnUnmatchedNames, resolveMetrics, resolveChartInputs, commonOptionsFrom, groupByOptionsFrom, type ChartInput } from "./utils";
 import { CommandBuilder } from "./commandBuilder";
 import { enableInserterEasterEgg } from "../charts/styles";
 import { runInWorkerPool } from "./workerPool";
-import { AggregateParseTask } from "./aggregateParseWorkerTask";
+import { AggregateParseTask, buildAggregateParseTasks } from "./aggregateParseWorkerTask";
 
 const ENTITY_CHILDREN = MetricRegistryInstance.getChildrenOf(MetricEnum.ENTITY_UPDATE.name);
 const DEFAULT_ENTITY_METRICS = [MetricEnum.ENTITY_UPDATE, ...ENTITY_CHILDREN];
 
 async function generateEntityMatrix(
-  files: string[],
+  inputs: ChartInput[],
   runsToRemove: Map<string, Set<number>>,
   options: EntityMatrixChartOptions,
 ): Promise<void> {
-  const tasks: AggregateParseTask[] = files.map((file, fileIndex) => ({
-    taskType: "aggregateParse",
-    file,
-    fileIndex,
-    runsToRemove: [...(runsToRemove.get(getBaseName(file)) ?? new Set())],
-    maxTicks: options.maxTicks,
-    removeFirstTicks: options.removeFirstTicks,
-    metricNames: DEFAULT_ENTITY_METRICS.map((m) => m.name),
-  }));
+  const tasks = buildAggregateParseTasks(inputs, runsToRemove, options, DEFAULT_ENTITY_METRICS.map((m) => m.name));
 
-  const results: BenchmarkAggregateRunResult[] = new Array(files.length);
+  const results: BenchmarkAggregateRunResult[] = new Array(inputs.length);
   await runInWorkerPool<AggregateParseTask, BenchmarkAggregateRunResult>(tasks, {
     onTaskComplete: (task, result) => {
       results[task.fileIndex] = applyLabel(
@@ -53,6 +43,7 @@ async function generateEntityMatrix(
     topN: options.topN,
     minPercent: options.minPercent,
     titleOverride: options.titleOverride,
+    subtitle: options.subtitle,
   }, canvas);
 
   const imageBuffer = await canvas.toBuffer("png", { density: options.scale });
@@ -86,6 +77,7 @@ export function createEntityMatrixCommand(): Command {
         height: opts.height,
         scale: opts.scale,
         output: opts.output,
+        ...commonOptionsFrom(opts),
         removeFirstTicks: opts.removeFirstTicks,
         maxTicks: opts.maxTicks,
         trimPrefix: opts.trimPrefix,
@@ -100,26 +92,13 @@ export function createEntityMatrixCommand(): Command {
         minPercent: opts.minPercent,
         titleOverride: opts.titleOverride,
         titleCase: opts.titleCase,
-        groupBy: opts.groupBy ?? [],
+        ...groupByOptionsFrom(opts),
       };
 
-      const files = globSync(pattern);
-      if (files.length === 0) {
-        console.error(`No files matched the given pattern ${pattern}`);
-        process.exit(1);
-      }
-
-      const runsToRemove = await loadRunFilters(
-        options.aggregateFile,
-        options.stddevFilter,
-      );
-      ensureOutputDir(path.resolve(process.cwd(), options.output));
+      const { files, inputs, runsToRemove } = await resolveChartInputs(pattern, options);
       if (opts.fish) enableInserterEasterEgg();
-      if (options.namesFile) {
-        options.customNames = mergeCustomNames(parseNamesFile(options.namesFile), options.customNames);
-      }
       warnUnmatchedNames(files, options.customNames);
 
-      await generateEntityMatrix(files, runsToRemove, options);
+      await generateEntityMatrix(inputs, runsToRemove, options);
     });
 }
